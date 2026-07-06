@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI Player</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1px; height: 1px; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// MIDI ENGINE - WebView Bridge v4.0
+// Adaptado de midiEngine.js para ejecutarse en flutter_inappwebview.
+// Los assets del sampler son accesibles via: flutter_assets/assets/audio/
+// ══════════════════════════════════════════════════════════════════════════════
+
+// --- Estado Global del Motor ---
+let Tone = null;
+let pianoInstrument = null;
+let masterGainNode = null;
+let masterVolumeNode = null;
+let pianoEQ = null;
+let pianoCompressor = null;
+let limiter = null;
+let metroHi = null;
+let metroLo = null;
+let metronomoPart = null;
+let midiData = null;
+let parts = [];
+let speed = 1.0;
+let metronomoActivo = false;
+let volumenMaestro = 1.0;
+let baseTempo = 120;
+let instrumentoCargado = false;
+let isInitializing = false;
+let _tempoEventId = [];
+let _burstCount = 0;
+let _lastBurstTime = 0;
+let _silentAudio = null;
+
+// MIXER_STATE: mapa de { trackIndex -> volumen 0..1 }
+// Si una voz está muteada, su valor es 0.
+window.MIXER_STATE = {};
+
+// ─── Prefijo base de los assets de Flutter ───────────────────────────────────
+// En webview_flutter 4.x (Android), los assets se sirven desde https://appassets.androidplatform.net/assets/
+// Si cargamos 'assets/midi_player.html', las rutas relativas funcionan nativamente.
+const ASSET_BASE = './audio/';
+
+// ─── Bridge hacia Flutter ─────────────────────────────────────────────────────
+function toFlutter(event, data) {
+  if (window.FlutterBridge && window.FlutterBridge.postMessage) {
+    window.FlutterBridge.postMessage(JSON.stringify({ event, data }));
+  }
+}
+
+// ─── Inicializar (Lazy, requiere gesto de usuario) ───────────────────────────
+async function inicializar() {
+  console.log("🎵 [JS] Inicializando Tone.js y sampler...");
+  if (instrumentoCargado) {
+    console.log("🎵 [JS] Ya está cargado.");
+    return;
+  }
+  if (isInitializing) {
+    console.log("🎵 [JS] Ya se está inicializando...");
+    return;
+  }
+  isInitializing = true;
+
+  try {
+    // Carga dinámica de Tone.js (local, para funcionar 100% offline)
+    if (!Tone) {
+      console.log("🎵 [JS] Cargando Tone.js localmente...");
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = './js/Tone.js';
+        s.onload = () => { console.log("🎵 [JS] Tone.js cargado!"); resolve(); };
+        s.onerror = (err) => { console.error("🎵 [JS] Error al cargar Tone.js:", err); reject(err); };
+        document.head.appendChild(s);
+      });
+      Tone = window.Tone;
+    }
+
+    console.log("🎵 [JS] Creando Nodos de Audio...");
+    if (!limiter) limiter = new Tone.Limiter(-0.5).toDestination();
+    if (!masterVolumeNode) masterVolumeNode = new Tone.Volume(0).connect(limiter);
+
+    if (!pianoCompressor) pianoCompressor = new Tone.Compressor({
+      threshold: -14, ratio: 4, attack: 0.03, release: 0.08, knee: 8
+    }).connect(masterVolumeNode);
+
+    if (!pianoEQ) pianoEQ = new Tone.EQ3({
+      low: 3.5, mid: -1, high: 2, lowFrequency: 180, highFrequency: 3000
+    }).connect(pianoCompressor);
+
+    if (!masterGainNode) masterGainNode = new Tone.Gain(1).connect(pianoEQ);
+
+    // Metrónomo
+    console.log("🎵 [JS] Cargando metrónomo...");
+    if (!metroHi) {
+      metroHi = new Tone.Player(ASSET_BASE + 'metro/wood-hi.mp3').connect(masterVolumeNode);
+      metroHi.volume.value = 0; // Aumentar volumen (antes -6)
+    }
+    if (!metroLo) {
+      metroLo = new Tone.Player(ASSET_BASE + 'metro/wood-lo.mp3').connect(masterVolumeNode);
+      metroLo.volume.value = -2; // Aumentar volumen (antes -8)
+    }
+
+    // Piano Sampler con los samples locales
+    console.log("🎵 [JS] Cargando sampler de piano...");
+    if (!pianoInstrument) {
+      pianoInstrument = new Tone.Sampler({
+        urls: {
+          "A0": "A0.mp3", "C1": "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
+          "A1": "A1.mp3", "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
+          "A2": "A2.mp3", "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
+          "A3": "A3.mp3", "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
+          "A4": "A4.mp3", "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
+          "A5": "A5.mp3", "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
+          "A6": "A6.mp3", "C7": "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
+          "C8": "C8.mp3"
+        },
+        baseUrl: ASSET_BASE + 'piano/',
+        attack: 0,
+        release: 0.6,
+        maxPolyphony: 64,
+      }).connect(masterGainNode);
+    }
+
+    console.log("🎵 [JS] Esperando Tone.loaded()...");
+    await Tone.loaded();
+    console.log("🎵 [JS] Tone.loaded() RESOLVIÓ!");
+    instrumentoCargado = true;
+    isInitializing = false;
+    toFlutter('ready', {});
+  } catch (e) {
+    console.error("🎵 [JS] Error en inicialización:", e);
+    isInitializing = false;
+    toFlutter('error', { message: e.message || String(e) });
+  }
+}
+
+// ─── Cargar MIDI desde Base64 ─────────────────────────────────────────────────
+async function cargarMidiBase64(b64, nombreCancion) {
+  console.log("🎵 [JS] cargarMidiBase64 llamado para:", nombreCancion);
+  if (!Tone) await inicializar();
+
+  try {
+    // Decode base64 → ArrayBuffer
+    const binaryStr = atob(b64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const buffer = bytes.buffer;
+
+    if (!window.Midi) {
+      console.log("🎵 [JS] Cargando Midi.js localmente...");
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = './js/Midi.js';
+        s.onload = () => { console.log("🎵 [JS] Midi.js cargado!"); resolve(); };
+        s.onerror = (err) => { console.error("🎵 [JS] Error al cargar Midi.js:", err); reject(err); };
+        document.head.appendChild(s);
+      });
+    }
+
+    console.log("🎵 [JS] Parseando MIDI...");
+    midiData = new window.Midi(buffer);
+    baseTempo = midiData.header.tempos.length > 0 ? midiData.header.tempos[0].bpm : 120;
+    console.log("🎵 [JS] MIDI parseado, tempo base:", baseTempo, "duración:", midiData.duration);
+
+    const tracks = getTracksConNotas();
+    aplicarMapaTempo();
+    agendarPartes();
+
+    console.log("🎵 [JS] Partes agendadas, enviando 'loaded' a Flutter");
+    toFlutter('loaded', {
+      nombre: nombreCancion || 'Canción',
+      tempo: Math.round(baseTempo),
+      duracion: midiData.duration,
+      tracks: tracks
+    });
+  } catch (e) {
+    console.error("🎵 [JS] Error en cargarMidiBase64:", e);
+    toFlutter('error', { message: 'Error parsing MIDI: ' + (e.message || e) });
+  }
+}
+
+// ─── Heurística de voces (idéntica al midiEngine.js original) ────────────────
+function getTracksConNotas() {
+  if (!midiData || !midiData.tracks) return [];
+  const tracksValidos = [];
+  midiData.tracks.forEach((track, index) => {
+    if (track.instrument.percussion) return;
+    if (track.notes.length > 0) {
+      tracksValidos.push({ index, nombre: track.name || `Pista ${index + 1}` });
+    }
+  });
+
+  tracksValidos.forEach(track => {
+    const lowerName = (track.nombre || '').toLowerCase();
+    if (lowerName.includes('soprano 2') || lowerName === 's2') track.nombre = 'S2';
+    else if (lowerName.includes('alto 2') || lowerName === 'a2') track.nombre = 'A2';
+    else if (lowerName.includes('tenor 2') || lowerName === 't2') track.nombre = 'T2';
+    else if (lowerName.includes('bajo 2') || lowerName === 'b2') track.nombre = 'B2';
+    else if (lowerName.includes('baritono') || lowerName.includes('barítono')) track.nombre = 'Barítono';
+  });
+
+  if (tracksValidos.length >= 4) {
+    const [t1, t2, t3, t4] = tracksValidos;
+    const [n1, n2, n3, n4] = [t1, t2, t3, t4].map(t => (t.nombre || '').toLowerCase());
+    const isGeneric = (n) => n === '' || n.startsWith('pista') || n.includes('piano');
+    if (isGeneric(n1) && isGeneric(n2) && isGeneric(n3) && isGeneric(n4) && tracksValidos.length === 4) {
+      t1.nombre = 'Soprano'; t2.nombre = 'Alto'; t3.nombre = 'Tenor'; t4.nombre = 'Bajo';
+    } else if ((n2.includes('alto') || n2 === 'a') && (n4.includes('bajo') || n4 === 'b')) {
+      if (isGeneric(n1)) t1.nombre = 'Soprano';
+      if (isGeneric(n3)) t3.nombre = 'Tenor';
+    }
+  }
+
+  if (tracksValidos.length === 5) {
+    const allEmpty = tracksValidos.every(t => { const n = (t.nombre || '').toLowerCase(); return n === '' || n.startsWith('pista') || n.includes('piano'); });
+    if (allEmpty) { ['Solista', 'Soprano', 'Alto', 'Tenor', 'Bajo'].forEach((n, i) => { tracksValidos[i].nombre = n; }); }
+  }
+
+  if (tracksValidos.length === 8) {
+    const allEmpty = tracksValidos.every(t => { const n = (t.nombre || '').toLowerCase(); return n === '' || n.startsWith('pista') || n.includes('piano'); });
+    if (allEmpty) { ['Soprano', 'Alto', 'Tenor', 'Bajo', 'S2', 'A2', 'T2', 'B2'].forEach((n, i) => { tracksValidos[i].nombre = n; }); }
+  }
+
+  return tracksValidos;
+}
+
+// ─── Programar Tone.Transport ─────────────────────────────────────────────────
+function aplicarMapaTempo() {
+  if (!Tone || !midiData) return;
+  _tempoEventId.forEach(id => Tone.Transport.clear(id));
+  _tempoEventId = [];
+  if (midiData.header.tempos.length > 0) {
+    midiData.header.tempos.forEach(t => {
+      const id = Tone.Transport.schedule((time) => {
+        Tone.Transport.bpm.setValueAtTime(t.bpm * speed, time);
+      }, t.ticks + 'i');
+      _tempoEventId.push(id);
+    });
+    Tone.Transport.bpm.value = midiData.header.tempos[0].bpm * speed;
+  } else {
+    Tone.Transport.bpm.value = 120 * speed;
+  }
+}
+
+function agendarPartes() {
+  if (!midiData) return;
+  parts.forEach(p => p.dispose());
+  parts = [];
+  if (metronomoPart) { metronomoPart.dispose(); metronomoPart = null; }
+
+  if (Tone.Transport.state !== 'stopped') Tone.Transport.stop();
+  Tone.Transport.PPQ = midiData.header.ppq;
+
+  const masterEventsMap = new Map();
+
+  midiData.tracks.forEach((track, index) => {
+    if (track.instrument.percussion) return;
+    track.notes.forEach(note => {
+      const key = `${note.ticks}-${note.name}`;
+      if (!masterEventsMap.has(key)) {
+        masterEventsMap.set(key, {
+          time: note.ticks + 'i',
+          noteName: note.name,
+          durationTicks: note.durationTicks,
+          duration: note.durationTicks + 'i',
+          trackVelocities: {}
+        });
+      }
+      const event = masterEventsMap.get(key);
+      event.trackVelocities[index] = note.velocity;
+      if (note.durationTicks > event.durationTicks) {
+        event.durationTicks = note.durationTicks;
+        event.duration = note.durationTicks + 'i';
+      }
+    });
+  });
+
+  const masterEventsArray = Array.from(masterEventsMap.values());
+
+  const part = new Tone.Part((time, value) => {
+    if (!pianoInstrument || !instrumentoCargado) return;
+
+    let maxRealVelocity = 0;
+    for (const trackIndexStr in value.trackVelocities) {
+      const trackIndex = parseInt(trackIndexStr, 10);
+      const rawVelocity = value.trackVelocities[trackIndexStr];
+      const trackVol = (window.MIXER_STATE && window.MIXER_STATE[trackIndex] !== undefined)
+        ? window.MIXER_STATE[trackIndex] : 1.0;
+      const currentVol = rawVelocity * trackVol;
+      if (currentVol > maxRealVelocity) maxRealVelocity = currentVol;
+    }
+
+    const velocityReal = Math.min(1, Math.max(0, maxRealVelocity * volumenMaestro));
+
+    if (velocityReal > 0.01) {
+      const realNow = performance.now();
+      if (realNow - _lastBurstTime > 50) { _burstCount = 0; _lastBurstTime = realNow; }
+      _burstCount++;
+      if (_burstCount <= 12) {
+        try { pianoInstrument.triggerAttackRelease(value.noteName, value.duration, time, velocityReal); } catch(e) {}
+      }
+    }
+  }, masterEventsArray).start(0);
+
+  parts.push(part);
+
+  // ── Metrónomo ────────────────────────────────────────────────────────────────
+  const ppq = midiData.header.ppq || 480;
+  let timeSignatures = midiData.header.timeSignatures || [];
+
+  for (let i = 0; i < timeSignatures.length; i++) {
+    const ts = timeSignatures[i];
+    if (ts.timeSignature && ts.timeSignature[0] === 1) {
+      let nextDiffTs = null;
+      for (let j = i + 1; j < timeSignatures.length; j++) {
+        if (timeSignatures[j].timeSignature[0] !== 1) { nextDiffTs = timeSignatures[j]; break; }
+      }
+      const isForever = (nextDiffTs === null);
+      const durationBeats = isForever ? 0 : ((nextDiffTs.ticks - ts.ticks) / ppq);
+      if (isForever || durationBeats > 4) ts.timeSignature = [4, 4];
+    }
+  }
+
+  const sections = timeSignatures.length > 0
+    ? timeSignatures.map((ts, i) => ({
+        startTicks: ts.ticks,
+        numerator: ts.timeSignature[0] || 4,
+        denominator: ts.timeSignature[1] || 4,
+        endTicks: timeSignatures[i + 1] ? timeSignatures[i + 1].ticks : midiData.durationTicks + ppq
+      }))
+    : [{ startTicks: 0, numerator: 4, denominator: 4, endTicks: midiData.durationTicks + ppq }];
+
+  const metroEvents = [];
+  for (const section of sections) {
+    const { numerator: num, denominator: den } = section;
+    const beatTicks = den === 8 ? Math.round(ppq / 2) : ppq;
+    const isCompound = (den === 8 && num % 3 === 0 && num > 3);
+    let tick = section.startTicks;
+    let beatInBar = 0;
+    while (tick < section.endTicks && tick <= midiData.durationTicks) {
+      const isFirstBeat = (beatInBar === 0);
+      const shouldPlayAudio = isCompound ? (beatInBar % 3 === 0) : true;
+      metroEvents.push({ time: tick + 'i', isFirstBeat, beatIndex: beatInBar, numerator: num, shouldPlayAudio });
+      beatInBar = (beatInBar + 1) % num;
+      tick += beatTicks;
+    }
+  }
+
+  metronomoPart = new Tone.Part((time, value) => {
+    if (metronomoActivo) {
+      if (value.shouldPlayAudio) {
+        const player = value.isFirstBeat ? metroHi : metroLo;
+        if (player && player.loaded) player.start(time);
+      }
+      Tone.Draw.schedule(() => {
+        toFlutter('beat', {
+          isFirstBeat: value.isFirstBeat,
+          beatIndex: value.beatIndex,
+          numerator: value.numerator,
+          activo: metronomoActivo
+        });
+      }, time);
+    }
+  }, metroEvents).start(0);
+  parts.push(metronomoPart);
+
+  // Fin de pista
+  Tone.Transport.schedule((time) => {
+    setTimeout(() => { stop(); toFlutter('ended', {}); }, 100);
+  }, midiData.durationTicks + 'i');
+
+  // Loop de progreso → Flutter cada 350ms (Optimizado para reducir carga del GC)
+  if (window._progressInterval) clearInterval(window._progressInterval);
+  window._progressInterval = setInterval(() => {
+    if (!midiData || !Tone) return;
+    const totalTicks = midiData.durationTicks;
+    const progress = totalTicks > 0 ? Math.min(1, Tone.Transport.ticks / totalTicks) : 0;
+    const tiempos = getTiempos();
+    toFlutter('progress', { progress, actual: tiempos.actual, total: tiempos.total });
+  }, 350);
+}
+
+// ─── Controles ────────────────────────────────────────────────────────────────
+async function play() {
+  if (!Tone || !instrumentoCargado || !midiData) return;
+  await Tone.start();
+  if (masterGainNode) { const now = Tone.now(); masterGainNode.gain.cancelScheduledValues(now); masterGainNode.gain.rampTo(1, 0.05, now); }
+  if (Tone.Transport.state !== 'started') Tone.Transport.start('+0.05');
+}
+
+function pause() {
+  if (!Tone) return;
+  if (Tone.Transport.state === 'started') { Tone.Transport.pause(); if (pianoInstrument) pianoInstrument.releaseAll(); }
+}
+
+function stop() {
+  if (!Tone) return;
+  if (window._progressInterval) { clearInterval(window._progressInterval); window._progressInterval = null; }
+  Tone.Transport.stop();
+  Tone.Transport.ticks = 0;
+  if (pianoInstrument) pianoInstrument.releaseAll();
+  toFlutter('progress', { progress: 0, actual: 0, total: midiData ? getTiempos().total : 0 });
+}
+
+function saltarA(porcentaje) {
+  if (!midiData || !Tone) return;
+  const wasPlaying = Tone.Transport.state === 'started';
+  if (wasPlaying) Tone.Transport.pause();
+  if (pianoInstrument) pianoInstrument.releaseAll();
+  const targetTicks = Math.floor((porcentaje / 100) * midiData.durationTicks);
+  Tone.Transport.ticks = targetTicks;
+  let targetBpm = 120;
+  if (midiData.header.tempos.length > 0) {
+    targetBpm = midiData.header.tempos[0].bpm;
+    for (let t of midiData.header.tempos) { if (t.ticks <= targetTicks) targetBpm = t.bpm; else break; }
+  }
+  Tone.Transport.bpm.value = targetBpm * speed;
+  if (wasPlaying) Tone.Transport.start('+0.05');
+}
+
+function setSpeed(val) {
+  speed = parseFloat(val);
+  const wasPlaying = Tone && Tone.Transport.state === 'started';
+  if (wasPlaying) {
+    Tone.Transport.pause();
+    if (pianoInstrument) pianoInstrument.releaseAll();
+  }
+  aplicarMapaTempo();
+  if (wasPlaying) {
+    setTimeout(() => {
+      Tone.Transport.start('+0.02');
+    }, 50);
+  }
+  toFlutter('speedChanged', { speed });
+}
+
+function toggleMetronomo(activo) {
+  metronomoActivo = !!activo;
+  toFlutter('metronomoChanged', { activo: metronomoActivo });
+}
+
+function setTrackVolume(trackIndex, vol) {
+  window.MIXER_STATE[trackIndex] = parseFloat(vol);
+}
+
+function getTiempos() {
+  if (!midiData || !Tone) return { actual: 0, total: 0 };
+  return {
+    actual: ticksToSeconds(Tone.Transport.ticks),
+    total: ticksToSeconds(midiData.durationTicks)
+  };
+}
+
+function ticksToSeconds(ticks) {
+  if (!midiData || !midiData.header.tempos.length) {
+    const ppq = midiData ? midiData.header.ppq : 480;
+    return (ticks / ppq) * (60 / 120) / speed;
+  }
+  let time = 0, currentTicks = 0;
+  let currentBpm = midiData.header.tempos[0].bpm;
+  const ppq = midiData.header.ppq || 480;
+  for (const t of midiData.header.tempos) {
+    if (t.ticks > ticks) break;
+    time += ((t.ticks - currentTicks) / ppq) * (60 / currentBpm);
+    currentTicks = t.ticks;
+    currentBpm = t.bpm;
+  }
+  if (ticks > currentTicks) time += ((ticks - currentTicks) / ppq) * (60 / currentBpm);
+  return time / speed;
+}
+
+// ─── API pública (llamada desde Flutter via evaluateJavascript) ───────────────
+window.MidiPlayer = {
+  init: inicializar,
+  load: cargarMidiBase64,
+  play, pause, stop,
+  seek: saltarA,
+  setSpeed,
+  toggleMetronomo,
+  setTrackVolume,
+};
+
+// Listo para recibir comandos
+toFlutter('bridge_ready', {});
+</script>
+</body>
+</html>
