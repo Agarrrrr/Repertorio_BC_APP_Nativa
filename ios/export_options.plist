@@ -8,5 +8,10 @@
     <string>3R4W228G24</string>
     <key>signingStyle</key>
     <string>manual</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.lldm.bc</key>
+        <string>Repertorio_BC_AppStore</string>
+    </dict>
 </dict>
 </plist>
