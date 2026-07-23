@@ -58,28 +58,7 @@ jobs:
             export PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            python3 - << 'EOF'
-import base64, re, os
-def decode(env_var, path):
-    raw = os.environ.get(env_var, '')
-    clean = re.sub(r'[^A-Za-z0-9+/=]', '', raw)
-    data = None
-    for i in range(5):
-        try:
-            cur = clean[:len(clean)-i] if i > 0 else clean
-            cur += '=' * ((4 - len(cur) % 4) % 4)
-            data = base64.b64decode(cur)
-            if len(data) > 0:
-                break
-        except Exception:
-            pass
-    if data and path:
-        with open(path, 'wb') as f:
-            f.write(data)
-
-decode('BUILD_CERTIFICATE_BASE64', os.environ.get('CERTIFICATE_PATH'))
-decode('BUILD_PROVISION_PROFILE_BASE64', os.environ.get('PP_PATH'))
-EOF
+            python3 -c "import base64, re, os; f = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')) + '====')); f('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH'); f('BUILD_PROVISION_PROFILE_BASE64', '$PP_PATH')"
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
