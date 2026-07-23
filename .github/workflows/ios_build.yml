@@ -45,38 +45,27 @@ jobs:
           cd ios
           pod install
 
-      - name: Import Signing Certificate & Provisioning Profile (if secrets present)
+      - name: Import Signing Certificate (if secrets present)
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD || secrets.P12_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'Television2012' }}
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
             echo "Setting up keychain and signing certificates..."
             export CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            export PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            python3 -c "import base64, re, os; f = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))) if os.environ.get(k) else None; f('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH'); f('BUILD_PROVISION_PROFILE_BASE64', '$PP_PATH')"
+            python3 -c "import base64, re, os; dec = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, ''))[:len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))-len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))%4])) if os.environ.get(k) else None; dec('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH')"
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
             security unlock-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
-
-            if [ -s "$PP_PATH" ]; then
-              mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-              if security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist 2>/dev/null; then
-                PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
-              else
-                PP_UUID="0e4794da-0164-42d5-96ab-4ae9ed39df0e"
-              fi
-              cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
-            fi
-            echo "Certificate & Keychain initialized successfully."
+            security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
+            echo "Keychain initialized successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
@@ -94,14 +83,40 @@ jobs:
             echo "App Store Connect API Key configured."
           fi
 
-      - name: Build iOS App (.ipa or Runner.app)
+      - name: Build Xcode Archive and Export IPA
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
-            flutter build ipa --release --export-options-plist=ios/export_options.plist
+          echo "Building Flutter iOS release..."
+          flutter build ios --release --no-codesign
+
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
+            xcodebuild -workspace ios/Runner.xcworkspace \
+                       -scheme Runner \
+                       -sdk iphoneos \
+                       -configuration Release \
+                       -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                       -allowProvisioningUpdates \
+                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
+                       -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID \
+                       archive
+
+            echo "Exporting IPA with xcodebuild..."
+            mkdir -p build/ios/ipa
+            xcodebuild -exportArchive \
+                       -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                       -exportOptionsPlist ios/export_options.plist \
+                       -exportPath build/ios/ipa \
+                       -allowProvisioningUpdates \
+                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
+                       -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
           else
-            flutter build ios --no-codesign --release
+            echo "App Store Connect API Key not provided. Skipping signed archive and export."
           fi
 
       - name: Upload IPA to App Store Connect / TestFlight (if API Key provided)
