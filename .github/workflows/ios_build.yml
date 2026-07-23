@@ -58,8 +58,8 @@ jobs:
             PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+            echo "$BUILD_CERTIFICATE_BASE64" | tr -d ' \n\r' | base64 --decode > $CERTIFICATE_PATH
+            echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d ' \n\r' | base64 --decode > $PP_PATH
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
@@ -69,10 +69,11 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            PP_UUID=$(security cms -D -i $PP_PATH | grep -A1 UUID | sed -n '2p' | sed -e 's/<[^>]*>//g' | tr -d ' \t\n\r')
+            security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist
+            PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
+            PP_NAME=$(plutil -extract Name raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "Repertorio_BC_AppStore")
             cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
-            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/default.mobileprovision
-            echo "Certificates & Provisioning Profile ($PP_UUID) installed successfully."
+            echo "Installed Profile '$PP_NAME' ($PP_UUID) successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
