@@ -96,10 +96,10 @@ jobs:
 
       - name: Build iOS App (.ipa or Runner.app)
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 || secrets.APPLE_P12_BASE64 }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
-            flutter build ipa --release --export-options-plist=ios/export_options.plist --allow-provisioning-updates
+            flutter build ipa --release --export-options-plist=ios/export_options.plist
           else
             flutter build ios --no-codesign --release
           fi
