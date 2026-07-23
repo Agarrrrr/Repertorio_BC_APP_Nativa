@@ -117,32 +117,21 @@ async function inicializar() {
     }
 
     // Piano Sampler con los samples locales
-    console.log("🎵 [JS] Cargando sampler de piano...");
+    // Piano Sintetizador por Frecuencias Polifónico (sin dependencias de red ni samples externos)
+    console.log("🎵 [JS] Inicializando sintetizador por frecuencias...");
     if (!pianoInstrument) {
-      pianoInstrument = new Tone.Sampler({
-        urls: {
-          "A0": "A0.mp3", "C1": "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3",
-          "A1": "A1.mp3", "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3",
-          "A2": "A2.mp3", "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3",
-          "A3": "A3.mp3", "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3",
-          "A4": "A4.mp3", "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3",
-          "A5": "A5.mp3", "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3",
-          "A6": "A6.mp3", "C7": "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3",
-          "C8": "C8.mp3"
-        },
-        baseUrl: ASSET_BASE + 'piano/',
-        attack: 0,
-        release: 0.6,
-        maxPolyphony: 24,
+      pianoInstrument = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "triangle8" },
+        envelope: {
+          attack: 0.005,
+          decay: 1.2,
+          sustain: 0.3,
+          release: 1.2
+        }
       }).connect(masterGainNode);
     }
 
-    console.log("🎵 [JS] Esperando Tone.loaded()...");
-    await Tone.loaded();
-    console.log("🎵 [JS] Tone.loaded() RESOLVIÓ!");
-    
-    // Aumentar LookAhead a 0.5s para prevenir Jitter cuando Flutter bloquea el Main Thread
-    Tone.context.lookAhead = 0.5;
+    Tone.context.lookAhead = 0.3;
     
     instrumentoCargado = true;
     isInitializing = false;
@@ -398,8 +387,12 @@ function agendarPartes() {
 
 // ─── Controles ────────────────────────────────────────────────────────────────
 async function play() {
-  if (!Tone || !instrumentoCargado || !midiData) return;
+  if (!Tone || !midiData) return;
+  if (!instrumentoCargado) await inicializar();
   await Tone.start();
+  if (Tone.context && Tone.context.state !== 'running') {
+    await Tone.context.resume();
+  }
   if (masterGainNode) { const now = Tone.now(); masterGainNode.gain.cancelScheduledValues(now); masterGainNode.gain.rampTo(1, 0.05, now); }
   if (Tone.Transport.state !== 'started') Tone.Transport.start('+0.05');
 }

@@ -277,6 +277,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
+        bottom: false,
         child: Stack(
           children: [
             // ── WebView MIDI Invisible ──────────────────────────────────────
@@ -338,12 +339,13 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                               onTap: () => _enviarSenalVivo(canto, perfil.coroId),
                               tooltip: 'Transmitir en VIVO al coro',
                             ),
-                          _TopBarBtn(
-                            icon: Icons.ios_share_rounded,
-                            isActive: false,
-                            onTap: () => ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre),
-                            tooltip: 'Exportar PDF',
-                          ),
+                          if (!Platform.isIOS)
+                            _TopBarBtn(
+                              icon: Icons.ios_share_rounded,
+                              isActive: false,
+                              onTap: () => ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre),
+                              tooltip: 'Exportar PDF',
+                            ),
                           _TopBarBtn(
                             icon: _showTools ? Icons.edit_off_rounded : Icons.edit_rounded,
                             isActive: _showTools,
@@ -421,7 +423,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                           return AnimatedPositioned(
                             duration: const Duration(milliseconds: 350),
                             curve: Curves.easeInOutCubic,
-                            bottom: _showMidi ? 16 : -380,
+                            bottom: _showMidi ? (16 + MediaQuery.of(context).padding.bottom) : -380,
                             left: 12,
                             right: 12,
                             child: _MidiPanel(
