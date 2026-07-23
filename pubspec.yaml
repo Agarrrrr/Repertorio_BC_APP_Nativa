@@ -79,6 +79,7 @@ flutter:
 
   # Assets del reproductor MIDI (WebView + Piano Sampler)
   assets:
+    - assets/Piano.sf2
     - assets/midi_player.html
     - assets/js/
     - assets/audio/silence.wav

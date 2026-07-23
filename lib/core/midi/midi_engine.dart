@@ -252,28 +252,42 @@ class MidiEngine {
     }
   }
 
-  void _playNativeNote(MidiNoteEvent note) {
+  Future<void> _ensureMidiProInit() async {
+    if (_midiPro.initialized) return;
     try {
-      _midiPro.playNote(
-        channel: note.channel,
-        key: note.note,
+      await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2');
+    } catch (e) {
+      debugPrint('⚠️ [NativeMidiEngine] Soundfont load notice: $e');
+    }
+  }
+
+  void _playNativeNote(MidiNoteEvent note) async {
+    try {
+      if (!_midiPro.initialized) {
+        await _ensureMidiProInit();
+      }
+      _midiPro.playMidiNote(
+        midi: note.note,
         velocity: note.velocity,
       );
       final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
       Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
-        _midiPro.stopNote(
-          channel: note.channel,
-          key: note.note,
-        );
+        if (_midiPro.initialized) {
+          _midiPro.stopMidiNote(
+            midi: note.note,
+          );
+        }
       });
     } catch (e) {
-      debugPrint('❌ [NativeMidiEngine] Error en playNote: $e');
+      debugPrint('❌ [NativeMidiEngine] Error en playMidiNote: $e');
     }
   }
 
   void _stopAllNotes() {
     try {
-      _midiPro.stopAllNotes();
+      if (_midiPro.initialized) {
+        _midiPro.stopAllMidiNotes();
+      }
     } catch (_) {}
   }
 
