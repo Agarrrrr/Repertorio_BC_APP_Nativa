@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:math'; // For layoutPages max()
@@ -37,8 +36,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   bool _showDrawingPalette = false;
 
   final MidiEngine _midi = MidiEngine();
-  WebViewController? _webCtrl;
-  Widget? _webViewWidget;
   bool _hasMidi = false;
   
   final PdfViewerController _pdfController = PdfViewerController();
@@ -48,20 +45,15 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(pdfEngineProvider.notifier).init(widget.cantoId);
-      _initMidi();
-    });
+    _initMidi();
   }
 
-  Future<void> _initMidi() async {
+  void _initMidi() async {
     final cantos = ref.read(cantosBaseProvider).value ?? [];
     final canto = cantos.firstWhere(
       (c) => c.id == widget.cantoId,
-      orElse: () => Canto(id: '', nombre: '', archivo: '', temas: [], corosVinculados: []),
+      orElse: () => Canto(id: '', nombre: 'Partitura', archivo: '', temas: [], corosVinculados: []),
     );
-    
-    // El bug de notificación en bucle fue removido aquí.
 
     debugPrint('🎵 [MidiEngine] Inicializando para el canto: ${canto.nombre}');
     debugPrint('🎵 [MidiEngine] midiArchivo del canto: "${canto.midiArchivo}"');
@@ -120,12 +112,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   void _toggleTools() {
     setState(() {
       _showTools = !_showTools;
-      _showMidi = false;
-      _showDrawingPalette = false;
       if (!_showTools) {
+        _showDrawingPalette = false;
         ref.read(pdfEngineProvider.notifier).setDrawingMode(false);
-      } else {
-        _showTopBar = true; // Forzar barra superior abierta
       }
     });
   }
@@ -133,16 +122,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   void _toggleMidi() {
     setState(() {
       _showMidi = !_showMidi;
-      _showTools = false;
-      _showDrawingPalette = false;
-      ref.read(pdfEngineProvider.notifier).setDrawingMode(false);
-      if (_showMidi) _showTopBar = true; // Forzar barra superior abierta
     });
-    // Si el usuario abre el reproductor pero nunca inicializó el audio 
-    // porque el WebView restringe auto-play, forzamos un Tone.start implícito
-    if (_showMidi && _midi.state.isLoaded && !_midi.state.isPlaying) {
-      // _midi.play() inicia Tone.js en el JS Bridge automáticamente
-    }
   }
 
   Future<void> _enviarSenalVivo(Canto canto, String coroId) async {
@@ -189,9 +169,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     if (document.pages.isNotEmpty) {
       final firstPageWidth = document.pages.first.width;
       final viewWidth = MediaQuery.of(context).size.width;
-      // Añadimos un pequeño margen por seguridad (0.95)
       setState(() {
-        _minScaleLimit = (viewWidth / firstPageWidth) * 0.95;
+        _minScaleLimit = (viewWidth / firstPageWidth);
       });
     }
   }
@@ -214,11 +193,16 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     final orientation = MediaQuery.of(context).orientation;
     if (_lastOrientation != null && _lastOrientation != orientation) {
-      if (orientation == Orientation.landscape) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pdfController.isReady && _pdfController.pages.isNotEmpty) {
+          final firstPageWidth = _pdfController.pages.first.width;
+          final viewWidth = MediaQuery.of(context).size.width;
+          setState(() {
+            _minScaleLimit = (viewWidth / firstPageWidth);
+          });
           _ajustarZoomAlAncho();
-        });
-      }
+        }
+      });
     }
     _lastOrientation = orientation;
 
@@ -256,20 +240,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // ── WebView MIDI Invisible ──────────────────────────────────────
-            // NOTA: Se coloca a 10x10 px con opacidad de 0.01 para evitar que Chromium
-            // lo considere off-screen/oculto y ralentice el hilo de audio WebAudio.
-            if (_hasMidi && _webViewWidget != null)
-              Positioned(
-                left: 0,
-                top: 0,
-                width: 10,
-                height: 10,
-                child: Opacity(
-                  opacity: 0.01,
-                  child: _webViewWidget!,
-                ),
-              ),
 
             Column(
               children: [
