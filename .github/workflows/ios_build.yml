@@ -69,8 +69,10 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
-            echo "Certificates & Provisioning Profile installed successfully."
+            PP_UUID=$(security cms -D -i $PP_PATH | grep -A1 UUID | sed -n '2p' | sed -e 's/<[^>]*>//g' | tr -d ' \t\n\r')
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/default.mobileprovision
+            echo "Certificates & Provisioning Profile ($PP_UUID) installed successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
