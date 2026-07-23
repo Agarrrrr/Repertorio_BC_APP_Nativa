@@ -1,10 +1,2 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
-
-CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = Apple Distribution
-CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
-PROVISIONING_PROFILE = 0e4794da-0164-42d5-96ab-4ae9ed39df0e
-PROVISIONING_PROFILE_SPECIFIER = 0e4794da-0164-42d5-96ab-4ae9ed39df0e
-DEVELOPMENT_TEAM = 3R4W228G24
-

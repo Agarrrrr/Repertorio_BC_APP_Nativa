@@ -52,7 +52,7 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 || secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'Television2012' }}
         run: |
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
             echo "Setting up keychain and signing certificates..."
             export CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             export PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
@@ -67,27 +67,39 @@ jobs:
             security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
-            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            if security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist 2>/dev/null; then
-              PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
-              PP_NAME=$(plutil -extract Name raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "Repertorio_BC_AppStore")
-            else
-              echo "Warning: Could not parse profile with security cms, defaulting to known UUID."
-              PP_UUID="0e4794da-0164-42d5-96ab-4ae9ed39df0e"
-              PP_NAME="Repertorio_BC_AppStore"
+            if [ -s "$PP_PATH" ]; then
+              mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+              if security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist 2>/dev/null; then
+                PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
+              else
+                PP_UUID="0e4794da-0164-42d5-96ab-4ae9ed39df0e"
+              fi
+              cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
             fi
-            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
-            echo "Installed Profile '$PP_NAME' ($PP_UUID) successfully."
+            echo "Certificate & Keychain initialized successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
 
+      - name: Setup App Store Connect API Key
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: |
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ]; then
+            mkdir -p ~/private_keys
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "App Store Connect API Key configured."
+          fi
+
       - name: Build iOS App (.ipa or Runner.app)
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 || secrets.APPLE_P12_BASE64 }}
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
-            flutter build ipa --release --export-options-plist=ios/export_options.plist
+            flutter build ipa --release --export-options-plist=ios/export_options.plist --allow-provisioning-updates
           else
             flutter build ios --no-codesign --release
           fi
@@ -100,10 +112,7 @@ jobs:
         run: |
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Uploading IPA to App Store Connect..."
-            mkdir -p ~/.appstoreconnect/private_keys
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-
-            xcrun xcrun altool --upload-app -f build/ios/ipa/*.ipa \
+            xcrun altool --upload-app -f build/ios/ipa/*.ipa \
               --type ios \
               --apiKey "$APP_STORE_CONNECT_KEY_ID" \
               --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
