@@ -54,11 +54,11 @@ jobs:
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
             echo "Setting up keychain and signing certificates..."
-            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+            export CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            export PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            python3 -c "
+            python3 - << 'EOF'
 import base64, re, os
 def decode(env_var, path):
     raw = os.environ.get(env_var, '')
@@ -73,13 +73,13 @@ def decode(env_var, path):
                 break
         except Exception:
             pass
-    if data:
+    if data and path:
         with open(path, 'wb') as f:
             f.write(data)
 
-decode('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH')
-decode('BUILD_PROVISION_PROFILE_BASE64', '$PP_PATH')
-"
+decode('BUILD_CERTIFICATE_BASE64', os.environ.get('CERTIFICATE_PATH'))
+decode('BUILD_PROVISION_PROFILE_BASE64', os.environ.get('PP_PATH'))
+EOF
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
