@@ -30,9 +30,7 @@ jobs:
 
       - name: Select Xcode version
         run: |
-          if [ -d "/Applications/Xcode_26.6.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_26.6.app
-          elif [ -d "/Applications/Xcode_16.2.app" ]; then
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.2.app
           elif [ -d "/Applications/Xcode_16.1.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.1.app
