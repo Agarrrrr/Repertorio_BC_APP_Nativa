@@ -58,7 +58,7 @@ jobs:
             export PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            python3 -c "import base64, re, os; dec = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, ''))[:len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))-len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))%4])) if os.environ.get(k) else None; dec('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH'); dec('BUILD_PROVISION_PROFILE_BASE64', '$PP_PATH')"
+            python3 -c "import base64, re, os; f = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))) if os.environ.get(k) else None; f('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH'); f('BUILD_PROVISION_PROFILE_BASE64', '$PP_PATH')"
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
