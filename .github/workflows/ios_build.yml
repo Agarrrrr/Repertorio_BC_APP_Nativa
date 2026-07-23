@@ -58,8 +58,8 @@ jobs:
             PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            echo "$BUILD_CERTIFICATE_BASE64" | tr -d ' \n\r' | base64 --decode > $CERTIFICATE_PATH
-            echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d ' \n\r' | base64 --decode > $PP_PATH
+            python3 -c "import base64, os; open('$CERTIFICATE_PATH', 'wb').write(base64.b64decode(os.environ['BUILD_CERTIFICATE_BASE64'].strip()))"
+            python3 -c "import base64, os; open('$PP_PATH', 'wb').write(base64.b64decode(os.environ['BUILD_PROVISION_PROFILE_BASE64'].strip()))"
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
@@ -69,9 +69,14 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
             mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-            security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist
-            PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
-            PP_NAME=$(plutil -extract Name raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "Repertorio_BC_AppStore")
+            if security cms -D -i $PP_PATH > $RUNNER_TEMP/profile.plist 2>/dev/null; then
+              PP_UUID=$(plutil -extract UUID raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "0e4794da-0164-42d5-96ab-4ae9ed39df0e")
+              PP_NAME=$(plutil -extract Name raw $RUNNER_TEMP/profile.plist 2>/dev/null || echo "Repertorio_BC_AppStore")
+            else
+              echo "Warning: Could not parse profile with security cms, defaulting to known UUID."
+              PP_UUID="0e4794da-0164-42d5-96ab-4ae9ed39df0e"
+              PP_NAME="Repertorio_BC_AppStore"
+            fi
             cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
             echo "Installed Profile '$PP_NAME' ($PP_UUID) successfully."
           else
