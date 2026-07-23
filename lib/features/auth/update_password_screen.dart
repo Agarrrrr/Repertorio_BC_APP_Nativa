@@ -89,9 +89,9 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -100,7 +100,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                           Icon(
                             Icons.password_rounded,
                             size: 72,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white.withOpacity(0.9),
                           ).animate().fade().scale(),
                           const SizedBox(height: 16),
                           Text(
@@ -128,9 +128,9 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 24),
                               decoration: BoxDecoration(
-                                color: Colors.redAccent.withValues(alpha: 0.2),
+                                color: Colors.redAccent.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                                border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
                               ),
                               child: Text(_errorMessage!, style: GoogleFonts.inter(color: Colors.white)),
                             ),
@@ -138,9 +138,9 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                           // Pass
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: Colors.white.withOpacity(0.05),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
                             ),
                             child: TextField(
                               controller: _passwordController,
@@ -163,9 +163,9 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                           // Confirm
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: Colors.white.withOpacity(0.05),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
                             ),
                             child: TextField(
                               controller: _confirmController,

@@ -19,17 +19,24 @@ class PushService {
   static String? lastNotifiedCantoId;
 
   static Future<void> init() async {
-    // 1. Inicializar Firebase
-    await Firebase.initializeApp();
+    // 1. Inicializar Firebase (puede fallar si no hay GoogleService-Info.plist válido para iOS)
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('Firebase init falló (probablemente falta configuración iOS): $e');
+      debugPrint('Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
+      return; // Salir sin configurar notificaciones push
+    }
 
     // 2. Configurar manejador en segundo plano
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 3. Configurar notificaciones locales para cuando la app esté en primer plano
     const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
-    const initSettings = InitializationSettings(android: androidInit);
+    const darwinInit = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(android: androidInit, iOS: darwinInit, macOS: darwinInit);
     await _localNotificationsPlugin.initialize(
-      settings: initSettings,
+      initSettings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null && details.payload!.isNotEmpty) {
           onNotificationTap?.call(details.payload!);
@@ -56,10 +63,10 @@ class PushService {
       
       if (notification != null) {
         _localNotificationsPlugin.show(
-          id: notification.hashCode,
-          title: notification.title,
-          body: notification.body,
-          notificationDetails: const NotificationDetails(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          const NotificationDetails(
             android: AndroidNotificationDetails(
               'repertorio_bc_channel', // id
               'Avisos y Actualizaciones', // title
@@ -67,11 +74,13 @@ class PushService {
               importance: Importance.max,
               priority: Priority.high,
             ),
+            iOS: DarwinNotificationDetails(),
           ),
           payload: cantoId != null && cantoId.toString().isNotEmpty ? 'visor_$cantoId' : null,
         );
       }
     });
+
 
     // 6. Escuchar clics en notificaciones cuando la app está en segundo plano (pero no cerrada)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {

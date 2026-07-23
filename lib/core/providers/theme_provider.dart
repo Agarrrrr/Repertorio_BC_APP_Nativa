@@ -55,14 +55,15 @@ class AccentColorNotifier extends Notifier<Color> {
   @override
   Color build() {
     final box = Hive.box('cache');
-    final savedVal = box.get('accent_color', defaultValue: defaultAccent.toARGB32());
+    final savedVal = box.get('accent_color', defaultValue: defaultAccent.value);
     return Color(savedVal);
   }
 
   void set(Color color) {
     state = color;
-    Hive.box('cache').put('accent_color', color.toARGB32());
+    Hive.box('cache').put('accent_color', color.value);
   }
+
 }
 final accentColorProvider = NotifierProvider<AccentColorNotifier, Color>(AccentColorNotifier.new);
 

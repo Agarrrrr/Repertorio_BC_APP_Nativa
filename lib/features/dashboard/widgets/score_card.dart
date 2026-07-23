@@ -54,7 +54,7 @@ class ScoreCard extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: hasAudio
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
+                      : Theme.of(context).colorScheme.outline.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(17),
                 ),
                 child: Padding(
@@ -88,7 +88,7 @@ class ScoreCard extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                           color: hasAudio
                               ? Theme.of(context).colorScheme.onSurface
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -109,8 +109,8 @@ class ScoreCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 color: hasAudio
-                                    ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)
-                                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                                    ? Theme.of(context).colorScheme.onSurface.withOpacity(0.6)
+                                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
                               ),
                             ),
                           ),

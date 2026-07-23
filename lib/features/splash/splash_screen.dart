@@ -46,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // Seleccionar logo según el modo
     final imagePath = isDark ? 'assets/splash_icon_dark.png' : 'assets/splash_icon_light.png';
     // El color de resplandor será el color primario puro, con opacidad
-    final glowColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.3);
+    final glowColor = Theme.of(context).colorScheme.primary.withOpacity(0.3);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,

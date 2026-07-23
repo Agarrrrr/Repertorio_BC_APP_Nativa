@@ -10,6 +10,7 @@ import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:repertorio_bc/app/color_extensions.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key});
@@ -157,7 +158,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +438,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           shape: BoxShape.circle,
           border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
           boxShadow: [
-            if (isSelected) BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)
+            if (isSelected) BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)
           ],
         ),
         child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : null,
@@ -460,10 +461,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
+            color: isSelected ? accentColor : Colors.grey.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -508,10 +509,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.2),
+            color: isSelected ? accentColor : Colors.grey.withOpacity(0.2),
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -563,7 +564,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
         ),
         child: Center(
           child: Text(
@@ -578,7 +579,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
       ),
       child: ListView.separated(
         shrinkWrap: true,
@@ -586,7 +587,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         itemCount: _lastNotifications.length,
         separatorBuilder: (context, index) => Divider(
           height: 1,
-          color: Colors.grey.withValues(alpha: 0.15),
+          color: Colors.grey.withOpacity(0.15),
         ),
         itemBuilder: (context, index) {
           final aviso = _lastNotifications[index];
@@ -603,7 +604,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
             dense: true,
             leading: CircleAvatar(
               radius: 14,
-              backgroundColor: esVivo ? Colors.red.withValues(alpha: 0.1) : accentColor.withValues(alpha: 0.1),
+              backgroundColor: esVivo ? Colors.red.withOpacity(0.1) : accentColor.withOpacity(0.1),
               child: Icon(
                 esVivo ? Icons.live_tv_rounded : Icons.campaign_rounded,
                 size: 14,

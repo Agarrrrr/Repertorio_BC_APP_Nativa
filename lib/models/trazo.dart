@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:repertorio_bc/app/color_extensions.dart';
 
 enum ToolType { pencil, eraser, text }
 

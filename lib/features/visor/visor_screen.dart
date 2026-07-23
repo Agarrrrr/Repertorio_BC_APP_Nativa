@@ -303,7 +303,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                   height: _showTopBar ? 60 : 0,
                   decoration: BoxDecoration(
                     color: theme.scaffoldBackgroundColor,
-                    border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                    border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
                   ),
                   child: SingleChildScrollView(
                     physics: const NeverScrollableScrollPhysics(),
@@ -375,7 +375,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       key: ValueKey('${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
                                       controller: _pdfController,
                                       params: PdfViewerParams(
-                                        textSelectionParams: const PdfTextSelectionParams(enabled: false),
+                                        enableTextSelection: false,
                                         minScale: _minScaleLimit,
                                         boundaryMargin: EdgeInsets.zero,
                                         onViewerReady: (document, controller) {
@@ -384,15 +384,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                         },
                                         panEnabled: !state.isDrawingMode,
                                         scaleEnabled: true,
-                                        onGeneralTap: (context, controller, details) {
-                                          if (details.type == PdfViewerGeneralTapType.tap) {
-                                            if (!state.isDrawingMode) {
-                                              _toggleTopBar();
-                                              return true;
-                                            }
-                                          }
-                                          return false;
-                                        },
                                         layoutPages: isCarousel ? (pages, params) {
                                           final height = pages.fold(0.0, (prev, page) => max(prev, page.height)) + params.margin * 2;
                                           final pageLayouts = <Rect>[];
@@ -471,13 +462,13 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                               decoration: BoxDecoration(
                                 color: theme.scaffoldBackgroundColor,
                                 borderRadius: BorderRadius.circular(30),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   _ToolBtn(icon: Icons.pan_tool_rounded, isActive: !state.isDrawingMode, onTap: () => ref.read(pdfEngineProvider.notifier).setDrawingMode(false)),
-                                  Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
+                                  Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
                                   _ToolBtn(
                                     icon: Icons.edit_rounded,
                                     isActive: state.isDrawingMode && state.currentTool == ToolType.pencil,
@@ -521,7 +512,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     },
                                   ),
                                   if (state.isDrawingMode) ...[
-                                    Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
+                                    Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
                                     _ToolBtn(
                                       icon: Icons.undo_rounded,
                                       isActive: false,
@@ -560,7 +551,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                               decoration: BoxDecoration(
                                 color: theme.scaffoldBackgroundColor,
                                 borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -574,7 +565,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
                                         trackHeight: 2,
                                         activeTrackColor: accentColor,
-                                        inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
+                                        inactiveTrackColor: Colors.grey.withOpacity(0.3),
                                         thumbColor: accentColor,
                                       ),
                                       child: Slider(
@@ -588,7 +579,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   
                                   // Selector de colores solo si no es borrador
                                   if (state.currentTool != ToolType.eraser) ...[
-                                    Container(width: 1, height: 20, color: Colors.grey.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 10)),
+                                    Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 10)),
                                     _ColorBtn(color: Colors.black, isActive: state.currentColor == Colors.black, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.black)),
                                     _ColorBtn(color: Colors.red, isActive: state.currentColor == Colors.red, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.red)),
                                     _ColorBtn(color: Colors.blue, isActive: state.currentColor == Colors.blue, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.blue)),
@@ -663,12 +654,12 @@ class _MidiPanelState extends State<_MidiPanel> {
     return Material(
       elevation: 12,
       borderRadius: BorderRadius.circular(20),
-      shadowColor: Colors.black.withValues(alpha: 0.2),
+      shadowColor: Colors.black.withOpacity(0.2),
       child: Container(
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
+          border: Border.all(color: widget.accentColor.withOpacity(0.4)),
         ),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
@@ -696,13 +687,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                           shape: BoxShape.circle,
                           color: isCurrent 
                               ? (isFirst ? Colors.redAccent : widget.accentColor)
-                              : Colors.grey.withValues(alpha: 0.3),
+                              : Colors.grey.withOpacity(0.3),
                           boxShadow: isCurrent 
                               ? [
                                   BoxShadow(
                                     color: isFirst 
-                                        ? Colors.redAccent.withValues(alpha: 0.5) 
-                                        : widget.accentColor.withValues(alpha: 0.5),
+                                        ? Colors.redAccent.withOpacity(0.5) 
+                                        : widget.accentColor.withOpacity(0.5),
                                     blurRadius: 4,
                                     spreadRadius: 1,
                                   )
@@ -724,7 +715,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                   onPressed: () => setState(() => _showSettings = !_showSettings),
                   icon: Icon(
                     _showSettings ? Icons.keyboard_arrow_up_rounded : Icons.settings_rounded,
-                    color: _showSettings ? widget.accentColor : Colors.grey.withValues(alpha: 0.8),
+                    color: _showSettings ? widget.accentColor : Colors.grey.withOpacity(0.8),
                     size: 20,
                   ),
                   padding: EdgeInsets.zero,
@@ -743,7 +734,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                     trackHeight: 3,
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: widget.accentColor,
-                    inactiveTrackColor: widget.accentColor.withValues(alpha: 0.2),
+                    inactiveTrackColor: widget.accentColor.withOpacity(0.2),
                     thumbColor: widget.accentColor,
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                   ),
@@ -787,7 +778,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                     ),
                     builder: (context, angle, child) {
                       return MetronomeIcon(
-                        color: widget.midiState.metronomoActivo ? widget.accentColor : Colors.grey.withValues(alpha: 0.6),
+                        color: widget.midiState.metronomoActivo ? widget.accentColor : Colors.grey.withOpacity(0.6),
                         size: 20,
                         rotationAngle: angle,
                       );
@@ -803,8 +794,8 @@ class _MidiPanelState extends State<_MidiPanel> {
                     width: 52, height: 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: loading ? Colors.grey.withValues(alpha: 0.2) : widget.accentColor,
-                      boxShadow: loading ? [] : [BoxShadow(color: widget.accentColor.withValues(alpha: 0.4), blurRadius: 12)],
+                      color: loading ? Colors.grey.withOpacity(0.2) : widget.accentColor,
+                      boxShadow: loading ? [] : [BoxShadow(color: widget.accentColor.withOpacity(0.4), blurRadius: 12)],
                     ),
                     child: loading
                         ? const Padding(padding: EdgeInsets.all(14), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
@@ -838,7 +829,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                         // ── Selector de velocidad ──────────────────────────────────────
                         Row(
                           children: [
-                            Icon(Icons.speed_rounded, size: 16, color: Colors.grey.withValues(alpha: 0.8)),
+                            Icon(Icons.speed_rounded, size: 16, color: Colors.grey.withOpacity(0.8)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: SingleChildScrollView(
@@ -853,9 +844,9 @@ class _MidiPanelState extends State<_MidiPanel> {
                                         margin: const EdgeInsets.only(right: 6),
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: active ? widget.accentColor : widget.accentColor.withValues(alpha: 0.08),
+                                          color: active ? widget.accentColor : widget.accentColor.withOpacity(0.08),
                                           borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: active ? widget.accentColor : widget.accentColor.withValues(alpha: 0.3)),
+                                          border: Border.all(color: active ? widget.accentColor : widget.accentColor.withOpacity(0.3)),
                                         ),
                                         child: Text(
                                           '${s}x',
@@ -879,7 +870,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Icon(Icons.people_rounded, size: 16, color: Colors.grey.withValues(alpha: 0.8)),
+                              Icon(Icons.people_rounded, size: 16, color: Colors.grey.withOpacity(0.8)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -900,7 +891,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                           margin: const EdgeInsets.only(right: 6),
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: widget.accentColor.withValues(alpha: 0.15),
+                                            color: widget.accentColor.withOpacity(0.15),
                                             borderRadius: BorderRadius.circular(20),
                                             border: Border.all(color: widget.accentColor),
                                           ),
@@ -930,10 +921,10 @@ class _MidiPanelState extends State<_MidiPanel> {
                                             margin: const EdgeInsets.only(right: 6),
                                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: voz.activa ? widget.accentColor : Colors.grey.withValues(alpha: 0.1),
+                                              color: voz.activa ? widget.accentColor : Colors.grey.withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(20),
                                               border: Border.all(
-                                                color: voz.activa ? widget.accentColor : Colors.grey.withValues(alpha: 0.3),
+                                                color: voz.activa ? widget.accentColor : Colors.grey.withOpacity(0.3),
                                               ),
                                             ),
                                             child: Text(
@@ -978,7 +969,7 @@ class _LoadingPlaceholder extends StatelessWidget {
         children: [
           const Icon(Icons.picture_as_pdf_rounded, size: 60, color: Colors.grey)
               .animate(onPlay: (c) => c.repeat())
-              .shimmer(duration: 1500.ms, color: theme.colorScheme.primary.withValues(alpha: 0.5))
+              .shimmer(duration: 1500.ms, color: theme.colorScheme.primary.withOpacity(0.5))
               .scaleXY(begin: 0.95, end: 1.05, duration: 1500.ms, curve: Curves.easeInOutSine)
               .then()
               .scaleXY(begin: 1.05, end: 0.95, duration: 1500.ms, curve: Curves.easeInOutSine),
@@ -1036,7 +1027,7 @@ class _GoldIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveColor = Colors.grey.withValues(alpha: 0.6);
+    final inactiveColor = Colors.grey.withOpacity(0.6);
     
     return Tooltip(
       message: tooltip,
@@ -1045,7 +1036,7 @@ class _GoldIconBtn extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+            color: isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: child ?? Icon(
@@ -1148,7 +1139,7 @@ class _ToolBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isActive ? theme.colorScheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+          color: isActive ? theme.colorScheme.primary.withOpacity(0.1) : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: Icon(icon, size: 20, color: isActive ? theme.colorScheme.primary : Colors.grey),
@@ -1175,7 +1166,7 @@ class _ColorBtn extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: isActive ? theme.colorScheme.primary.withValues(alpha: 0.2) : Colors.transparent,
+          color: isActive ? theme.colorScheme.primary.withOpacity(0.2) : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: Container(
@@ -1186,7 +1177,7 @@ class _ColorBtn extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: borderColor, width: 1),
             boxShadow: [
-              if (isActive) BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.5), blurRadius: 4),
+              if (isActive) BoxShadow(color: theme.colorScheme.primary.withOpacity(0.5), blurRadius: 4),
             ],
           ),
         ),

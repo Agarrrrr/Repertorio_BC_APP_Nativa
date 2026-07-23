@@ -38,7 +38,7 @@ final authUserProvider = StreamProvider<supabase.User?>((ref) {
 final perfilProvider = FutureProvider<Perfil?>((ref) async {
   final user = ref.watch(authUserProvider).value;
     if (user == null) {
-      ref.read(authLoadingProvider.notifier).setState(false);
+      Future.microtask(() => ref.read(authLoadingProvider.notifier).setState(false));
       return null;
     }
 
@@ -57,7 +57,7 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
           .maybeSingle()
           .timeout(const Duration(milliseconds: 1500)); // Fast-fail offline
   
-      ref.read(authLoadingProvider.notifier).setState(false);
+      Future.microtask(() => ref.read(authLoadingProvider.notifier).setState(false));
       
       if (data == null) return null;
       
@@ -66,7 +66,7 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
       
       return Perfil.fromJson(data);
     } catch (e) {
-      ref.read(authLoadingProvider.notifier).setState(false);
+      Future.microtask(() => ref.read(authLoadingProvider.notifier).setState(false));
       // Caemos de gracia a Hive si estamos offline
       final box = Hive.box('cache');
       final cachedProfile = box.get('perfil_json');

@@ -45,7 +45,7 @@ class AppDrawer extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -62,7 +62,7 @@ class AppDrawer extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                      color: theme.colorScheme.secondary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -114,7 +114,7 @@ class AppDrawer extends ConsumerWidget {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: syncState.progress,
-                          backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                          backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
                           valueColor: AlwaysStoppedAnimation(theme.colorScheme.secondary),
                           borderRadius: BorderRadius.circular(10),
                           minHeight: 3,
@@ -179,7 +179,7 @@ class AppDrawer extends ConsumerWidget {
             Container(
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               padding: const EdgeInsets.only(bottom: 10, top: 10),
               child: Column(
@@ -259,7 +259,7 @@ class AppDrawer extends ConsumerWidget {
             color: isActive ? theme.colorScheme.secondary : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isActive 
-              ? [BoxShadow(color: theme.colorScheme.secondary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))]
+              ? [BoxShadow(color: theme.colorScheme.secondary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]
               : null,
           ),
           child: Text(
@@ -267,7 +267,7 @@ class AppDrawer extends ConsumerWidget {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? Colors.white : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              color: isActive ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
         ),
@@ -288,14 +288,14 @@ class AppDrawer extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+            Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
             const SizedBox(width: 12),
             Text(
               label,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
           ],

@@ -174,7 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFD4AF37).withValues(alpha: 0.15), // Círculo dorado
+                color: const Color(0xFFD4AF37).withOpacity(0.15), // Círculo dorado
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .scale(duration: 4.seconds, begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1)),
@@ -187,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF0055FF).withValues(alpha: 0.1), // Círculo azul vibrante
+                color: const Color(0xFF0055FF).withOpacity(0.1), // Círculo azul vibrante
               ),
             ).animate(onPlay: (controller) => controller.repeat(reverse: true))
              .move(duration: 5.seconds, begin: const Offset(0, 20), end: const Offset(0, -20)),
@@ -206,9 +206,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: AutofillGroup(
                         child: Column(
@@ -218,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Icon(
                               Icons.music_note_rounded,
                               size: 72,
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Colors.white.withOpacity(0.9),
                             ).animate().fade(duration: 600.ms).scale(delay: 200.ms),
                             const SizedBox(height: 16),
                             Text(
@@ -248,9 +248,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.all(12),
                                 margin: const EdgeInsets.only(bottom: 24),
                                 decoration: BoxDecoration(
-                                  color: Colors.orangeAccent.withValues(alpha: 0.2),
+                                  color: Colors.orangeAccent.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+                                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
                                 ),
                                 child: Row(
                                   children: [
@@ -270,9 +270,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.all(12),
                                 margin: const EdgeInsets.only(bottom: 24),
                                 decoration: BoxDecoration(
-                                  color: Colors.redAccent.withValues(alpha: 0.2),
+                                  color: Colors.redAccent.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
                                 ),
                                 child: Row(
                                   children: [
@@ -349,7 +349,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 boxShadow: _lockoutUntil != null ? [] : [
                                   BoxShadow(
-                                    color: const Color(0xFFD4AF37).withValues(alpha: 0.3), // Sombra dorada
+                                    color: const Color(0xFFD4AF37).withOpacity(0.3), // Sombra dorada
                                     blurRadius: 12,
                                     offset: const Offset(0, 6),
                                   )
@@ -396,7 +396,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
+                                    color: Colors.black.withOpacity(0.1),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   )
@@ -483,9 +483,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: TextField(
         controller: controller,

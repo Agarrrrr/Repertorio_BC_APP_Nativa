@@ -75,7 +75,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
-                border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               child: Row(
                 children: [
@@ -90,9 +90,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       height: 48,
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                        color: theme.colorScheme.onSurface.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                        border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.1)),
                       ),
                       child: TextField(
                         controller: _searchController,
@@ -153,7 +153,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.library_music_rounded, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+                                        Icon(Icons.library_music_rounded, size: 64, color: Colors.grey.withOpacity(0.3)),
                                         const SizedBox(height: 16),
                                         Text(
                                           'Aún no hay partituras asignadas',

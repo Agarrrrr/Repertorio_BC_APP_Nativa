@@ -165,7 +165,7 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
               child: Container(
                 constraints: const BoxConstraints(minWidth: 150),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white.withOpacity(0.8),
                   border: Border.all(color: Colors.grey, style: BorderStyle.solid),
                   borderRadius: BorderRadius.circular(4),
                 ),

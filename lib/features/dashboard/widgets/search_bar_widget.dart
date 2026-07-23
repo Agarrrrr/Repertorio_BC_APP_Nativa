@@ -15,14 +15,14 @@ class SearchBarWidget extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isSepia ? theme.colorScheme.onSurface.withValues(alpha: 0.05) : theme.colorScheme.surface,
+        color: isSepia ? theme.colorScheme.onSurface.withOpacity(0.05) : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSepia ? theme.colorScheme.onSurface.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSepia ? theme.colorScheme.onSurface.withOpacity(0.1) : Colors.transparent,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -35,7 +35,7 @@ class SearchBarWidget extends ConsumerWidget {
         style: GoogleFonts.inter(fontSize: 16, color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: 'Buscar por título...',
-          hintStyle: GoogleFonts.inter(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+          hintStyle: GoogleFonts.inter(color: theme.colorScheme.onSurface.withOpacity(0.5)),
           prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
