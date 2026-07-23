@@ -1,4 +1,4 @@
-name: Build iOS App
+name: Build & Deploy iOS App to App Store Connect
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS App
+    name: Build & Deploy iOS App
     runs-on: macos-14
     steps:
       - name: Checkout repository
@@ -45,11 +45,71 @@ jobs:
           cd ios
           pod install
 
-      - name: Build iOS App (No Codesign)
-        run: flutter build ios --no-codesign --release
+      - name: Import Signing Certificate & Provisioning Profile (if secrets present)
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+            echo "Setting up keychain and signing certificates..."
+            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-      - name: Upload iOS App Artifact
+            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+            security create-keychain -p "${KEYCHAIN_PASSWORD:-secret}" $KEYCHAIN_PATH
+            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+            security unlock-keychain -p "${KEYCHAIN_PASSWORD:-secret}" $KEYCHAIN_PATH
+
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD:-secret}" $KEYCHAIN_PATH
+
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+            echo "Certificates & Provisioning Profile installed successfully."
+          else
+            echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
+          fi
+
+      - name: Build iOS App (.ipa or Runner.app)
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        run: |
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            flutter build ipa --release
+          else
+            flutter build ios --no-codesign --release
+          fi
+
+      - name: Upload IPA to App Store Connect / TestFlight (if API Key provided)
+        env:
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "Uploading IPA to App Store Connect..."
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+
+            xcrun xcrun altool --upload-app -f build/ios/ipa/*.ipa \
+              --type ios \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+            echo "IPA uploaded to App Store Connect successfully!"
+          else
+            echo "App Store Connect API Key not provided. Skipping upload."
+          fi
+
+      - name: Upload iOS Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-runner-app
-          path: build/ios/iphoneos/Runner.app
+          name: ios-build-artifact
+          path: |
+            build/ios/ipa/*.ipa
+            build/ios/iphoneos/Runner.app
+          if-no-files-found: ignore
