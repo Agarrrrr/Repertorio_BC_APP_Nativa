@@ -73,31 +73,17 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     setState(() {
       _hasMidi = true;
-      _webCtrl = _midi.buildController();
-      _webViewWidget = WebViewWidget(
-        key: const ValueKey('midi_webview'),
-        controller: _webCtrl!,
-      );
     });
-
-
 
     final dir = await getApplicationDocumentsDirectory();
     final localMidi = File('${dir.path}/${canto.id}.mid');
-    debugPrint('🎵 [MidiEngine] Ruta esperada para el archivo MIDI: ${localMidi.path}');
+    debugPrint('🎵 [NativeMidiEngine] Ruta esperada para el archivo MIDI: ${localMidi.path}');
     
     if (await localMidi.exists()) {
-      debugPrint('🎵 [MidiEngine] ¡El archivo MIDI existe localmente! Cargándolo...');
-      late final StreamSubscription sub;
-      sub = _midi.stateStream.listen((state) {
-        if (state.isReady) {
-          debugPrint('🎵 [MidiEngine] Motor listo, cargando MIDI...');
-          _midi.loadMidi(localMidi.path, canto.nombre);
-          sub.cancel();
-        }
-      });
+      debugPrint('🎵 [NativeMidiEngine] ¡El archivo MIDI existe localmente! Cargándolo...');
+      _midi.loadMidi(localMidi.path, canto.nombre);
     } else {
-      debugPrint('🎵 [MidiEngine] El archivo MIDI NO existe localmente. Esperando descarga...');
+      debugPrint('🎵 [NativeMidiEngine] El archivo MIDI NO existe localmente. Esperando descarga...');
       _esperarDescargaMidi(localMidi.path, canto.nombre);
     }
   }
@@ -107,20 +93,10 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
       final fileExists = await File(path).exists();
-      debugPrint('🎵 [MidiEngine] Intento ${i + 1}/20: ¿Existe el archivo MIDI? $fileExists');
+      debugPrint('🎵 [NativeMidiEngine] Intento ${i + 1}/20: ¿Existe el archivo MIDI? $fileExists');
       if (fileExists) {
-        debugPrint('🎵 [MidiEngine] ¡El archivo MIDI se ha descargado y detectado! Cargándolo...');
-        if (_midi.state.isReady) {
-          _midi.loadMidi(path, nombre);
-        } else {
-          late final StreamSubscription sub;
-          sub = _midi.stateStream.listen((state) {
-            if (state.isReady) {
-              _midi.loadMidi(path, nombre);
-              sub.cancel();
-            }
-          });
-        }
+        debugPrint('🎵 [NativeMidiEngine] ¡El archivo MIDI se ha descargado y detectado! Cargándolo...');
+        _midi.loadMidi(path, nombre);
         return;
       }
     }
