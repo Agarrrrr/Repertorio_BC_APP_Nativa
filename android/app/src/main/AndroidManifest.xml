@@ -42,8 +42,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <!-- Para confirmaciones de registro (Signup) y Recuperación de cuenta -->
-                <data android:scheme="repertoriobc" android:host="login-callback" />
-                <data android:scheme="repertoriobc" android:host="reset-callback" />
+                <data android:scheme="repertorioestatal" android:host="login-callback" />
+                <data android:scheme="repertorioestatal" android:host="reset-callback" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

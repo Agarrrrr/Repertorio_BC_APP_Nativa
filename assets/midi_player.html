@@ -16,6 +16,13 @@
 // Adaptado de midiEngine.js para ejecutarse en flutter_inappwebview.
 // Los assets del sampler son accesibles via: flutter_assets/assets/audio/
 // ══════════════════════════════════════════════════════════════════════════════
+// Desactivar logs masivos en producción para evitar latencia en el JS Bridge de Android
+const DEBUG_MODE = false;
+if (!DEBUG_MODE) {
+  console.log = function() {};
+  console.warn = function() {};
+  // console.error se mantiene para poder diagnosticar fallos críticos
+}
 
 // --- Estado Global del Motor ---
 let Tone = null;
@@ -126,13 +133,17 @@ async function inicializar() {
         baseUrl: ASSET_BASE + 'piano/',
         attack: 0,
         release: 0.6,
-        maxPolyphony: 64,
+        maxPolyphony: 24,
       }).connect(masterGainNode);
     }
 
     console.log("🎵 [JS] Esperando Tone.loaded()...");
     await Tone.loaded();
     console.log("🎵 [JS] Tone.loaded() RESOLVIÓ!");
+    
+    // Aumentar LookAhead a 0.5s para prevenir Jitter cuando Flutter bloquea el Main Thread
+    Tone.context.lookAhead = 0.5;
+    
     instrumentoCargado = true;
     isInitializing = false;
     toFlutter('ready', {});
@@ -302,12 +313,8 @@ function agendarPartes() {
     const velocityReal = Math.min(1, Math.max(0, maxRealVelocity * volumenMaestro));
 
     if (velocityReal > 0.01) {
-      const realNow = performance.now();
-      if (realNow - _lastBurstTime > 50) { _burstCount = 0; _lastBurstTime = realNow; }
-      _burstCount++;
-      if (_burstCount <= 12) {
-        try { pianoInstrument.triggerAttackRelease(value.noteName, value.duration, time, velocityReal); } catch(e) {}
-      }
+      // Despacho directo al hilo de WebAudio sin limitadores acoplados al UI
+      try { pianoInstrument.triggerAttackRelease(value.noteName, value.duration, time, velocityReal); } catch(e) {}
     }
   }, masterEventsArray).start(0);
 
@@ -378,7 +385,7 @@ function agendarPartes() {
     setTimeout(() => { stop(); toFlutter('ended', {}); }, 100);
   }, midiData.durationTicks + 'i');
 
-  // Loop de progreso → Flutter cada 350ms (Optimizado para reducir carga del GC)
+  // Loop de progreso → Flutter cada 500ms (Optimizado para reducir carga del GC y latencia de UI)
   if (window._progressInterval) clearInterval(window._progressInterval);
   window._progressInterval = setInterval(() => {
     if (!midiData || !Tone) return;
@@ -386,7 +393,7 @@ function agendarPartes() {
     const progress = totalTicks > 0 ? Math.min(1, Tone.Transport.ticks / totalTicks) : 0;
     const tiempos = getTiempos();
     toFlutter('progress', { progress, actual: tiempos.actual, total: tiempos.total });
-  }, 350);
+  }, 500);
 }
 
 // ─── Controles ────────────────────────────────────────────────────────────────
@@ -399,32 +406,77 @@ async function play() {
 
 function pause() {
   if (!Tone) return;
-  if (Tone.Transport.state === 'started') { Tone.Transport.pause(); if (pianoInstrument) pianoInstrument.releaseAll(); }
+  if (Tone.Transport.state === 'started') { 
+    if (masterGainNode) {
+      const now = Tone.now();
+      masterGainNode.gain.cancelScheduledValues(now);
+      masterGainNode.gain.rampTo(0, 0.1, now);
+      setTimeout(() => {
+        Tone.Transport.pause(); 
+        if (pianoInstrument) pianoInstrument.releaseAll(); 
+      }, 100);
+    } else {
+      Tone.Transport.pause(); 
+      if (pianoInstrument) pianoInstrument.releaseAll(); 
+    }
+  }
 }
 
 function stop() {
   if (!Tone) return;
   if (window._progressInterval) { clearInterval(window._progressInterval); window._progressInterval = null; }
-  Tone.Transport.stop();
-  Tone.Transport.ticks = 0;
-  if (pianoInstrument) pianoInstrument.releaseAll();
-  toFlutter('progress', { progress: 0, actual: 0, total: midiData ? getTiempos().total : 0 });
+  
+  const execStop = () => {
+    Tone.Transport.stop();
+    Tone.Transport.ticks = 0;
+    if (pianoInstrument) pianoInstrument.releaseAll();
+    toFlutter('progress', { progress: 0, actual: 0, total: midiData ? getTiempos().total : 0 });
+  };
+
+  if (masterGainNode && Tone.Transport.state === 'started') {
+    const now = Tone.now();
+    masterGainNode.gain.cancelScheduledValues(now);
+    masterGainNode.gain.rampTo(0, 0.1, now);
+    setTimeout(execStop, 100);
+  } else {
+    execStop();
+  }
 }
 
 function saltarA(porcentaje) {
   if (!midiData || !Tone) return;
   const wasPlaying = Tone.Transport.state === 'started';
-  if (wasPlaying) Tone.Transport.pause();
-  if (pianoInstrument) pianoInstrument.releaseAll();
-  const targetTicks = Math.floor((porcentaje / 100) * midiData.durationTicks);
-  Tone.Transport.ticks = targetTicks;
-  let targetBpm = 120;
-  if (midiData.header.tempos.length > 0) {
-    targetBpm = midiData.header.tempos[0].bpm;
-    for (let t of midiData.header.tempos) { if (t.ticks <= targetTicks) targetBpm = t.bpm; else break; }
+  
+  const execSeek = () => {
+    if (wasPlaying) Tone.Transport.pause();
+    if (pianoInstrument) pianoInstrument.releaseAll();
+    const targetTicks = Math.floor((porcentaje / 100) * midiData.durationTicks);
+    Tone.Transport.ticks = targetTicks;
+    let targetBpm = 120;
+    if (midiData.header.tempos.length > 0) {
+      targetBpm = midiData.header.tempos[0].bpm;
+      for (let t of midiData.header.tempos) { if (t.ticks <= targetTicks) targetBpm = t.bpm; else break; }
+    }
+    Tone.Transport.bpm.value = targetBpm * speed;
+    if (wasPlaying) {
+      if (masterGainNode) {
+        const now = Tone.now();
+        masterGainNode.gain.cancelScheduledValues(now);
+        masterGainNode.gain.setValueAtTime(0, now);
+        masterGainNode.gain.rampTo(1, 0.1, now + 0.05);
+      }
+      Tone.Transport.start('+0.05');
+    }
+  };
+
+  if (wasPlaying && masterGainNode) {
+    const now = Tone.now();
+    masterGainNode.gain.cancelScheduledValues(now);
+    masterGainNode.gain.rampTo(0, 0.1, now);
+    setTimeout(execSeek, 100);
+  } else {
+    execSeek();
   }
-  Tone.Transport.bpm.value = targetBpm * speed;
-  if (wasPlaying) Tone.Transport.start('+0.05');
 }
 
 function setSpeed(val) {

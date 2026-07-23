@@ -15,7 +15,8 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cantosBase = ref.watch(cantosDeLaSedeProvider);
-    final cantosFiltrados = ref.watch(cantosFiltradosProvider);
+    final cantosFiltradosAsync = ref.watch(cantosFiltradosProvider);
+    final cantosFiltrados = cantosFiltradosAsync.value ?? [];
     final carpetasEspeciales = ref.watch(eventosPermanentesProvider);
     
     // Identificar gestor para agregar el botón extra

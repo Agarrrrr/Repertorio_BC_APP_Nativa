@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:repertorio_bc/models/trazo.dart';
+import 'package:share_plus/share_plus.dart';
 
 
 class PdfEngineState {
@@ -124,6 +125,20 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         isLoading: false,
         error: 'Error al cargar partitura: $e',
       );
+    }
+  }
+
+  Future<void> exportPdf(String nombreCanto) async {
+    if (state.localPath != null) {
+      // Crear una copia temporal con el nombre correcto para que al compartir aparezca con ese nombre
+      final originalFile = File(state.localPath!);
+      final safeName = nombreCanto.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final tempFile = File('${originalFile.parent.path}/$safeName.pdf');
+      await originalFile.copy(tempFile.path);
+      
+      final file = XFile(tempFile.path);
+      // ignore: deprecated_member_use
+      await Share.shareXFiles([file], text: 'Partitura: $nombreCanto');
     }
   }
 

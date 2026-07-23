@@ -9,7 +9,13 @@ import 'package:flutter/foundation.dart';
 final realtimeManagerProvider = Provider<RealtimeManager>((ref) {
   final manager = RealtimeManager(ref);
   
-  // Escuchar cambios de sesión. Si el perfil cambia o se cierra sesión, nos reconectamos o desconectamos.
+  // Si el perfil ya estaba cargado previamente en caché o red, conectar al instante
+  final currentPerfil = ref.read(perfilProvider).value;
+  if (currentPerfil != null) {
+    manager.conectar(currentPerfil.coroId);
+  }
+
+  // Escuchar cambios futuros de sesión
   ref.listen(perfilProvider, (previous, next) {
     if (next.value != null) {
       manager.conectar(next.value!.coroId);

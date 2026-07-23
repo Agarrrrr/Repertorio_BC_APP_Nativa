@@ -5,17 +5,16 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:repertorio_bc/core/providers/auth_provider.dart';
 
-class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+class CompleteGoogleScreen extends ConsumerStatefulWidget {
+  const CompleteGoogleScreen({super.key});
 
   @override
-  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<CompleteGoogleScreen> createState() => _CompleteGoogleScreenState();
 }
 
-class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _nombreController = TextEditingController();
-  final _emailController = TextEditingController();
+class _CompleteGoogleScreenState extends ConsumerState<CompleteGoogleScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
@@ -57,14 +56,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  Future<void> _register() async {
-    final nombre = _nombreController.text.trim();
-    final email = _emailController.text.trim();
+  Future<void> _completeRegistration() async {
     final password = _passwordController.text;
     final confirm = _confirmController.text;
 
-    if (nombre.isEmpty || email.isEmpty || password.isEmpty || 
-        _selectedCoroId == null) {
+    if (password.isEmpty || _selectedCoroId == null) {
       setState(() => _errorMessage = "Por favor, completa todos los campos requeridos.");
       return;
     }
@@ -79,31 +75,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-        emailRedirectTo: 'repertorioestatal://login-callback/',
-        data: {
-          'nombre': nombre,
-          'coro_id': _selectedCoroId,
-          'estado': 'activo',
-        }
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception("Sesión inválida");
+
+      // Set password for future email logins
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: password)
       );
-      
+
+      // Create profile in perfiles with estado = activo
+      final nombre = user.userMetadata?['full_name'] ?? 'Usuario Google';
+      await Supabase.instance.client.from('perfiles').insert({
+        'id': user.id,
+        'email': user.email,
+        'nombre': nombre,
+        'coro_id': _selectedCoroId,
+        'voz': 'sin_asignar',
+        'estado': 'activo',
+        'rol': 'miembro',
+      });
+
+      // Refrescar perfil
+      ref.invalidate(perfilProvider);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cuenta creada exitosamente. ¡Bienvenido a tu Sede!', style: GoogleFonts.inter()),
+            content: Text('Cuenta configurada exitosamente.', style: GoogleFonts.inter()),
             backgroundColor: Colors.green,
           ),
         );
-        // El router reaccionará automáticamente al cambio de sesión de Supabase
-        // y mandará al usuario directamente al Dashboard (Sede).
+        context.go('/');
       }
-    } on AuthException catch (e) {
-      setState(() => _errorMessage = e.message);
     } catch (e) {
-      setState(() => _errorMessage = "Error al crear la cuenta. Inténtalo más tarde.");
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().contains('already exists') 
+              ? 'Este usuario ya tiene perfil.' 
+              : 'Error: ${e.toString()}';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -113,7 +124,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Filtramos coros basado en el municipio seleccionado
     final corosFiltrados = _corosList.where((c) => c['municipio'] == _selectedMunicipio).toList();
 
     return Scaffold(
@@ -128,18 +138,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
           ),
-          
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400),
+                constraints: const BoxConstraints(maxWidth: 500),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(24),
@@ -150,13 +159,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Icon(
-                            Icons.person_add_alt_1_rounded,
-                            size: 56,
+                            Icons.g_mobiledata_rounded,
+                            size: 72,
                             color: Colors.white.withValues(alpha: 0.9),
                           ).animate().fade().scale(),
                           const SizedBox(height: 12),
                           Text(
-                            'Solicitar Acceso',
+                            'Último paso',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.outfit(
                               fontSize: 28,
@@ -164,6 +173,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               color: Colors.white,
                             ),
                           ).animate().fade().slideY(),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Completa tus datos para finalizar el registro.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ).animate().fade(),
                           const SizedBox(height: 24),
 
                           if (_errorMessage != null)
@@ -178,24 +196,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               child: Text(_errorMessage!, style: GoogleFonts.inter(color: Colors.white)),
                             ),
 
-                          _buildTextField(
-                            controller: _nombreController,
-                            hintText: 'Nombre completo',
-                            icon: Icons.person_outline_rounded,
+                          _buildDropdown(
+                            hint: 'Municipio / Área',
+                            icon: Icons.map_rounded,
+                            value: _selectedMunicipio,
+                            items: _municipios.map((m) => DropdownMenuItem(value: m, child: Text(m, style: GoogleFonts.inter(color: Colors.white)))).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedMunicipio = val;
+                                _selectedCoroId = null;
+                              });
+                            },
                           ),
                           const SizedBox(height: 16),
-                          
-                          _buildTextField(
-                            controller: _emailController,
-                            hintText: 'Email',
-                            icon: Icons.alternate_email_rounded,
-                            keyboardType: TextInputType.emailAddress,
+
+                          _buildDropdown(
+                            hint: 'Sede / Iglesia',
+                            icon: Icons.church_rounded,
+                            value: _selectedCoroId,
+                            items: corosFiltrados.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['nombre'] as String, style: GoogleFonts.inter(color: Colors.white)))).toList(),
+                            onChanged: _selectedMunicipio == null ? null : (val) => setState(() => _selectedCoroId = val),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           _buildTextField(
                             controller: _passwordController,
-                            hintText: 'Contraseña',
+                            hintText: 'Establecer Contraseña',
                             icon: Icons.lock_outline_rounded,
                             obscureText: _obscurePassword,
                             suffixIcon: IconButton(
@@ -211,67 +237,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             icon: Icons.lock_reset_rounded,
                             obscureText: _obscurePassword,
                           ),
-                          const SizedBox(height: 16),
-
-                          _buildDropdown(
-                            hint: 'Municipio / Área',
-                            icon: Icons.map_rounded,
-                            value: _selectedMunicipio,
-                            items: _municipios.map((m) => DropdownMenuItem(value: m, child: Text(m, style: GoogleFonts.inter(color: Colors.white)))).toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedMunicipio = val;
-                                _selectedCoroId = null; // reset coro
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildDropdown(
-                            hint: 'Sede / Iglesia',
-                            icon: Icons.church_rounded,
-                            value: _selectedCoroId,
-                            items: corosFiltrados.map((c) => DropdownMenuItem(value: c['id'] as String, child: Text(c['nombre'] as String, style: GoogleFonts.inter(color: Colors.white)))).toList(),
-                            onChanged: _selectedMunicipio == null ? null : (val) => setState(() => _selectedCoroId = val),
-                          ),
-                          
                           const SizedBox(height: 32),
-                          
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            constraints: const BoxConstraints(minHeight: 56),
+
+                          Container(
+                            constraints: const BoxConstraints(minHeight: 52),
                             decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFFD4AF37), Color(0xFFAA8000)]),
                               borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFDF00), Color(0xFFD4AF37)],
-                              ),
                             ),
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _register,
+                              onPressed: _isLoading ? null : _completeRegistration,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
                               child: _isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : Text(
-                                      'Crear solicitud',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF001F54),
-                                      ),
-                                    ),
+                                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+                                  : Text('Finalizar', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF001533))),
                             ),
                           ),
-                          
                           const SizedBox(height: 16),
+                          
                           TextButton(
-                            onPressed: () => context.pop(),
+                            onPressed: () {
+                              AuthController.logout();
+                              context.go('/login');
+                            },
                             child: Text(
-                              'Volver al inicio',
-                              style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.w600),
+                              'Cancelar',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
                             ),
                           ),
                         ],
@@ -324,7 +319,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     required IconData icon,
     required String? value,
     required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?>? onChanged,
+    required void Function(String?)? onChanged,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -332,7 +327,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
@@ -343,22 +338,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               Text(hint, style: GoogleFonts.inter(color: Colors.white54, fontSize: 15)),
             ],
           ),
-          icon: const Icon(Icons.arrow_drop_down_rounded, color: Colors.white70),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70),
           isExpanded: true,
-          dropdownColor: const Color(0xFF001F54),
+          dropdownColor: const Color(0xFF001533),
+          style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
           items: items,
           onChanged: onChanged,
-          selectedItemBuilder: (context) {
-            return items.map((e) {
-              return Row(
-                children: [
-                  Icon(icon, color: Colors.white70, size: 22),
-                  const SizedBox(width: 12),
-                  Text(e.value ?? '', style: GoogleFonts.inter(color: Colors.white, fontSize: 15)),
-                ],
-              );
-            }).toList();
-          }
         ),
       ),
     );

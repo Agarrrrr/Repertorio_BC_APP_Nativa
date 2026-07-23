@@ -138,11 +138,9 @@ class AppTheme {
         );
       case AppThemeMode.quiet:
         return ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFFE5E5E7),
-            brightness: Brightness.dark,
-            primary: const Color(0xFFE5E5E7),
-            secondary: const Color(0xFFFFFFFF),
+          colorScheme: ColorScheme.dark(
+            primary: accentColor,
+            secondary: accentColor,
             surface: const Color(0xFF4A4D51),
             onSurface: const Color(0xFFFFFFFF),
             surfaceContainerHighest: const Color(0xFF3C3F42),
@@ -150,9 +148,9 @@ class AppTheme {
           ),
           scaffoldBackgroundColor: const Color(0xFF3C3F42),
           fontFamily: 'Inter',
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF3C3F42),
-            foregroundColor: Color(0xFFE5E5E7),
+          appBarTheme: AppBarTheme(
+            backgroundColor: const Color(0xFF3C3F42),
+            foregroundColor: accentColor,
             elevation: 0,
           ),
         );

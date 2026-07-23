@@ -33,7 +33,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'repertoriobc://reset-callback/',
+        redirectTo: 'repertorioestatal://reset-callback/',
       );
       setState(() => _success = true);
     } catch (e) {
@@ -156,7 +156,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                             
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
-                              height: 56,
+                              constraints: const BoxConstraints(minHeight: 56),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
                                 gradient: const LinearGradient(

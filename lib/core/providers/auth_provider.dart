@@ -112,6 +112,13 @@ class AuthController {
     );
   }
 
+  static Future<void> loginWithGoogle() async {
+    await SupabaseService.client.auth.signInWithOAuth(
+      supabase.OAuthProvider.google,
+      redirectTo: 'repertorioestatal://login-callback/',
+    );
+  }
+
   static Future<void> logout() async {
     await SupabaseService.client.auth.signOut();
   }

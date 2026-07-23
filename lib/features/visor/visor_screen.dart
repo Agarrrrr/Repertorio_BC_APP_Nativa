@@ -40,6 +40,10 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   WebViewController? _webCtrl;
   Widget? _webViewWidget;
   bool _hasMidi = false;
+  
+  final PdfViewerController _pdfController = PdfViewerController();
+  Orientation? _lastOrientation;
+  double _minScaleLimit = 0.1;
 
   @override
   void initState() {
@@ -195,6 +199,27 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     }
   }
 
+
+  void _ajustarZoomAlAncho() {
+    if (_pdfController.isReady) {
+      final matrix = _pdfController.calcMatrixFitWidthForPage(pageNumber: _pdfController.pageNumber ?? 1);
+      if (matrix != null) {
+        _pdfController.value = matrix;
+      }
+    }
+  }
+
+  void _calcularLimiteEscala(PdfDocument document) {
+    if (document.pages.isNotEmpty) {
+      final firstPageWidth = document.pages.first.width;
+      final viewWidth = MediaQuery.of(context).size.width;
+      // Añadimos un pequeño margen por seguridad (0.95)
+      setState(() {
+        _minScaleLimit = (viewWidth / firstPageWidth) * 0.95;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(pdfEngineProvider);
@@ -210,6 +235,16 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     final perfil = ref.watch(perfilProvider).value;
     final isDirector = perfil != null && ['director', 'director_estatal', 'superadmin', 'subdirector'].contains(perfil.rol);
+
+    final orientation = MediaQuery.of(context).orientation;
+    if (_lastOrientation != null && _lastOrientation != orientation) {
+      if (orientation == Orientation.landscape) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _ajustarZoomAlAncho();
+        });
+      }
+    }
+    _lastOrientation = orientation;
 
     // Evaluamos el brillo del sistema directamente, ya que el modo "Sepia" ahora delega en el SO el cambio a oscuro (Quiet)
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -304,6 +339,12 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                               tooltip: 'Transmitir en VIVO al coro',
                             ),
                           _TopBarBtn(
+                            icon: Icons.ios_share_rounded,
+                            isActive: false,
+                            onTap: () => ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre),
+                            tooltip: 'Exportar PDF',
+                          ),
+                          _TopBarBtn(
                             icon: _showTools ? Icons.edit_off_rounded : Icons.edit_rounded,
                             isActive: _showTools,
                             onTap: _toggleTools,
@@ -331,7 +372,16 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                         : (isSepiaProfile ? sepiaFilter : const ColorFilter.mode(Colors.transparent, BlendMode.multiply)),
                                     child: PdfViewer.file(
                                       state.localPath!,
+                                      key: ValueKey('${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
+                                      controller: _pdfController,
                                       params: PdfViewerParams(
+                                        textSelectionParams: const PdfTextSelectionParams(enabled: false),
+                                        minScale: _minScaleLimit,
+                                        boundaryMargin: EdgeInsets.zero,
+                                        onViewerReady: (document, controller) {
+                                          _calcularLimiteEscala(document);
+                                          _ajustarZoomAlAncho();
+                                        },
                                         panEnabled: !state.isDrawingMode,
                                         scaleEnabled: true,
                                         onGeneralTap: (context, controller, details) {

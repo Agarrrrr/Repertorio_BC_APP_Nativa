@@ -22,6 +22,14 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +50,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Forzar inicio de la sincronización y descarga de archivos (PDF/MIDI) al iniciar la app
     ref.watch(syncManagerProvider);
     
-    final cantos = ref.watch(cantosFiltradosProvider);
+    final cantosAsync = ref.watch(cantosFiltradosProvider);
+    final cantos = cantosAsync.value ?? [];
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -86,14 +95,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
                       ),
                       child: TextField(
-                        onChanged: (val) => ref.read(searchTextProvider.notifier).set(val),
+                        controller: _searchController,
+                        onChanged: (val) {
+                          ref.read(searchTextProvider.notifier).set(val);
+                          setState(() {}); // Forzar rebuild para mostrar/ocultar el botón X
+                        },
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Buscar canto por título...',
-                          hintStyle: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-                          prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey),
+                          hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Colors.grey),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    ref.read(searchTextProvider.notifier).set('');
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                         ),
                       ),
                     ),
@@ -118,16 +141,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
                     )
                   : cantos.isEmpty
-                      ? Center(
-                          child: RefreshIndicator(
+                      ? LayoutBuilder(
+                          builder: (context, constraints) => RefreshIndicator(
                             onRefresh: () async {},
                             child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
                               children: [
-                                const SizedBox(height: 100),
-                                Center(
-                                  child: Text(
-                                    'No hay cantos en esta categoría.',
-                                    style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w500),
+                                SizedBox(
+                                  height: constraints.maxHeight,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.library_music_rounded, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Aún no hay partituras asignadas',
+                                          style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 16),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Tu director debe añadir cantos a tu coro.',
+                                          style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w400, fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],

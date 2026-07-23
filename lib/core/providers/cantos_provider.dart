@@ -3,26 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:hive/hive.dart';
 
+// Funciones puras para procesar datos en Isolate
+List<Canto> _parseCantosJsonString(String jsonString) {
+  final List<dynamic> decoded = jsonDecode(jsonString);
+  return _parseCantosList(decoded);
+}
+
+List<Canto> _parseCantosList(List<dynamic> data) {
+  final lista = data.map((e) => Canto.fromJson(e)).toList();
+  lista.sort((a, b) => _naturalSort(_normalizar(a.nombre), _normalizar(b.nombre)));
+  return lista;
+}
+
 // Provider base que descarga el catalogo de cantos desde Supabase
 class CantosNotifier extends AsyncNotifier<List<Canto>> {
-  RealtimeChannel? _channel;
-
   @override
   Future<List<Canto>> build() async {
-    _setupRealtime();
     final box = Hive.box('cache');
     
     // 1. Carga inmediata desde caché (Offline-First)
     final cachedData = box.get('cantos_json');
     if (cachedData != null) {
       try {
-        final List<dynamic> decoded = jsonDecode(cachedData);
-        final lista = decoded.map((e) => Canto.fromJson(e)).toList();
-        lista.sort((a, b) => _naturalSort(_normalizar(a.nombre), _normalizar(b.nombre)));
+        final lista = await compute(_parseCantosJsonString, cachedData as String);
         state = AsyncValue.data(lista); // Emitir data al instante
       } catch (e) {
         debugPrint('Error parsing cached cantos: $e');
@@ -38,9 +44,7 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
       // Guardar el string en crudo para la proxima sesion
       box.put('cantos_json', jsonEncode(response));
 
-      final lista = (response as List).map((e) => Canto.fromJson(e)).toList();
-      // Ordenar usando natural sort para los numeros
-      lista.sort((a, b) => _naturalSort(_normalizar(a.nombre), _normalizar(b.nombre)));
+      final lista = await compute(_parseCantosList, response as List<dynamic>);
       
       // Emitir los nuevos datos
       return lista;
@@ -50,34 +54,6 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
       if (state.hasValue) return state.value!;
       return [];
     }
-  }
-
-  void _setupRealtime() {
-    if (_channel != null) return;
-    _channel = SupabaseService.client
-        .channel('db-changes')
-        .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'cantos',
-            callback: (payload) {
-              ref.invalidateSelf();
-            })
-        .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'cantos_coros',
-            callback: (payload) {
-              ref.invalidateSelf();
-            })
-        .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'eventos_cantos',
-            callback: (payload) {
-              ref.invalidateSelf();
-            })
-        .subscribe();
   }
 }
 final cantosBaseProvider = AsyncNotifierProvider<CantosNotifier, List<Canto>>(CantosNotifier.new);
@@ -133,8 +109,151 @@ class CategoryFilterNotifier extends Notifier<String> {
 }
 final categoryFilterProvider = NotifierProvider<CategoryFilterNotifier, String>(CategoryFilterNotifier.new);
 
-// Cantos filtrados reactivamente
-final cantosFiltradosProvider = Provider<List<Canto>>((ref) {
+class FilterParams {
+  final List<Canto> cantos;
+  final String query;
+  final String categoria;
+  final String? perfilCoroId;
+  FilterParams({required this.cantos, required this.query, required this.categoria, this.perfilCoroId});
+}
+
+// Algoritmo de distancia de Levenshtein (Fuzzy Search)
+int _levenshtein(String s, String t) {
+  if (s.isEmpty) return t.length;
+  if (t.isEmpty) return s.length;
+
+  int n = s.length;
+  int m = t.length;
+  List<List<int>> d = List.generate(n + 1, (i) => List.filled(m + 1, 0));
+
+  for (int i = 0; i <= n; i++) {
+    d[i][0] = i;
+  }
+  for (int j = 0; j <= m; j++) {
+    d[0][j] = j;
+  }
+
+  for (int i = 1; i <= n; i++) {
+    for (int j = 1; j <= m; j++) {
+      int cost = s[i - 1] == t[j - 1] ? 0 : 1;
+      d[i][j] = [
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + cost
+      ].reduce((min, val) => val < min ? val : min);
+    }
+  }
+  return d[n][m];
+}
+
+// Lógica pura de filtrado extraída a nivel superior para el Isolate
+List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
+  final queryNormalizada = _normalizar(params.query);
+  final queryWords = queryNormalizada.isEmpty ? <String>[] : queryNormalizada.split(' ');
+
+  final filtrados = params.cantos.where((canto) {
+    // 1. Si la barra de búsqueda tiene texto: Búsqueda Global en TODOS los cantos del catálogo
+    if (queryWords.isNotEmpty) {
+      final nNombre = _normalizar(canto.nombre);
+      final nTemas = canto.temas.map((t) => _normalizar(t)).join(' ');
+      
+      for (final word in queryWords) {
+        if (word.length <= 2) {
+          // Búsqueda exacta para palabras cortas (ej. "el", "yo", "fe", "salmo")
+          if (!nNombre.contains(word) && !nTemas.contains(word)) {
+            return false;
+          }
+        } else {
+          // Búsqueda difusa para palabras más largas
+          bool match = nNombre.contains(word) || nTemas.contains(word);
+          if (!match) {
+            final titleWords = nNombre.split(' ');
+            for (final tw in titleWords) {
+              if (tw.length >= word.length - 1) {
+                int distance = _levenshtein(word, tw);
+                int allowedErrors = word.length >= 5 ? 2 : 1; 
+                if (distance <= allowedErrors) {
+                  match = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (!match) {
+            return false;
+          }
+        }
+      }
+      return true; // Coincide con la búsqueda global en cualquier carpeta o tema
+    }
+
+    // 2. Si la búsqueda está VACÍA: Filtrar estrictamente según la carpeta o categoría seleccionada
+    final esLocal = params.perfilCoroId != null && canto.corosVinculados.contains(params.perfilCoroId);
+    final esEstatal = canto.corosVinculados.contains('estatal');
+
+    if (params.categoria == 'local') {
+      if (!esLocal) return false;
+    } else if (params.categoria == 'estatal') {
+      if (!esEstatal) return false;
+    } else if (params.categoria.startsWith('evento_')) {
+      final eventoId = params.categoria.replaceFirst('evento_', '');
+      if (!canto.eventosVinculados.contains(eventoId)) return false;
+    } else if (params.categoria.startsWith('tema_')) {
+      final temaABuscar = params.categoria.replaceFirst('tema_', '');
+      final hasTema = canto.temas.any((t) => _normalizar(t) == _normalizar(temaABuscar));
+      if (!hasTema) return false;
+    } else {
+      return false;
+    }
+
+    return true;
+  }).toList();
+
+  // 3. Ordenar resultados por relevancia
+  if (queryNormalizada.isNotEmpty) {
+    filtrados.sort((a, b) {
+      final nA = _normalizar(a.nombre);
+      final nB = _normalizar(b.nombre);
+      final nTemasA = a.temas.map((t) => _normalizar(t)).join(' ');
+      final nTemasB = b.temas.map((t) => _normalizar(t)).join(' ');
+      
+      int scoreA = 0;
+      int scoreB = 0;
+      
+      if (nA == queryNormalizada) {
+        scoreA += 200;
+      } else if (nA.startsWith(queryNormalizada)) {
+        scoreA += 100;
+      } else if (nA.contains(queryNormalizada)) {
+        scoreA += 50;
+      }
+      if (nTemasA.contains(queryNormalizada)) {
+        scoreA += 30;
+      }
+      
+      if (nB == queryNormalizada) {
+        scoreB += 200;
+      } else if (nB.startsWith(queryNormalizada)) {
+        scoreB += 100;
+      } else if (nB.contains(queryNormalizada)) {
+        scoreB += 50;
+      }
+      if (nTemasB.contains(queryNormalizada)) {
+        scoreB += 30;
+      }
+      
+      if (scoreA != scoreB) {
+        return scoreB.compareTo(scoreA);
+      }
+      return _naturalSort(nA, nB);
+    });
+  }
+
+  return filtrados;
+}
+
+// Cantos filtrados reactivamente vía Isolate
+final cantosFiltradosProvider = FutureProvider<List<Canto>>((ref) async {
   final cantosAsync = ref.watch(cantosBaseProvider);
   final query = ref.watch(searchTextProvider);
   final categoria = ref.watch(categoryFilterProvider);
@@ -146,98 +265,15 @@ final cantosFiltradosProvider = Provider<List<Canto>>((ref) {
 
   final cantos = cantosAsync.value!;
   final perfil = perfilAsync.value;
-  final queryNormalizada = _normalizar(query);
 
-  final filtrados = cantos.where((canto) {
-    // 1. Filtro por categoría (Sede local vs Estatal vs Tema)
-    if (categoria == 'local') {
-      // Permitir todo si el perfil es null para debug, o si esta vinculado
-      if (perfil != null && !canto.corosVinculados.contains(perfil.coroId)) {
-        return false;
-      }
-    } else if (categoria == 'estatal') {
-      if (!canto.corosVinculados.contains('estatal')) return false;
-    } else if (categoria.startsWith('evento_')) {
-      // Pase de Invitado (Bypass de Sede)
-      final eventoId = categoria.replaceFirst('evento_', '');
-      if (!canto.eventosVinculados.contains(eventoId)) return false;
-    } else if (categoria.startsWith('tema_')) {
-      // Filtrar por tag y asegurar que el canto sea accesible (local o estatal)
-      final temaABuscar = categoria.replaceFirst('tema_', '');
-      final hasTema = canto.temas.any((t) => _normalizar(t) == _normalizar(temaABuscar));
-      if (!hasTema) return false;
-      
-      // Restringir a scope del usuario
-      final esLocal = perfil == null || canto.corosVinculados.contains(perfil.coroId);
-      final esEstatal = canto.corosVinculados.contains('estatal');
-      if (!esLocal && !esEstatal) return false;
-    } else {
-      // Por si hay otra categoria no manejada
-      return false;
-    }
+  final params = FilterParams(
+    cantos: cantos,
+    query: query,
+    categoria: categoria,
+    perfilCoroId: perfil?.coroId,
+  );
 
-    // 2. Filtro por busqueda de texto
-    if (queryNormalizada.isNotEmpty) {
-      final nNombre = _normalizar(canto.nombre);
-      final nTemas = canto.temas.map((t) => _normalizar(t)).join(' ');
-      
-      final queryWords = queryNormalizada.split(' ');
-      for (final word in queryWords) {
-        if (!nNombre.contains(word) && !nTemas.contains(word)) return false;
-      }
-    }
-
-    return true;
-  }).toList();
-
-  // 3. Ordenar resultados de busqueda por relevancia (si hay query)
-  if (queryNormalizada.isNotEmpty) {
-    filtrados.sort((a, b) {
-      final nA = _normalizar(a.nombre);
-      final nB = _normalizar(b.nombre);
-      
-      final nTemasA = a.temas.map((t) => _normalizar(t)).join(' ');
-      final nTemasB = b.temas.map((t) => _normalizar(t)).join(' ');
-      
-      int scoreA = 0;
-      int scoreB = 0;
-      
-      // Match en nombre
-      if (nA == queryNormalizada) {
-        scoreA += 200;
-      } else if (nA.startsWith(queryNormalizada)) {
-        scoreA += 100;
-      } else if (nA.contains(queryNormalizada)) {
-        scoreA += 50;
-      }
-      
-      // Match en tags
-      if (nTemasA.contains(queryNormalizada)) {
-        scoreA += 30;
-      }
-      
-      // Match en nombre
-      if (nB == queryNormalizada) {
-        scoreB += 200;
-      } else if (nB.startsWith(queryNormalizada)) {
-        scoreB += 100;
-      } else if (nB.contains(queryNormalizada)) {
-        scoreB += 50;
-      }
-      
-      // Match en tags
-      if (nTemasB.contains(queryNormalizada)) {
-        scoreB += 30;
-      }
-      
-      if (scoreA != scoreB) {
-        return scoreB.compareTo(scoreA); // Mayor score primero
-      }
-      return _naturalSort(nA, nB); // Si empatan, natural sort
-    });
-  }
-
-  return filtrados;
+  return await compute(_filterAndSortCantosEnIsolate, params);
 });
 
 // Provider específico para descargas offline (evita bajar cantos de otras sedes)

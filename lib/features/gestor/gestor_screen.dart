@@ -25,6 +25,22 @@ class _GestorScreenState extends State<GestorScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) async {
+            // Siempre inyectar CSS para ocultar la topbar nativamente
+            await _controller.runJavaScript('''
+              try {
+                if (!document.getElementById('native-styles')) {
+                  const style = document.createElement('style');
+                  style.id = 'native-styles';
+                  style.innerHTML = `
+                    .topbar {
+                      display: none !important;
+                    }
+                  `;
+                  document.head.appendChild(style);
+                }
+              } catch(e) { console.error(e); }
+            ''');
+
             if (_isLoading) {
               final session = Supabase.instance.client.auth.currentSession;
               if (session != null) {
@@ -36,21 +52,6 @@ class _GestorScreenState extends State<GestorScreen> {
                       localStorage.setItem(key, JSON.stringify($sessionStr));
                       window.location.reload();
                     }
-                    
-                    // Inyectar CSS para ocultar elementos redundantes en la app nativa
-                    const style = document.createElement('style');
-                    style.innerHTML = `
-                      #btn-ir-publico, 
-                      #btn-cerrar-sesion,
-                      .logo-app,
-                      #usuario-rol {
-                        display: none !important;
-                      }
-                      /* Reducir espacio superior e izquierdo sobrante */
-                      .topbar { padding-left: 10px !important; }
-                      .topbar-izq { width: auto !important; margin-right: 15px !important; }
-                    `;
-                    document.head.appendChild(style);
                   } catch(e) { console.error(e); }
                 ''');
               }

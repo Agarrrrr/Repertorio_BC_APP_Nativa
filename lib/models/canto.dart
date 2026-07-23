@@ -6,6 +6,7 @@ class Canto {
   final String? midiArchivo;
   final List<String> corosVinculados; // Array de coro_ids extraídos de cantos_coros
   final List<String> eventosVinculados; // Array de evento_ids extraídos de eventos_cantos
+  final String? updatedAt;
 
   Canto({
     required this.id,
@@ -15,6 +16,7 @@ class Canto {
     this.midiArchivo,
     required this.corosVinculados,
     this.eventosVinculados = const [],
+    this.updatedAt,
   });
 
   factory Canto.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class Canto {
       midiArchivo: json['midi_archivo'] as String?,
       corosVinculados: coros,
       eventosVinculados: eventos,
+      updatedAt: json['updated_at']?.toString() ?? json['updatedAt']?.toString(),
     );
   }
 

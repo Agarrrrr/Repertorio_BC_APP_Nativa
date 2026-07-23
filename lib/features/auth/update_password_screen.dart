@@ -185,7 +185,7 @@ class _UpdatePasswordScreenState extends ConsumerState<UpdatePasswordScreen> {
                           
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
-                            height: 56,
+                            constraints: const BoxConstraints(minHeight: 56),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               gradient: const LinearGradient(

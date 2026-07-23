@@ -15,6 +15,7 @@ import 'package:repertorio_bc/features/splash/splash_screen.dart';
 import 'package:repertorio_bc/features/auth/register_screen.dart';
 import 'package:repertorio_bc/features/auth/recover_password_screen.dart';
 import 'package:repertorio_bc/features/auth/update_password_screen.dart';
+import 'package:repertorio_bc/features/auth/complete_google_screen.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -56,10 +57,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final authState = ref.read(authUserProvider);
       final user = authState.value;
+      final perfilState = ref.read(perfilProvider);
+      final perfil = perfilState.value;
+
       final isAuthRoute = state.matchedLocation == '/login' || 
                           state.matchedLocation == '/register' || 
                           state.matchedLocation == '/recover' ||
-                          state.matchedLocation == '/update-password';
+                          state.matchedLocation == '/update-password' ||
+                          state.matchedLocation == '/complete-google';
       final isSplashRoute = state.matchedLocation == '/splash';
 
       if (user == null) {
@@ -68,6 +73,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           Future.microtask(() => ref.read(pendingDeepLinkProvider.notifier).setState(state.uri.toString()));
         }
         return isAuthRoute ? null : '/login';
+      }
+
+      // Si el usuario existe pero no tiene perfil (y no está cargando), debe completar registro Google
+      if (!perfilState.isLoading && perfil == null) {
+        return state.matchedLocation == '/complete-google' ? null : '/complete-google';
       }
 
       if (isAuthRoute || isSplashRoute) {
@@ -102,6 +112,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/complete-google',
+        builder: (context, state) => const CompleteGoogleScreen(),
+      ),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),

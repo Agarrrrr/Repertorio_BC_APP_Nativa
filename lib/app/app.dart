@@ -27,9 +27,18 @@ class RepertorioApp extends ConsumerWidget {
       theme: themeMode == AppThemeMode.sepia 
           ? AppTheme.getTheme(AppThemeMode.sepia, accentColor)
           : AppTheme.getTheme(AppThemeMode.claro, accentColor),
-      darkTheme: themeMode == AppThemeMode.sepia 
+      darkTheme: (themeMode == AppThemeMode.sepia || themeMode == AppThemeMode.quiet)
           ? AppTheme.getTheme(AppThemeMode.quiet, accentColor)
           : AppTheme.getTheme(AppThemeMode.oscuro, accentColor),
+      builder: (context, child) {
+        final data = MediaQuery.of(context);
+        return MediaQuery(
+          data: data.copyWith(
+            textScaler: data.textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.35),
+          ),
+          child: child!,
+        );
+      },
       routerConfig: router,
     );
   }

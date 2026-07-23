@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/models/canto.dart';
+import 'package:repertorio_bc/core/pdf/pdf_engine.dart';
 
-class ScoreCard extends StatelessWidget {
+class ScoreCard extends ConsumerWidget {
   final Canto canto;
   final int index;
   final VoidCallback onTap;
@@ -14,7 +16,7 @@ class ScoreCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAudio = canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty;
 
@@ -39,6 +41,12 @@ class ScoreCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           child: InkWell(
             onTap: onTap,
+            onHighlightChanged: (isHighlighted) {
+              if (isHighlighted) {
+                // 🚀 PREFETCH: Iniciar carga del PDF y resolución de rutas en el momento del toque
+                ref.read(pdfEngineProvider.notifier).init(canto.id);
+              }
+            },
             borderRadius: BorderRadius.circular(18),
             child: Padding(
               padding: EdgeInsets.zero,

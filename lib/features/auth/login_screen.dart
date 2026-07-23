@@ -295,6 +295,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               icon: Icons.alternate_email_rounded,
                               keyboardType: TextInputType.emailAddress,
                               autofillHints: const [AutofillHints.email],
+                              textInputAction: TextInputAction.next,
                             ).animate().fade(delay: 500.ms).slideX(begin: -0.1, end: 0),
                             const SizedBox(height: 20),
                             
@@ -304,7 +305,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               hintText: 'Contraseña',
                               icon: Icons.lock_outline_rounded,
                               obscureText: _obscurePassword,
+                              keyboardType: TextInputType.visiblePassword,
                               autofillHints: const [AutofillHints.password],
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _login(),
                               suffixIcon: IconButton(
                                 icon: Icon(_obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: Colors.white70),
                                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -333,7 +337,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             // Login Button
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
-                              height: 56,
+                              constraints: const BoxConstraints(minHeight: 56),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
                                 gradient: LinearGradient(
@@ -382,10 +386,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ).animate().fade(delay: 700.ms).slideY(begin: 0.2, end: 0),
                             
+                            const SizedBox(height: 16),
+                            
+                            // Botón de Google
+                            Container(
+                              constraints: const BoxConstraints(minHeight: 52),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  )
+                                ],
+                              ),
+                              child: ElevatedButton.icon(
+                                onPressed: _isLoading ? null : () {
+                                  setState(() => _isLoading = true);
+                                  AuthController.loginWithGoogle().catchError((e) {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isLoading = false;
+                                        _errorMessage = 'Error con Google: $e';
+                                      });
+                                    }
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.black87, size: 32),
+                                label: Text(
+                                  'Continuar con Google',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ).animate().fade(delay: 750.ms).slideY(begin: 0.2, end: 0),
+
                             const SizedBox(height: 24),
                             
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
                                   '¿No tienes cuenta?',
@@ -426,6 +478,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     TextInputType? keyboardType,
     Iterable<String>? autofillHints,
     Widget? suffixIcon,
+    TextInputAction? textInputAction,
+    void Function(String)? onSubmitted,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -438,6 +492,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         obscureText: obscureText,
         keyboardType: keyboardType,
         autofillHints: autofillHints,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
         style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
         cursorColor: Colors.white70,
         decoration: InputDecoration(
