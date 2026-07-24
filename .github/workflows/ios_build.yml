@@ -154,11 +154,15 @@ jobs:
 
             # 3) Archivar y exportar IPA con xcodebuild y sincronización automática de API Key
             if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-              echo "==> Archivado y exportación con sincronización de App Store Connect API..."
+              echo "==> Archivado y exportación con firma automática de App Store Connect API..."
               P8_PATH=$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
               mkdir -p ~/.appstoreconnect/private_keys
               echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
               echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
+
+              # Usar firma automática con la API Key para que Apple vincule el certificado 6AFB45DC... sin rechazos
+              /usr/libexec/PlistBuddy -c "Set :signingStyle automatic" "$EXPORT_PLIST" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c "Delete :provisioningProfiles" "$EXPORT_PLIST" 2>/dev/null || true
 
               xcodebuild archive \
                 -workspace ios/Runner.xcworkspace \
