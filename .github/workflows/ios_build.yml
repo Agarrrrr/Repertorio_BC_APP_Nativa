@@ -108,6 +108,13 @@ jobs:
                        -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID \
                        archive
 
+            echo "Generating export_options.plist..."
+            EXPORT_PLIST="ios/export_options.plist"
+            rm -f "$EXPORT_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :signingStyle string automatic" "$EXPORT_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :stripSwiftSymbols bool true" "$EXPORT_PLIST"
+
             echo "Exporting IPA with xcodebuild..."
             mkdir -p build/ios/ipa
             xcodebuild -exportArchive \
