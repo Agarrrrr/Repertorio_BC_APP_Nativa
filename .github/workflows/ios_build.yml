@@ -126,14 +126,13 @@ jobs:
             PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
             PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
             TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$DECODED" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$DECODED" 2>/dev/null || echo "3R4W228G24")
-            echo "Signing with profile: $PROFILE_NAME ($PROFILE_UUID), team: $TEAM_ID"
+            echo "Signing with profile: '$PROFILE_NAME' (UUID: $PROFILE_UUID), team: $TEAM_ID"
 
-            # 1) Signing MANUAL en el proyecto: usa el certificado y perfil ya
-            #    instalados; Xcode NO intenta crear certificados nuevos.
-            export PROFILE_NAME TEAM_ID
-            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
+            # 1) Configurar el proyecto de Xcode para firma con el perfil importado por su UUID
+            export PROFILE_UUID PROFILE_NAME TEAM_ID
+            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE'] = ENV['PROFILE_UUID']; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_UUID']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
 
-            # 2) export_options.plist dinamico con el perfil real
+            # 2) export_options.plist dinámico con el perfil real por UUID y Nombre
             EXPORT_PLIST=$RUNNER_TEMP/export_options.plist
             rm -f "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
@@ -143,8 +142,20 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
 
-            # 3) Compilar y exportar el IPA
-            flutter build ipa --release --export-options-plist="$EXPORT_PLIST"
+            # 3) Configurar API Key si existe para permitir actualización automática de provisión si fuera necesario
+            API_KEY=${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
+            KEY_ID=${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+            ISSUER_ID=${{ secrets.APPSTORE_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
+            
+            EXTRA_FLAGS=""
+            if [ -n "$API_KEY" ] && [ -n "$KEY_ID" ] && [ -n "$ISSUER_ID" ]; then
+              mkdir -p ~/.appstoreconnect/private_keys
+              echo "$API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
+              EXTRA_FLAGS="--allow-provisioning-updates"
+            fi
+
+            # 4) Compilar y exportar el IPA
+            flutter build ipa --release --export-options-plist="$EXPORT_PLIST" $EXTRA_FLAGS
           else
             flutter build ios --no-codesign --release
           fi
