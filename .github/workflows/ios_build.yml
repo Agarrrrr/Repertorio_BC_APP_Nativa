@@ -79,10 +79,16 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ]; then
-            mkdir -p ~/.private_keys
-            mkdir -p ~/.appstoreconnect/private_keys
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            mkdir -p ~/.private_keys ~/.appstoreconnect/private_keys
+            P8_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            P8_PATH2=~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            if echo "$APP_STORE_CONNECT_API_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
+              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH2"
+            else
+              echo -n "$APP_STORE_CONNECT_API_KEY" | base64 --decode > "$P8_PATH"
+              echo -n "$APP_STORE_CONNECT_API_KEY" | base64 --decode > "$P8_PATH2"
+            fi
             echo "App Store Connect API Key configured."
           fi
 
@@ -138,8 +144,15 @@ jobs:
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Uploading IPA to App Store Connect..."
             mkdir -p ~/.private_keys ~/.appstoreconnect/private_keys
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            P8_PATH=~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            P8_PATH2=~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            if echo "$APP_STORE_CONNECT_API_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
+              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH2"
+            else
+              echo -n "$APP_STORE_CONNECT_API_KEY" | base64 --decode > "$P8_PATH"
+              echo -n "$APP_STORE_CONNECT_API_KEY" | base64 --decode > "$P8_PATH2"
+            fi
             
             IPA_FILE=$(ls build/ios/ipa/*.ipa | head -n 1)
             echo "Uploading $IPA_FILE..."
