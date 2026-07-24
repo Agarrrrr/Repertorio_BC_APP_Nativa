@@ -79,7 +79,9 @@ jobs:
 
             echo "==> [5/6] Validando provisioning profile..."
             DECODED=$RUNNER_TEMP/profile_decoded.plist
-            if ! security cms -D -i "$PP_PATH" > "$DECODED" 2> $RUNNER_TEMP/cms_error.txt; then
+            # NOTA: en macOS recientes "security cms -D" falla con error -8183
+            # al decodificar .mobileprovision. openssl es el reemplazo estable.
+            if ! openssl smime -inform der -verify -noverify -in "$PP_PATH" -out "$DECODED" 2> $RUNNER_TEMP/cms_error.txt; then
               echo "ERROR: El provisioning profile del secret no es valido."
               echo "Detalle del error:"
               cat $RUNNER_TEMP/cms_error.txt
@@ -119,7 +121,7 @@ jobs:
             PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             DECODED=$RUNNER_TEMP/profile_decoded.plist
             if [ ! -f "$DECODED" ]; then
-              security cms -D -i "$PP_PATH" > "$DECODED" 2>/dev/null
+              openssl smime -inform der -verify -noverify -in "$PP_PATH" -out "$DECODED" 2>/dev/null
             fi
             PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
             PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
