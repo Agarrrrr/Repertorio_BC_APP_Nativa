@@ -10,7 +10,7 @@ on:
 jobs:
   build-ios:
     name: Build & Deploy iOS App
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,6 +27,9 @@ jobs:
           flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       - name: Restore GoogleService-Info.plist from secret if exists
         run: |
@@ -45,143 +48,78 @@ jobs:
           cd ios
           pod install
 
-      - name: Import Signing Certificate & Provisioning Profile (if secrets present)
+      - name: Import Signing Certificate (if secrets present)
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD || secrets.P12_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'Television2012' }}
         run: |
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
-            echo "==> [1/6] Decodificando certificado y perfil..."
-            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            echo "Setting up keychain and signing certificates..."
+            export CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-            echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-            echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
-            ls -la $CERTIFICATE_PATH $PP_PATH
+            python3 -c "import base64, re, os; dec = lambda k, p: open(p, 'wb').write(base64.b64decode(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, ''))[:len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))-len(re.sub(r'[^A-Za-z0-9+/=]', '', os.environ.get(k, '')))%4])) if os.environ.get(k) else None; dec('BUILD_CERTIFICATE_BASE64', '$CERTIFICATE_PATH')"
 
-            echo "==> [2/6] Creando keychain..."
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
             security unlock-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
-            echo "==> [3/6] Importando certificado P12..."
-            PASS="${P12_PASSWORD:-television2012}"
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$PASS" -T /usr/bin/codesign || security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "Television2012" -T /usr/bin/codesign
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
-
-            echo "==> [4/6] Agregando keychain a la lista de busqueda..."
-            # CRITICO: sin esto Xcode no encuentra el certificado e intenta
-            # crear uno nuevo -> error "maximum number of certificates".
             security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
-            security default-keychain -d user -s $KEYCHAIN_PATH || echo "WARN: no se pudo fijar el keychain por defecto (no critico)"
-
-            echo "==> [5/6] Validando provisioning profile..."
-            DECODED=$RUNNER_TEMP/profile_decoded.plist
-            # NOTA: en macOS recientes "security cms -D" falla con error -8183
-            # al decodificar .mobileprovision. openssl es el reemplazo estable.
-            if ! openssl smime -inform der -verify -noverify -in "$PP_PATH" -out "$DECODED" 2> $RUNNER_TEMP/cms_error.txt; then
-              echo "ERROR: El provisioning profile del secret no es valido."
-              echo "Detalle del error:"
-              cat $RUNNER_TEMP/cms_error.txt
-              echo "Primeros bytes del archivo decodificado:"
-              head -c 120 "$PP_PATH" | xxd | head -8
-              echo ""
-              echo "SOLUCION: regenera el base64 del .mobileprovision SIN saltos de linea."
-              echo "En macOS:   base64 -i perfil.mobileprovision | pbcopy"
-              echo "En Windows: [Convert]::ToBase64String([IO.File]::ReadAllBytes('perfil.mobileprovision')) | Set-Clipboard"
-              exit 1
-            fi
-            PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
-            PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
-            echo "Perfil valido: '$PROFILE_NAME' (UUID: $PROFILE_UUID)"
-
-            # Advertir si el perfil es de DESARROLLO (no sirve para app-store)
-            GET_TASK_ALLOW=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:get-task-allow" "$DECODED" 2>/dev/null || echo "false")
-            if [ "$GET_TASK_ALLOW" = "true" ]; then
-              echo "WARN: El perfil es de DESARROLLO (get-task-allow=true)."
-              echo "      Para exportar con method=app-store necesitas un perfil tipo App Store."
-            fi
-
-            echo "==> [6/6] Instalando perfil como $PROFILE_UUID.mobileprovision..."
-            mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-            cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-            echo "Certificate & Provisioning Profile installed successfully."
+            echo "Keychain initialized successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
 
-      - name: Build iOS App (.ipa or Runner.app)
+      - name: Setup App Store Connect API Key
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
+        run: |
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ]; then
+            mkdir -p ~/private_keys
+            mkdir -p ~/.appstoreconnect/private_keys
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "App Store Connect API Key configured."
+          fi
+
+      - name: Build Xcode Archive and Export IPA
+        env:
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
-            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-            DECODED=$RUNNER_TEMP/profile_decoded.plist
-            if [ ! -f "$DECODED" ]; then
-              openssl smime -inform der -verify -noverify -in "$PP_PATH" -out "$DECODED" 2>/dev/null
-            fi
-            PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
-            PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
-            TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$DECODED" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$DECODED" 2>/dev/null || echo "3R4W228G24")
-            echo "Signing with profile: '$PROFILE_NAME' (UUID: $PROFILE_UUID), team: $TEAM_ID"
+          echo "Building Flutter iOS release..."
+          flutter build ios --release --no-codesign
 
-            # 1) Configurar export_options.plist
-            EXPORT_PLIST=$RUNNER_TEMP/export_options.plist
-            rm -f "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM_ID" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :signingStyle string manual" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :stripSwiftSymbols bool true" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
+            xcodebuild -workspace ios/Runner.xcworkspace \
+                       -scheme Runner \
+                       -sdk iphoneos \
+                       -configuration Release \
+                       -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                       -allowProvisioningUpdates \
+                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
+                       -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID \
+                       archive
 
-            # 1) Configurar firma manual de distribución en Xcode
-            export PROFILE_NAME PROFILE_UUID TEAM_ID
-            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
-
-            # 2) Compilar bundle de iOS
-            flutter build ios --release --no-codesign
-
-            # 3) Archivar y exportar IPA con xcodebuild
-            if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-              echo "==> Archivado y exportación con sincronización de App Store Connect API..."
-              P8_PATH=$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-              mkdir -p ~/.appstoreconnect/private_keys
-              echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
-
-              xcodebuild archive \
-                -workspace ios/Runner.xcworkspace \
-                -scheme Runner \
-                -configuration Release \
-                -destination 'generic/platform=iOS' \
-                -archivePath $RUNNER_TEMP/Runner.xcarchive \
-                -allowProvisioningUpdates \
-                -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
-                -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
-                -authenticationKeyPath "$P8_PATH"
-
-              mkdir -p build/ios/ipa
-              xcodebuild -exportArchive \
-                -archivePath $RUNNER_TEMP/Runner.xcarchive \
-                -exportPath build/ios/ipa \
-                -exportOptionsPlist "$EXPORT_PLIST" \
-                -allowProvisioningUpdates \
-                -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
-                -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
-                -authenticationKeyPath "$P8_PATH"
-            else
-              flutter build ipa --release --export-options-plist="$EXPORT_PLIST"
-            fi
+            echo "Exporting IPA with xcodebuild..."
+            mkdir -p build/ios/ipa
+            xcodebuild -exportArchive \
+                       -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                       -exportOptionsPlist ios/export_options.plist \
+                       -exportPath build/ios/ipa \
+                       -allowProvisioningUpdates \
+                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
+                       -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
           else
-            flutter build ios --no-codesign --release
+            echo "App Store Connect API Key not provided. Skipping signed archive and export."
           fi
 
       - name: Upload IPA to App Store Connect / TestFlight (if API Key provided)
@@ -192,10 +130,7 @@ jobs:
         run: |
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Uploading IPA to App Store Connect..."
-            mkdir -p ~/.appstoreconnect/private_keys
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-
-            xcrun xcrun altool --upload-app -f build/ios/ipa/*.ipa \
+            xcrun altool --upload-app -f build/ios/ipa/*.ipa \
               --type ios \
               --apiKey "$APP_STORE_CONNECT_KEY_ID" \
               --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
