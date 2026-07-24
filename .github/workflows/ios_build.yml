@@ -60,6 +60,13 @@ jobs:
 
             echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
             echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+            # Auto-detección si los secrets fueron intercambiados (un .p12 pesa ~3-4KB, mientras que un .mobileprovision pesa ~12KB)
+            CERT_SIZE=$(wc -c < "$CERTIFICATE_PATH" | tr -d ' ')
+            if [ "$CERT_SIZE" -gt 10000 ] && [ -n "${{ secrets.APPLE_P12_BASE64 }}" ]; then
+              echo "WARN: BUILD_CERTIFICATE_BASE64 contenía un perfil de provisión. Usando APPLE_P12_BASE64..."
+              echo -n "${{ secrets.APPLE_P12_BASE64 }}" | base64 --decode -o $CERTIFICATE_PATH
+            fi
             ls -la $CERTIFICATE_PATH $PP_PATH
 
             echo "==> [2/6] Creando keychain..."
@@ -68,7 +75,8 @@ jobs:
             security unlock-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
             echo "==> [3/6] Importando certificado P12..."
-            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign
+            PASS="${P12_PASSWORD:-television2012}"
+            security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$PASS" -T /usr/bin/codesign || security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "Television2012" -T /usr/bin/codesign
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
             echo "==> [4/6] Agregando keychain a la lista de busqueda..."
