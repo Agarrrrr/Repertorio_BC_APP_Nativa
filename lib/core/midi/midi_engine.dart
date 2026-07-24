@@ -87,6 +87,14 @@ class MidiEngine {
   int _currentBeatIndex = 0;
   static const int _beatsPerMeasure = 4;
 
+  // Control de Note-Off:
+  // - _noteGeneration[pitch]: contador de instancias por nota. Permite re-disparar
+  //   la misma nota sin que el "stop" programado de la instancia anterior la corte.
+  // - _playbackEpoch: se incrementa en pause/stop/seek para invalidar los stops
+  //   pendientes que ya no corresponden a la reproducción actual.
+  final Map<int, int> _noteGeneration = {};
+  int _playbackEpoch = 0;
+
   // StreamController broadcast: no lo cerramos en dispose() porque el singleton
   // vive toda la sesión y cerrarlo rompería el stream para siempre.
   final StreamController<MidiState> _stateController = StreamController<MidiState>.broadcast();
@@ -121,6 +129,14 @@ class MidiEngine {
     // Inicializar metrónomo
     if (!_metronomeInitialized) {
       try {
+        // En iOS, asegurar que el audio suene aunque el switch físico esté en silencio
+        if (Platform.isIOS) {
+          AudioPlayer.global.setAudioContext(AudioContext(
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+          ));
+        }
+        await _metronomePlayer.setPlayerMode(PlayerMode.lowLatency);
+        await _metronomePlayer.setReleaseMode(ReleaseMode.stop);
         await _metronomePlayer.setSourceAsset('audio/metro/wood-hi.mp3');
         _metronomeInitialized = true;
         debugPrint('🎵 [NativeMidiEngine] Metrónomo inicializado ✓');
@@ -186,6 +202,7 @@ class MidiEngine {
     _stopwatch.stop();
     _startOffsetSeconds = _getCurrentTimeSeconds();
     _playbackTimer?.cancel();
+    _playbackEpoch++; // Invalidar stops pendientes
     _stopAllNotes();
     _emit(_state.copyWith(isPlaying: false));
   }
@@ -196,6 +213,8 @@ class MidiEngine {
     _playbackTimer?.cancel();
     _startOffsetSeconds = 0.0;
     _playedNoteIndices.clear();
+    _playbackEpoch++; // Invalidar stops pendientes
+    _lastBeatTime = -1.0;
     _stopAllNotes();
     _emit(_state.copyWith(
       isPlaying: false,
@@ -218,6 +237,8 @@ class MidiEngine {
     _startOffsetSeconds = targetTime;
     _stopwatch.reset();
     _playedNoteIndices.clear();
+    _playbackEpoch++; // Invalidar stops pendientes
+    _lastBeatTime = -1.0;
 
     final total = _song!.durationSeconds;
     final progress = total > 0 ? (targetTime / total).clamp(0.0, 1.0) : 0.0;
@@ -335,18 +356,35 @@ class MidiEngine {
     }
   }
 
-  /// Reproduce una nota MIDI.
-  /// El SoundFont (FluidSynth/AVAudioUnit) gestiona automáticamente el decay
-  /// y release natural del instrumento. NO enviamos stopMidiNote para evitar
-  /// cortar el sonido prematuramente (staccato). La nota se apaga sola cuando
-  /// termina su envolvente ADSR.
+  /// Reproduce una nota MIDI con Note-Off programado al final de su duración.
+  ///
+  /// El sistema de "generación" resuelve el staccato: si la misma nota se
+  /// re-dispara antes de que termine la instancia anterior, el stop pendiente
+  /// de la instancia vieja se ignora y solo cuenta el de la más reciente.
+  /// El "epoch" invalida stops pendientes tras pause/stop/seek.
   void _playNativeNote(MidiNoteEvent note) {
     if (!_midiPro.initialized) return;
     try {
-      _midiPro.playMidiNote(
-        midi: note.note,
-        velocity: note.velocity,
-      );
+      final pitch = note.note;
+      final epoch = _playbackEpoch;
+      final gen = (_noteGeneration[pitch] ?? 0) + 1;
+      _noteGeneration[pitch] = gen;
+
+      // Re-disparo limpio: cortar la voz anterior de la misma altura para
+      // evitar voces apiladas (sonido "golpeado" / saturado).
+      _midiPro.stopMidiNote(midi: pitch);
+      _midiPro.playMidiNote(midi: pitch, velocity: note.velocity);
+
+      // Note-Off exactamente al final de la duración de la nota (ajustado
+      // por velocidad de reproducción). Sin margen extra para no alargar
+      // el sonido más allá de lo escrito en la partitura.
+      final durMs = ((note.durationSeconds / _state.speed) * 1000).round().clamp(80, 30000);
+      Future.delayed(Duration(milliseconds: durMs), () {
+        if (!_midiPro.initialized) return;
+        if (_playbackEpoch != epoch) return;       // hubo pause/stop/seek
+        if (_noteGeneration[pitch] != gen) return; // nota re-disparada
+        _midiPro.stopMidiNote(midi: pitch);
+      });
     } catch (e) {
       debugPrint('❌ [NativeMidiEngine] Error en playMidiNote: $e');
     }

@@ -726,7 +726,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                       setState(() {
                         _isDraggingSlider = false;
                       });
-                      widget.onSeek(v * 100);
+                      widget.onSeek(v);
                     },
                   ),
                 ),

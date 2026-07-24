@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter/foundation.dart';
@@ -88,13 +89,15 @@ void _registrarFcmToken(String userId) async {
     debugPrint('[FCM] Token obtenido: $token');
     if (token != null) {
       try {
+        // Detectar la plataforma real para que el backend envíe con el servicio correcto.
+        final plataforma = Platform.isIOS ? 'ios_fcm' : 'android_fcm';
         final result = await SupabaseService.client.from('suscripciones_push').upsert({
           'usuario_id': userId,
           'endpoint': token,
-          'plataforma': 'android_fcm',
+          'plataforma': plataforma,
           'suscripcion': {}
         }, onConflict: 'endpoint');
-        debugPrint('[FCM] Token guardado en Supabase: $result');
+        debugPrint('[FCM] Token guardado en Supabase ($plataforma): $result');
       } catch (e) {
         debugPrint('[FCM] ERROR guardando token: $e');
       }

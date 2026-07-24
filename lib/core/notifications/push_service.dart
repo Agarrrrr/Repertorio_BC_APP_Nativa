@@ -19,9 +19,10 @@ class PushService {
   static String? lastNotifiedCantoId;
 
   static Future<void> init() async {
-    // 1. Inicializar Firebase (puede fallar si no hay GoogleService-Info.plist válido para iOS)
+    // 1. Inicializar Firebase (requiere GoogleService-Info.plist en iOS y google-services.json en Android)
     try {
       await Firebase.initializeApp();
+      debugPrint('Firebase inicializado correctamente');
     } catch (e) {
       debugPrint('Firebase init falló (probablemente falta configuración iOS): $e');
       debugPrint('Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
@@ -33,7 +34,11 @@ class PushService {
 
     // 3. Configurar notificaciones locales para cuando la app esté en primer plano
     const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
-    const darwinInit = DarwinInitializationSettings();
+    const darwinInit = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     const initSettings = InitializationSettings(android: androidInit, iOS: darwinInit, macOS: darwinInit);
     await _localNotificationsPlugin.initialize(
       initSettings,
@@ -52,9 +57,21 @@ class PushService {
       }
     }
 
-    // El permiso se solicitará más adelante cuando la UI esté lista
+    // 5. Escuchar cambios de token y refrescarlo en Supabase cuando cambie
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      debugPrint('[FCM] Token refrescado: $token');
+    });
 
-    // 5. Escuchar notificaciones en primer plano
+    // 6. Configurar opciones de presentación para iOS (alert, badge, sound)
+    if (Platform.isIOS) {
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
+
+    // 7. Escuchar notificaciones en primer plano
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('Recibida notificación en primer plano: ${message.notification?.title}');
       
@@ -82,13 +99,13 @@ class PushService {
     });
 
 
-    // 6. Escuchar clics en notificaciones cuando la app está en segundo plano (pero no cerrada)
+    // 8. Escuchar clics en notificaciones cuando la app está en segundo plano (pero no cerrada)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('FCM: Notificación cliqueada en segundo plano: ${message.data}');
       _handleMessageClick(message);
     });
 
-    // 7. Chequear si la app se abrió desde una notificación cerrada (Cold Start de FCM)
+    // 9. Chequear si la app se abrió desde una notificación cerrada (Cold Start de FCM)
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       debugPrint('FCM: App abierta desde notificación con cold start: ${initialMessage.data}');
