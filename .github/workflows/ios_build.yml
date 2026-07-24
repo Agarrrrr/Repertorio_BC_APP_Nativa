@@ -145,16 +145,14 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
 
-            # 3) Configurar API Key si existe para permitir actualización automática de provisión
-            EXTRA_FLAGS=""
+            # 3) Configurar API Key si existe para subida posterior a App Store Connect
             if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
               mkdir -p ~/.appstoreconnect/private_keys
               echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-              EXTRA_FLAGS="--allow-provisioning-updates"
             fi
 
             # 4) Compilar y exportar el IPA
-            flutter build ipa --release --export-options-plist="$EXPORT_PLIST" $EXTRA_FLAGS
+            flutter build ipa --release --export-options-plist="$EXPORT_PLIST"
           else
             flutter build ios --no-codesign --release
           fi
