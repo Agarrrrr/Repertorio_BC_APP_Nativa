@@ -164,6 +164,7 @@ jobs:
                 -workspace ios/Runner.xcworkspace \
                 -scheme Runner \
                 -configuration Release \
+                -destination 'generic/platform=iOS' \
                 -archivePath $RUNNER_TEMP/Runner.xcarchive \
                 -allowProvisioningUpdates \
                 -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
