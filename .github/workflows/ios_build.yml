@@ -149,20 +149,20 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
 
+            # 1) Configurar firma manual de distribución en Xcode
+            export PROFILE_NAME PROFILE_UUID TEAM_ID
+            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
+
             # 2) Compilar bundle de iOS
             flutter build ios --release --no-codesign
 
-            # 3) Archivar y exportar IPA con xcodebuild y sincronización automática de API Key
+            # 3) Archivar y exportar IPA con xcodebuild
             if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-              echo "==> Archivado y exportación con firma automática de App Store Connect API..."
+              echo "==> Archivado y exportación con sincronización de App Store Connect API..."
               P8_PATH=$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
               mkdir -p ~/.appstoreconnect/private_keys
               echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
               echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
-
-              # Usar firma automática con la API Key para que Apple vincule el certificado 6AFB45DC... sin rechazos
-              /usr/libexec/PlistBuddy -c "Set :signingStyle automatic" "$EXPORT_PLIST" 2>/dev/null || true
-              /usr/libexec/PlistBuddy -c "Delete :provisioningProfiles" "$EXPORT_PLIST" 2>/dev/null || true
 
               xcodebuild archive \
                 -workspace ios/Runner.xcworkspace \
