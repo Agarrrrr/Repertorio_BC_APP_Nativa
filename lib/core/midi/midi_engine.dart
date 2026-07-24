@@ -255,9 +255,15 @@ class MidiEngine {
   Future<void> _ensureMidiProInit() async {
     if (_midiPro.initialized) return;
     try {
-      await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2');
+      final file = File('assets/Piano.sf2');
+      if (await file.exists() && await file.length() > 1000) {
+        await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2');
+        debugPrint('🎵 [NativeMidiEngine] Soundfont Piano.sf2 cargado con éxito (${await file.length()} bytes)');
+      } else {
+        debugPrint('⚠️ [NativeMidiEngine] Archivo Piano.sf2 ausente o inválido, omitiendo Soundfont.');
+      }
     } catch (e) {
-      debugPrint('⚠️ [NativeMidiEngine] Soundfont load notice: $e');
+      debugPrint('⚠️ [NativeMidiEngine] Excepción cargando Soundfont: $e');
     }
   }
 
@@ -266,18 +272,20 @@ class MidiEngine {
       if (!_midiPro.initialized) {
         await _ensureMidiProInit();
       }
-      _midiPro.playMidiNote(
-        midi: note.note,
-        velocity: note.velocity,
-      );
-      final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
-      Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
-        if (_midiPro.initialized) {
-          _midiPro.stopMidiNote(
-            midi: note.note,
-          );
-        }
-      });
+      if (_midiPro.initialized) {
+        _midiPro.playMidiNote(
+          midi: note.note,
+          velocity: note.velocity,
+        );
+        final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
+        Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
+          if (_midiPro.initialized) {
+            _midiPro.stopMidiNote(
+              midi: note.note,
+            );
+          }
+        });
+      }
     } catch (e) {
       debugPrint('❌ [NativeMidiEngine] Error en playMidiNote: $e');
     }
