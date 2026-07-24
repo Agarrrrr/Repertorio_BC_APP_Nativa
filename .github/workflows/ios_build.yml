@@ -139,11 +139,7 @@ jobs:
             TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$DECODED" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$DECODED" 2>/dev/null || echo "3R4W228G24")
             echo "Signing with profile: '$PROFILE_NAME' (UUID: $PROFILE_UUID), team: $TEAM_ID"
 
-            # 1) Configurar firma manual consistente en Xcode
-            export PROFILE_NAME TEAM_ID
-            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_NAME']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
-
-            # 2) export_options.plist dinámico para la fase de exportación final de IPA
+            # 1) Configurar export_options.plist
             EXPORT_PLIST=$RUNNER_TEMP/export_options.plist
             rm -f "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
@@ -153,15 +149,39 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
 
-            # 3) Configurar API Key de App Store Connect si existe para permitir auto-actualización en exportación
+            # 2) Compilar bundle de iOS
+            flutter build ios --release --no-codesign
+
+            # 3) Archivar y exportar IPA con xcodebuild y sincronización automática de API Key
             if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+              echo "==> Archivado y exportación con sincronización de App Store Connect API..."
+              P8_PATH=$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
               mkdir -p ~/.appstoreconnect/private_keys
               echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-              /usr/libexec/PlistBuddy -c "Add :allowProvisioningUpdates bool true" "$EXPORT_PLIST" 2>/dev/null || true
-            fi
+              echo "$APP_STORE_CONNECT_API_KEY" > "$P8_PATH"
 
-            # 4) Compilar y exportar el IPA
-            flutter build ipa --release --export-options-plist="$EXPORT_PLIST"
+              xcodebuild archive \
+                -workspace ios/Runner.xcworkspace \
+                -scheme Runner \
+                -configuration Release \
+                -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                -allowProvisioningUpdates \
+                -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+                -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+                -authenticationKeyPath "$P8_PATH"
+
+              mkdir -p build/ios/ipa
+              xcodebuild -exportArchive \
+                -archivePath $RUNNER_TEMP/Runner.xcarchive \
+                -exportPath build/ios/ipa \
+                -exportOptionsPlist "$EXPORT_PLIST" \
+                -allowProvisioningUpdates \
+                -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+                -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+                -authenticationKeyPath "$P8_PATH"
+            else
+              flutter build ipa --release --export-options-plist="$EXPORT_PLIST"
+            fi
           else
             flutter build ios --no-codesign --release
           fi
