@@ -361,6 +361,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       key: ValueKey('${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
                                       controller: _pdfController,
                                       params: PdfViewerParams(
+                                        enableTextSelection: false,
                                         minScale: _minScaleLimit,
                                         boundaryMargin: EdgeInsets.zero,
                                         onViewerReady: (document, controller) {
