@@ -53,6 +53,7 @@ dependencies:
   webview_flutter_wkwebview: ^3.15.0
   share_plus: ^10.0.0
   flutter_midi_pro: ^2.0.1
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:

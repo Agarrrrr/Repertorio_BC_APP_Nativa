@@ -113,8 +113,13 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     setState(() {
       _showTools = !_showTools;
       if (!_showTools) {
+        // Al cerrar la barra de herramientas, desactivar modo dibujo
         _showDrawingPalette = false;
         ref.read(pdfEngineProvider.notifier).setDrawingMode(false);
+      } else {
+        // Al abrir la barra, activar modo dibujo con lápiz por defecto
+        ref.read(pdfEngineProvider.notifier).setDrawingMode(true);
+        ref.read(pdfEngineProvider.notifier).setTool(ToolType.pencil);
       }
     });
   }
@@ -126,6 +131,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   }
 
   Future<void> _enviarSenalVivo(Canto canto, String coroId) async {
+    // TODO: La notificación push real requiere una Supabase Edge Function
+    // o un Database Trigger que escuche inserciones en 'avisos' y despache
+    // el push via FCM/APNs. Actualmente solo se inserta en la tabla.
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -169,9 +177,20 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     if (document.pages.isNotEmpty) {
       final firstPageWidth = document.pages.first.width;
       final viewWidth = MediaQuery.of(context).size.width;
-      setState(() {
-        _minScaleLimit = (viewWidth / firstPageWidth);
-      });
+      final scale = viewWidth / firstPageWidth;
+      if (mounted && _minScaleLimit != scale) {
+        setState(() {
+          _minScaleLimit = scale;
+        });
+        // Forzar al controlador a respetar el minScale bloqueando la matriz
+        if (_pdfController.isReady) {
+          final currentMatrix = _pdfController.value;
+          final currentScale = currentMatrix.getMaxScaleOnAxis();
+          if (currentScale < _minScaleLimit) {
+            _ajustarZoomAlAncho();
+          }
+        }
+      }
     }
   }
 
@@ -587,6 +606,8 @@ class _MidiPanel extends StatefulWidget {
 
 class _MidiPanelState extends State<_MidiPanel> {
   bool _showSettings = false;
+  bool _isDraggingSlider = false;
+  double _dragValue = 0.0;
 
   String _formatTime(double seconds) {
     final m = (seconds ~/ 60).toString().padLeft(1, '0');
@@ -687,8 +708,26 @@ class _MidiPanelState extends State<_MidiPanel> {
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                   ),
                   child: Slider(
-                    value: widget.midiState.progress.clamp(0.0, 1.0),
-                    onChanged: loading ? null : (v) => widget.onSeek(v * 100),
+                    value: _isDraggingSlider
+                        ? _dragValue
+                        : widget.midiState.progress.clamp(0.0, 1.0),
+                    onChangeStart: loading ? null : (_) {
+                      setState(() {
+                        _isDraggingSlider = true;
+                        _dragValue = widget.midiState.progress;
+                      });
+                    },
+                    onChanged: loading ? null : (v) {
+                      setState(() {
+                        _dragValue = v;
+                      });
+                    },
+                    onChangeEnd: loading ? null : (v) {
+                      setState(() {
+                        _isDraggingSlider = false;
+                      });
+                      widget.onSeek(v * 100);
+                    },
                   ),
                 ),
                 Padding(

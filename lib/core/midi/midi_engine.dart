@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
 
 /// Estado público del motor de audio.
@@ -71,6 +72,7 @@ class MidiEngine {
   MidiEngine._internal();
 
   final _midiPro = MidiPro();
+  final _metronomePlayer = AudioPlayer();
 
   ParsedMidiSong? _song;
   Timer? _playbackTimer;
@@ -78,6 +80,12 @@ class MidiEngine {
   double _startOffsetSeconds = 0.0;
   final Set<int> _playedNoteIndices = {};
   final Map<int, bool> _mutedTracks = {}; // trackIndex -> isMuted
+
+  // Metrónomo
+  bool _metronomeInitialized = false;
+  double _lastBeatTime = -1.0;
+  int _currentBeatIndex = 0;
+  static const int _beatsPerMeasure = 4;
 
   // StreamController broadcast: no lo cerramos en dispose() porque el singleton
   // vive toda la sesión y cerrarlo rompería el stream para siempre.
@@ -101,15 +109,24 @@ class MidiEngine {
     if (_midiPro.initialized) return;
     try {
       debugPrint('🎵 [NativeMidiEngine] Cargando SoundFont desde assets...');
-      // loadSoundfont usa rootBundle internamente — el path debe ser el
-      // asset key tal como está declarado en pubspec.yaml.
       await _midiPro.loadSoundfont(
         sf2Path: 'assets/Piano.sf2',
-        instrumentIndex: 0, // Acoustic Grand Piano
+        instrumentIndex: 0,
       );
       debugPrint('🎵 [NativeMidiEngine] SoundFont cargado ✓ — Piano Acústico activo');
     } catch (e, st) {
       debugPrint('❌ [NativeMidiEngine] Error cargando SoundFont: $e\n$st');
+    }
+
+    // Inicializar metrónomo
+    if (!_metronomeInitialized) {
+      try {
+        await _metronomePlayer.setSourceAsset('audio/metro/wood-hi.mp3');
+        _metronomeInitialized = true;
+        debugPrint('🎵 [NativeMidiEngine] Metrónomo inicializado ✓');
+      } catch (e) {
+        debugPrint('❌ [NativeMidiEngine] Error inicializando metrónomo: $e');
+      }
     }
   }
 
@@ -264,6 +281,12 @@ class MidiEngine {
       progress: progress,
     ));
 
+    // ── Metrónomo ──────────────────────────────────────────────────────
+    if (_state.metronomoActivo && _song != null && _song!.tempoBpm > 0) {
+      _playMetronome(currentTime);
+    }
+
+    // ── Notas MIDI ─────────────────────────────────────────────────────
     int noteGlobalIndex = 0;
     for (final track in _song!.tracks) {
       final isMuted = _mutedTracks[track.index] ?? false;
@@ -279,6 +302,44 @@ class MidiEngine {
     }
   }
 
+  /// Reproduce el click del metrónomo en cada beat.
+  void _playMetronome(double currentTime) {
+    if (!_metronomeInitialized || _song == null) return;
+
+    final bpm = _song!.tempoBpm;
+    final secondsPerBeat = 60.0 / bpm;
+    final beatTime = (currentTime / secondsPerBeat).floorToDouble();
+
+    // Solo disparamos si cambiamos a un nuevo beat
+    if (beatTime != _lastBeatTime) {
+      _lastBeatTime = beatTime;
+      _currentBeatIndex = beatTime.toInt() % _beatsPerMeasure;
+      final isFirstBeat = _currentBeatIndex == 0;
+
+      _emit(_state.copyWith(
+        beatIndex: _currentBeatIndex,
+        beatNumerator: _beatsPerMeasure,
+        beatEsPrimero: isFirstBeat,
+      ));
+
+      // Reproducir sonido de click
+      try {
+        if (isFirstBeat) {
+          _metronomePlayer.play(AssetSource('audio/metro/wood-hi.mp3'));
+        } else {
+          _metronomePlayer.play(AssetSource('audio/metro/wood-lo.mp3'));
+        }
+      } catch (e) {
+        debugPrint('❌ [NativeMidiEngine] Error metrónomo: $e');
+      }
+    }
+  }
+
+  /// Reproduce una nota MIDI.
+  /// El SoundFont (FluidSynth/AVAudioUnit) gestiona automáticamente el decay
+  /// y release natural del instrumento. NO enviamos stopMidiNote para evitar
+  /// cortar el sonido prematuramente (staccato). La nota se apaga sola cuando
+  /// termina su envolvente ADSR.
   void _playNativeNote(MidiNoteEvent note) {
     if (!_midiPro.initialized) return;
     try {
@@ -286,16 +347,6 @@ class MidiEngine {
         midi: note.note,
         velocity: note.velocity,
       );
-      // Programamos el Note Off para que el SoundFont pueda aplicar el decay/release
-      // natural antes de silenciar. Usamos la duración real de la nota + un pequeño
-      // margen para que no se corte el release.
-      final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
-      final releaseMs = (durMs + 150).clamp(150, 8000);
-      Future.delayed(Duration(milliseconds: releaseMs), () {
-        if (_midiPro.initialized) {
-          _midiPro.stopMidiNote(midi: note.note);
-        }
-      });
     } catch (e) {
       debugPrint('❌ [NativeMidiEngine] Error en playMidiNote: $e');
     }
