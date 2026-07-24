@@ -131,11 +131,11 @@ jobs:
             TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$DECODED" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$DECODED" 2>/dev/null || echo "3R4W228G24")
             echo "Signing with profile: '$PROFILE_NAME' (UUID: $PROFILE_UUID), team: $TEAM_ID"
 
-            # 1) Configurar el proyecto de Xcode para firma con el perfil importado por su UUID
-            export PROFILE_UUID PROFILE_NAME TEAM_ID
-            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Manual'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['PROVISIONING_PROFILE'] = ENV['PROFILE_UUID']; c.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_UUID']; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID'] } }; prj.save"
+            # 1) Configurar el proyecto de Xcode para firma de archivo flexible
+            export TEAM_ID
+            ruby -e "require 'xcodeproj'; prj = Xcodeproj::Project.open('ios/Runner.xcodeproj'); prj.targets.select { |t| t.name == 'Runner' }.each { |t| t.build_configurations.each { |c| c.build_settings['CODE_SIGN_STYLE'] = 'Automatic'; c.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'; c.build_settings['DEVELOPMENT_TEAM'] = ENV['TEAM_ID']; c.build_settings.delete('PROVISIONING_PROFILE'); c.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER') } }; prj.save"
 
-            # 2) export_options.plist dinámico con el perfil real por UUID y Nombre
+            # 2) export_options.plist dinámico para la fase de exportación final de IPA
             EXPORT_PLIST=$RUNNER_TEMP/export_options.plist
             rm -f "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
@@ -145,10 +145,11 @@ jobs:
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.lldm.bc string $PROFILE_UUID" "$EXPORT_PLIST"
 
-            # 3) Configurar API Key si existe para subida posterior a App Store Connect
+            # 3) Configurar API Key de App Store Connect si existe para permitir auto-actualización en exportación
             if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
               mkdir -p ~/.appstoreconnect/private_keys
               echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+              /usr/libexec/PlistBuddy -c "Add :allowProvisioningUpdates bool true" "$EXPORT_PLIST" 2>/dev/null || true
             fi
 
             # 4) Compilar y exportar el IPA
