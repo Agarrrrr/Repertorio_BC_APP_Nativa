@@ -53,34 +53,59 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'Television2012' }}
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$BUILD_PROVISION_PROFILE_BASE64" ]; then
-            echo "Setting up keychain and signing certificates..."
+            echo "==> [1/6] Decodificando certificado y perfil..."
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
             echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
             echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+            ls -la $CERTIFICATE_PATH $PP_PATH
 
+            echo "==> [2/6] Creando keychain..."
             security create-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
             security unlock-keychain -p "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
+            echo "==> [3/6] Importando certificado P12..."
             security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "${P12_PASSWORD:-Television2012}" -T /usr/bin/codesign
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
 
-            # CRITICO: agregar el keychain a la lista de busqueda. Sin esto,
-            # Xcode NO encuentra el certificado importado e intenta crear uno
-            # nuevo -> error "maximum number of certificates".
+            echo "==> [4/6] Agregando keychain a la lista de busqueda..."
+            # CRITICO: sin esto Xcode no encuentra el certificado e intenta
+            # crear uno nuevo -> error "maximum number of certificates".
             security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
-            security default-keychain -d user -s $KEYCHAIN_PATH
+            security default-keychain -d user -s $KEYCHAIN_PATH || echo "WARN: no se pudo fijar el keychain por defecto (no critico)"
 
-            # Instalar el perfil como <UUID>.mobileprovision (lo que Xcode espera)
+            echo "==> [5/6] Validando provisioning profile..."
             DECODED=$RUNNER_TEMP/profile_decoded.plist
-            security cms -D -i "$PP_PATH" > "$DECODED" 2>/dev/null
+            if ! security cms -D -i "$PP_PATH" > "$DECODED" 2> $RUNNER_TEMP/cms_error.txt; then
+              echo "ERROR: El provisioning profile del secret no es valido."
+              echo "Detalle del error:"
+              cat $RUNNER_TEMP/cms_error.txt
+              echo "Primeros bytes del archivo decodificado:"
+              head -c 120 "$PP_PATH" | xxd | head -8
+              echo ""
+              echo "SOLUCION: regenera el base64 del .mobileprovision SIN saltos de linea."
+              echo "En macOS:   base64 -i perfil.mobileprovision | pbcopy"
+              echo "En Windows: [Convert]::ToBase64String([IO.File]::ReadAllBytes('perfil.mobileprovision')) | Set-Clipboard"
+              exit 1
+            fi
             PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
+            PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
+            echo "Perfil valido: '$PROFILE_NAME' (UUID: $PROFILE_UUID)"
+
+            # Advertir si el perfil es de DESARROLLO (no sirve para app-store)
+            GET_TASK_ALLOW=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:get-task-allow" "$DECODED" 2>/dev/null || echo "false")
+            if [ "$GET_TASK_ALLOW" = "true" ]; then
+              echo "WARN: El perfil es de DESARROLLO (get-task-allow=true)."
+              echo "      Para exportar con method=app-store necesitas un perfil tipo App Store."
+            fi
+
+            echo "==> [6/6] Instalando perfil como $PROFILE_UUID.mobileprovision..."
             mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
             cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-            echo "Certificate & Provisioning Profile installed (UUID: $PROFILE_UUID)."
+            echo "Certificate & Provisioning Profile installed successfully."
           else
             echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
           fi
