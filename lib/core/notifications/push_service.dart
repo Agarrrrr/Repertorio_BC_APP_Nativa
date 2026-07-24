@@ -127,21 +127,36 @@ class PushService {
 
   static Future<String?> getToken() async {
     try {
+      if (Platform.isIOS) {
+        // En iOS, se requiere asegurar que APNs Token esté recibido antes de pedir el FCM Token.
+        String? apnsToken = await _firebaseMessaging.getAPNSToken();
+        if (apnsToken == null) {
+          debugPrint('[PushService] Esperando APNs Token en iOS...');
+          for (int i = 0; i < 6; i++) {
+            await Future.delayed(const Duration(milliseconds: 500));
+            apnsToken = await _firebaseMessaging.getAPNSToken();
+            if (apnsToken != null) break;
+          }
+        }
+        debugPrint('[PushService] APNs Token obtenido: $apnsToken');
+      }
       final token = await _firebaseMessaging.getToken();
       return token;
     } catch (e) {
-      debugPrint('Error obteniendo FCM token: $e');
+      debugPrint('[PushService] Error obteniendo FCM token: $e');
       return null;
     }
   }
 
   static Future<void> requestPermission() async {
     if (Platform.isIOS || Platform.isAndroid) {
-      await _firebaseMessaging.requestPermission(
+      final settings = await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
+        provisional: false,
       );
+      debugPrint('[PushService] Estado de permiso: ${settings.authorizationStatus}');
     }
   }
 
