@@ -103,8 +103,14 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Future<void> _requestPushPermission() async {
-    final settings = await FirebaseMessaging.instance.requestPermission();
-    final isAuthorized = settings.authorizationStatus == AuthorizationStatus.authorized;
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    final isAuthorized = settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+
     setState(() {
       _hasPushPermission = isAuthorized;
     });
@@ -121,6 +127,24 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
             content: Text('¡Notificaciones push activadas con éxito!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('Permiso bloqueado'),
+            content: const Text(
+              'Las notificaciones están desactivadas en los Ajustes de tu iPhone. Para recibirlas, ve a Ajustes del sistema > Repertorio BC > Notificaciones y activa "Permitir notificaciones".',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: const Text('Entendido'),
+              ),
+            ],
           ),
         );
       }
