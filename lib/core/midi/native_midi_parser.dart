@@ -44,6 +44,29 @@ class ParsedMidiSong {
   });
 }
 
+class _TempoEvent {
+  final int tick;
+  final int microsecondsPerQuarter;
+
+  _TempoEvent({required this.tick, required this.microsecondsPerQuarter});
+}
+
+class _RawNote {
+  final int note;
+  final int velocity;
+  final int startTick;
+  final int endTick;
+  final int channel;
+
+  _RawNote({
+    required this.note,
+    required this.velocity,
+    required this.startTick,
+    required this.endTick,
+    required this.channel,
+  });
+}
+
 class NativeMidiParser {
   static ParsedMidiSong parse(Uint8List bytes) {
     if (bytes.length < 14) {
@@ -55,19 +78,93 @@ class NativeMidiParser {
       throw FormatException('Fichero MIDI inválido: no contiene cabecera MThd');
     }
 
-    final format = (bytes[8] << 8) | bytes[9];
     final numTracks = (bytes[10] << 8) | bytes[11];
     final ppq = (bytes[12] << 8) | bytes[13];
 
+    // ── Pasada 1: recolectar TODO el mapa de tempo de TODAS las pistas ──────
+    // (en formato 0 los tempos van en la única pista; en formato 1 van en la
+    // pista 0, pero a veces también hay cambios de tempo en pistas de notas)
+    final List<_TempoEvent> tempoMap = [];
+    int defaultBpm = 120;
+
+    {
+      int off = 14;
+      for (int t = 0; t < numTracks && off < bytes.length; t++) {
+        if (off + 8 > bytes.length) break;
+        final chunkId = String.fromCharCodes(bytes.sublist(off, off + 4));
+        final chunkSize = (bytes[off + 4] << 24) |
+            (bytes[off + 5] << 16) |
+            (bytes[off + 6] << 8) |
+            bytes[off + 7];
+        off += 8;
+
+        if (chunkId != 'MTrk') {
+          off += chunkSize;
+          continue;
+        }
+
+        final trackEnd = off + chunkSize;
+        int curTick = 0;
+        int runStatus = 0;
+
+        while (off < trackEnd && off < bytes.length) {
+          final delta = _readVarInt(bytes, off, (o) => off = o);
+          curTick += delta;
+
+          if (off >= bytes.length) break;
+          int status = bytes[off++];
+
+          if (status == 0xFF) {
+            if (off >= bytes.length) break;
+            final metaType = bytes[off++];
+            final metaLen = _readVarInt(bytes, off, (o) => off = o);
+            if (off + metaLen > bytes.length) break;
+
+            if (metaType == 0x51 && metaLen == 3) {
+              final us = (bytes[off] << 16) |
+                  (bytes[off + 1] << 8) |
+                  bytes[off + 2];
+              if (tempoMap.isEmpty && curTick == 0) {
+                defaultBpm = (60000000 / us).round();
+              }
+              tempoMap.add(_TempoEvent(
+                tick: curTick,
+                microsecondsPerQuarter: us,
+              ));
+            }
+            off += metaLen;
+          } else if (status == 0xF0 || status == 0xF7) {
+            final len = _readVarInt(bytes, off, (o) => off = o);
+            off += len;
+          } else {
+            if ((status & 0x80) == 0) {
+              status = runStatus;
+              off--;
+            } else {
+              runStatus = status;
+            }
+            final command = status & 0xF0;
+            if (command == 0x90 || command == 0x80 ||
+                command == 0xA0 || command == 0xB0 || command == 0xE0) {
+              off += 2;
+            } else if (command == 0xC0 || command == 0xD0) {
+              off += 1;
+            }
+          }
+        }
+
+        off = trackEnd;
+      }
+
+      // Ordenar por tick por si vienen en orden incorrecto
+      tempoMap.sort((a, b) => a.tick.compareTo(b.tick));
+    }
+
+    // ── Pasada 2: extraer notas de todas las pistas ───────────────────────
     int offset = 14;
-    int initialBpm = 120;
     double maxTime = 0.0;
     final List<MidiTrackInfo> trackInfos = [];
 
-    // Estructura interna para seguimiento de tiempos de tempo
-    final List<_TempoEvent> tempoMap = [];
-
-    // Pasada 1: Leer eventos y tempos
     for (int t = 0; t < numTracks && offset < bytes.length; t++) {
       if (offset + 8 > bytes.length) break;
       final chunkHeader = String.fromCharCodes(bytes.sublist(offset, offset + 4));
@@ -86,7 +183,8 @@ class NativeMidiParser {
       int currentTick = 0;
       int runningStatus = 0;
       String trackName = 'Pista ${t + 1}';
-      final Map<int, Map<int, int>> openNotes = {}; // channel -> note -> startTick
+      final Map<int, Map<int, int>> openNotes = {};      // channel -> note -> startTick
+      final Map<int, Map<int, int>> openVelocities = {}; // channel -> note -> velocity
       final List<_RawNote> rawNotes = [];
 
       while (offset < trackEnd && offset < bytes.length) {
@@ -97,33 +195,23 @@ class NativeMidiParser {
         int status = bytes[offset++];
 
         if (status == 0xFF) {
-          // Evento Meta
           if (offset >= bytes.length) break;
           final metaType = bytes[offset++];
           final metaLen = _readVarInt(bytes, offset, (o) => offset = o);
           if (offset + metaLen > bytes.length) break;
 
           if (metaType == 0x03 && metaLen > 0) {
-            trackName = String.fromCharCodes(bytes.sublist(offset, offset + metaLen)).trim();
-          } else if (metaType == 0x51 && metaLen == 3) {
-            final microsecondsPerQuarter =
-                (bytes[offset] << 16) | (bytes[offset + 1] << 8) | bytes[offset + 2];
-            final bpm = (60000000 / microsecondsPerQuarter).round();
-            if (tempoMap.isEmpty && currentTick == 0) {
-              initialBpm = bpm;
-            }
-            tempoMap.add(_TempoEvent(tick: currentTick, microsecondsPerQuarter: microsecondsPerQuarter));
+            trackName = String.fromCharCodes(
+                bytes.sublist(offset, offset + metaLen)).trim();
           }
           offset += metaLen;
         } else if (status == 0xF0 || status == 0xF7) {
-          // SysEx
           final sysExLen = _readVarInt(bytes, offset, (o) => offset = o);
           offset += sysExLen;
         } else {
-          // Evento MIDI normal
           if ((status & 0x80) == 0) {
             status = runningStatus;
-            offset--; // Retroceder porque el byte leído era el primer data byte
+            offset--;
           } else {
             runningStatus = status;
           }
@@ -132,19 +220,22 @@ class NativeMidiParser {
           final channel = status & 0x0F;
 
           if (command == 0x90 || command == 0x80) {
+            if (offset + 1 >= bytes.length) break;
             final note = bytes[offset++];
             final velocity = bytes[offset++];
 
             if (command == 0x90 && velocity > 0) {
-              // Note On
+              // Note On real
               openNotes.putIfAbsent(channel, () => {})[note] = currentTick;
+              openVelocities.putIfAbsent(channel, () => {})[note] = velocity;
             } else {
               // Note Off (0x80 o 0x90 con velocity 0)
               final startTick = openNotes[channel]?.remove(note);
+              final noteVel = openVelocities[channel]?.remove(note) ?? 64;
               if (startTick != null) {
                 rawNotes.add(_RawNote(
                   note: note,
-                  velocity: command == 0x90 ? 80 : velocity,
+                  velocity: noteVel,
                   startTick: startTick,
                   endTick: currentTick,
                   channel: channel,
@@ -159,35 +250,64 @@ class NativeMidiParser {
         }
       }
 
-      // Convertir rawNotes a MidiNoteEvents usando el mapa de tempo
+      // Cerrar notas que no tuvieron Note Off explícito
+      for (final chEntry in openNotes.entries) {
+        final ch = chEntry.key;
+        for (final noteEntry in chEntry.value.entries) {
+          final n = noteEntry.key;
+          final startTick = noteEntry.value;
+          final vel = openVelocities[ch]?[n] ?? 64;
+          rawNotes.add(_RawNote(
+            note: n,
+            velocity: vel,
+            startTick: startTick,
+            endTick: currentTick,
+            channel: ch,
+          ));
+        }
+      }
+
+      // Convertir ticks → segundos con el mapa de tempo completo
       final List<MidiNoteEvent> notes = [];
       for (final rn in rawNotes) {
-        final startTime = _ticksToSeconds(rn.startTick, ppq, tempoMap, initialBpm);
-        final endTime = _ticksToSeconds(rn.endTick, ppq, tempoMap, initialBpm);
+        final startTime = _ticksToSeconds(rn.startTick, ppq, tempoMap, defaultBpm);
+        final endTime = _ticksToSeconds(rn.endTick, ppq, tempoMap, defaultBpm);
         final duration = endTime - startTime;
-        if (endTime > maxTime) maxTime = endTime;
+        if (endTime > maxTime) {
+          maxTime = endTime;
+        }
 
         notes.add(MidiNoteEvent(
           note: rn.note,
           velocity: rn.velocity,
           timeSeconds: startTime,
-          durationSeconds: duration > 0 ? duration : 0.1,
+          durationSeconds: duration > 0 ? duration : 0.25,
           trackIndex: t,
           channel: rn.channel,
         ));
       }
 
+      // Ordenar por tiempo de inicio
+      notes.sort((a, b) => a.timeSeconds.compareTo(b.timeSeconds));
+
       if (notes.isNotEmpty) {
+        String displayName = trackName;
         final lowerName = trackName.toLowerCase();
-        if (lowerName.contains('soprano 2') || lowerName == 's2') trackName = 'S2';
-        else if (lowerName.contains('alto 2') || lowerName == 'a2') trackName = 'A2';
-        else if (lowerName.contains('tenor 2') || lowerName == 't2') trackName = 'T2';
-        else if (lowerName.contains('bajo 2') || lowerName == 'b2') trackName = 'B2';
-        else if (lowerName.contains('baritono') || lowerName.contains('barítono')) trackName = 'Barítono';
+        if (lowerName.contains('soprano 2') || lowerName == 's2') {
+          displayName = 'S2';
+        } else if (lowerName.contains('alto 2') || lowerName == 'a2') {
+          displayName = 'A2';
+        } else if (lowerName.contains('tenor 2') || lowerName == 't2') {
+          displayName = 'T2';
+        } else if (lowerName.contains('bajo 2') || lowerName == 'b2') {
+          displayName = 'B2';
+        } else if (lowerName.contains('baritono') || lowerName.contains('barítono')) {
+          displayName = 'Barítono';
+        }
 
         trackInfos.add(MidiTrackInfo(
           index: t,
-          name: trackName,
+          name: displayName,
           notes: notes,
         ));
       }
@@ -195,13 +315,19 @@ class NativeMidiParser {
       offset = trackEnd;
     }
 
+    // Etiquetas automáticas para MIDIs sin nombre de pista
     if (trackInfos.length == 4) {
       final names = trackInfos.map((t) => t.name.toLowerCase()).toList();
-      final isGeneric = (String n) => n.isEmpty || n.startsWith('pista') || n.contains('piano');
+      bool isGeneric(String n) =>
+          n.isEmpty || n.startsWith('pista') || n.contains('piano');
       if (names.every(isGeneric)) {
         final labels = ['Soprano', 'Alto', 'Tenor', 'Bajo'];
         for (int i = 0; i < 4; i++) {
-          trackInfos[i] = MidiTrackInfo(index: trackInfos[i].index, name: labels[i], notes: trackInfos[i].notes);
+          trackInfos[i] = MidiTrackInfo(
+            index: trackInfos[i].index,
+            name: labels[i],
+            notes: trackInfos[i].notes,
+          );
         }
       }
     }
@@ -209,12 +335,14 @@ class NativeMidiParser {
     return ParsedMidiSong(
       tracks: trackInfos,
       durationSeconds: maxTime,
-      tempoBpm: initialBpm,
+      tempoBpm: defaultBpm,
       ppq: ppq,
     );
   }
 
-  static int _readVarInt(Uint8List bytes, int startOffset, void Function(int) setOffset) {
+  // ── Lectura de variable-length int (VarInt) ─────────────────────────────
+  static int _readVarInt(
+      Uint8List bytes, int startOffset, void Function(int) setOffset) {
     int value = 0;
     int offset = startOffset;
 
@@ -229,6 +357,7 @@ class NativeMidiParser {
     return value;
   }
 
+  // ── Conversión de ticks a segundos respetando cambios de tempo ────────
   static double _ticksToSeconds(
       int ticks, int ppq, List<_TempoEvent> tempoMap, int initialBpm) {
     if (tempoMap.isEmpty) {
@@ -254,27 +383,4 @@ class NativeMidiParser {
 
     return time;
   }
-}
-
-class _RawNote {
-  final int note;
-  final int velocity;
-  final int startTick;
-  final int endTick;
-  final int channel;
-
-  _RawNote({
-    required this.note,
-    required this.velocity,
-    required this.startTick,
-    required this.endTick,
-    required this.channel,
-  });
-}
-
-class _TempoEvent {
-  final int tick;
-  final int microsecondsPerQuarter;
-
-  _TempoEvent({required this.tick, required this.microsecondsPerQuarter});
 }

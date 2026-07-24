@@ -79,7 +79,9 @@ class MidiEngine {
   final Set<int> _playedNoteIndices = {};
   final Map<int, bool> _mutedTracks = {}; // trackIndex -> isMuted
 
-  final _stateController = StreamController<MidiState>.broadcast();
+  // StreamController broadcast: no lo cerramos en dispose() porque el singleton
+  // vive toda la sesión y cerrarlo rompería el stream para siempre.
+  final StreamController<MidiState> _stateController = StreamController<MidiState>.broadcast();
   Stream<MidiState> get stateStream => _stateController.stream;
 
   MidiState _state = const MidiState(isReady: true);
@@ -87,7 +89,7 @@ class MidiEngine {
 
   void _emit(MidiState s) {
     _state = s;
-    _stateController.add(s);
+    if (!_stateController.isClosed) _stateController.add(s);
   }
 
   // Compatibilidad hacia atrás: ya no requiere WebView
@@ -190,12 +192,14 @@ class MidiEngine {
     final targetTime = (porcentaje.clamp(0.0, 1.0)) * _song!.durationSeconds;
     final wasPlaying = _state.isPlaying;
 
+    // Cancelar timer y detener notas actuales
+    _playbackTimer?.cancel();
     _stopwatch.stop();
     _stopAllNotes();
 
+    // Actualizar posición
     _startOffsetSeconds = targetTime;
     _stopwatch.reset();
-
     _playedNoteIndices.clear();
 
     final total = _song!.durationSeconds;
@@ -204,10 +208,13 @@ class MidiEngine {
     _emit(_state.copyWith(
       tiempoActual: targetTime,
       progress: progress,
+      isPlaying: wasPlaying,
     ));
 
+    // Reiniciar el loop de reproducción si estaba sonando
     if (wasPlaying) {
       _stopwatch.start();
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: 20), _onTick);
     }
   }
 
@@ -279,8 +286,12 @@ class MidiEngine {
         midi: note.note,
         velocity: note.velocity,
       );
+      // Programamos el Note Off para que el SoundFont pueda aplicar el decay/release
+      // natural antes de silenciar. Usamos la duración real de la nota + un pequeño
+      // margen para que no se corte el release.
       final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
-      Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
+      final releaseMs = (durMs + 150).clamp(150, 8000);
+      Future.delayed(Duration(milliseconds: releaseMs), () {
         if (_midiPro.initialized) {
           _midiPro.stopMidiNote(midi: note.note);
         }
@@ -298,8 +309,10 @@ class MidiEngine {
     } catch (_) {}
   }
 
+  /// Detiene la reproducción actual. NO cierra el stream (el singleton vive toda la sesión).
   void dispose() {
     stop();
-    _stateController.close();
+    // El StreamController NO se cierra porque el singleton es compartido entre
+    // múltiples instancias de VisorScreen. Cerrarlo rompe el stream para siempre.
   }
 }
