@@ -257,8 +257,9 @@ class MidiEngine {
     try {
       final file = File('assets/Piano.sf2');
       if (await file.exists() && await file.length() > 1000) {
-        await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2');
-        debugPrint('🎵 [NativeMidiEngine] Soundfont Piano.sf2 cargado con éxito (${await file.length()} bytes)');
+        await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2', instrumentIndex: 0);
+        await _midiPro.loadInstrument(instrumentIndex: 0);
+        debugPrint('🎵 [NativeMidiEngine] Soundfont Piano.sf2 cargado y forzado a Piano Acústico (Índice 0)');
       } else {
         debugPrint('⚠️ [NativeMidiEngine] Archivo Piano.sf2 ausente o inválido, omitiendo Soundfont.');
       }
