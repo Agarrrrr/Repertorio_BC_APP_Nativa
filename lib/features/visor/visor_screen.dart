@@ -46,6 +46,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   void initState() {
     super.initState();
     _initMidi();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pdfEngineProvider.notifier).init(widget.cantoId);
+    });
   }
 
   void _initMidi() async {
@@ -253,34 +256,50 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       0.0,     0.0,     0.0,     1.0, 0.0,
     ]);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
 
-            Column(
-              children: [
-                // ── Top Bar ─────────────────────────────────────────────────
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  height: _showTopBar ? 60 : 0,
-                  decoration: BoxDecoration(
-                    color: theme.scaffoldBackgroundColor,
-                    border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
-                  ),
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: SizedBox(
-                      height: 60,
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                            onPressed: () => context.pop(),
-                          ),
+              Column(
+                children: [
+                  // ── Top Bar ─────────────────────────────────────────────────
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: _showTopBar ? 60 : 0,
+                    decoration: BoxDecoration(
+                      color: theme.scaffoldBackgroundColor,
+                      border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                    ),
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: 60,
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/');
+                                }
+                              },
+                            ),
                           Expanded(
                             child: Text(
                               canto.nombre,
@@ -564,6 +583,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
