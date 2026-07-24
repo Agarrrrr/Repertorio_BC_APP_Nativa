@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 /// Estado público del motor de audio.
 class MidiState {
@@ -72,7 +71,6 @@ class MidiEngine {
   MidiEngine._internal();
 
   final _midiPro = MidiPro();
-  bool _midiProInitialized = false;
 
   ParsedMidiSong? _song;
   Timer? _playbackTimer;
@@ -93,7 +91,25 @@ class MidiEngine {
   }
 
   // Compatibilidad hacia atrás: ya no requiere WebView
-  WebViewController? buildController() => null;
+  dynamic buildController() => null;
+
+  /// Inicializa el motor de audio nativo cargando el SoundFont desde los assets
+  /// de Flutter. Debe llamarse una sola vez antes de reproducir.
+  Future<void> initAudio() async {
+    if (_midiPro.initialized) return;
+    try {
+      debugPrint('🎵 [NativeMidiEngine] Cargando SoundFont desde assets...');
+      // loadSoundfont usa rootBundle internamente — el path debe ser el
+      // asset key tal como está declarado en pubspec.yaml.
+      await _midiPro.loadSoundfont(
+        sf2Path: 'assets/Piano.sf2',
+        instrumentIndex: 0, // Acoustic Grand Piano
+      );
+      debugPrint('🎵 [NativeMidiEngine] SoundFont cargado ✓ — Piano Acústico activo');
+    } catch (e, st) {
+      debugPrint('❌ [NativeMidiEngine] Error cargando SoundFont: $e\n$st');
+    }
+  }
 
   Future<void> loadMidi(String filePath, String nombre) async {
     try {
@@ -104,6 +120,10 @@ class MidiEngine {
       }
 
       stop();
+
+      // Aseguramos que el motor de audio esté listo antes de cargar
+      await initAudio();
+
       final bytes = await file.readAsBytes();
       _song = NativeMidiParser.parse(bytes);
 
@@ -125,9 +145,9 @@ class MidiEngine {
         tiempoTotal: _song!.durationSeconds,
         voces: voces,
       ));
-      debugPrint('🎵 [NativeMidiEngine] MIDI cargado nativamente: "$nombre", duración: ${_song!.durationSeconds}s');
+      debugPrint('🎵 [NativeMidiEngine] MIDI cargado: "$nombre", duración: ${_song!.durationSeconds}s');
     } catch (e) {
-      debugPrint('❌ [NativeMidiEngine] Error cargando MIDI nativo: $e');
+      debugPrint('❌ [NativeMidiEngine] Error cargando MIDI: $e');
     }
   }
 
@@ -252,41 +272,19 @@ class MidiEngine {
     }
   }
 
-  Future<void> _ensureMidiProInit() async {
-    if (_midiPro.initialized) return;
+  void _playNativeNote(MidiNoteEvent note) {
+    if (!_midiPro.initialized) return;
     try {
-      final file = File('assets/Piano.sf2');
-      if (await file.exists() && await file.length() > 1000) {
-        await _midiPro.loadSoundfont(sf2Path: 'assets/Piano.sf2', instrumentIndex: 0);
-        await _midiPro.loadInstrument(instrumentIndex: 0);
-        debugPrint('🎵 [NativeMidiEngine] Soundfont Piano.sf2 cargado y forzado a Piano Acústico (Índice 0)');
-      } else {
-        debugPrint('⚠️ [NativeMidiEngine] Archivo Piano.sf2 ausente o inválido, omitiendo Soundfont.');
-      }
-    } catch (e) {
-      debugPrint('⚠️ [NativeMidiEngine] Excepción cargando Soundfont: $e');
-    }
-  }
-
-  void _playNativeNote(MidiNoteEvent note) async {
-    try {
-      if (!_midiPro.initialized) {
-        await _ensureMidiProInit();
-      }
-      if (_midiPro.initialized) {
-        _midiPro.playMidiNote(
-          midi: note.note,
-          velocity: note.velocity,
-        );
-        final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
-        Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
-          if (_midiPro.initialized) {
-            _midiPro.stopMidiNote(
-              midi: note.note,
-            );
-          }
-        });
-      }
+      _midiPro.playMidiNote(
+        midi: note.note,
+        velocity: note.velocity,
+      );
+      final durMs = ((note.durationSeconds / _state.speed) * 1000).round();
+      Future.delayed(Duration(milliseconds: durMs > 50 ? durMs : 50), () {
+        if (_midiPro.initialized) {
+          _midiPro.stopMidiNote(midi: note.note);
+        }
+      });
     } catch (e) {
       debugPrint('❌ [NativeMidiEngine] Error en playMidiNote: $e');
     }
