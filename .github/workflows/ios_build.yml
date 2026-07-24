@@ -79,9 +79,9 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ]; then
-            mkdir -p ~/private_keys
+            mkdir -p ~/.private_keys
             mkdir -p ~/.appstoreconnect/private_keys
-            echo "$APP_STORE_CONNECT_API_KEY" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
             echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
             echo "App Store Connect API Key configured."
           fi
@@ -103,7 +103,7 @@ jobs:
                        -configuration Release \
                        -archivePath $RUNNER_TEMP/Runner.xcarchive \
                        -allowProvisioningUpdates \
-                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
                        -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
                        -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID \
                        archive
@@ -122,7 +122,7 @@ jobs:
                        -exportOptionsPlist ios/export_options.plist \
                        -exportPath build/ios/ipa \
                        -allowProvisioningUpdates \
-                       -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+                       -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
                        -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
                        -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
           else
@@ -137,7 +137,13 @@ jobs:
         run: |
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Uploading IPA to App Store Connect..."
-            xcrun altool --upload-app -f build/ios/ipa/*.ipa \
+            mkdir -p ~/.private_keys ~/.appstoreconnect/private_keys
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            echo "$APP_STORE_CONNECT_API_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+            
+            IPA_FILE=$(ls build/ios/ipa/*.ipa | head -n 1)
+            echo "Uploading $IPA_FILE..."
+            xcrun altool --upload-app -f "$IPA_FILE" \
               --type ios \
               --apiKey "$APP_STORE_CONNECT_KEY_ID" \
               --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
