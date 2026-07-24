@@ -47,8 +47,8 @@ jobs:
 
       - name: Import Signing Certificate & Provisioning Profile (if secrets present)
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD || secrets.P12_PASSWORD }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 || secrets.APPLE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD || secrets.APPLE_P12_PASSWORD }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'Television2012' }}
         run: |
@@ -60,13 +60,6 @@ jobs:
 
             echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
             echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
-
-            # Auto-detección si los secrets fueron intercambiados (un .p12 pesa ~3-4KB, mientras que un .mobileprovision pesa ~12KB)
-            CERT_SIZE=$(wc -c < "$CERTIFICATE_PATH" | tr -d ' ')
-            if [ "$CERT_SIZE" -gt 10000 ] && [ -n "${{ secrets.APPLE_P12_BASE64 }}" ]; then
-              echo "WARN: BUILD_CERTIFICATE_BASE64 contenía un perfil de provisión. Usando APPLE_P12_BASE64..."
-              echo -n "${{ secrets.APPLE_P12_BASE64 }}" | base64 --decode -o $CERTIFICATE_PATH
-            fi
             ls -la $CERTIFICATE_PATH $PP_PATH
 
             echo "==> [2/6] Creando keychain..."
@@ -122,7 +115,7 @@ jobs:
 
       - name: Build iOS App (.ipa or Runner.app)
         env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_P12_BASE64 || secrets.BUILD_CERTIFICATE_BASE64 }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 || secrets.APPLE_P12_BASE64 }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 || secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           APP_STORE_CONNECT_API_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY || secrets.APP_STORE_CONNECT_API_KEY }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
