@@ -91,7 +91,11 @@ class PushService {
               importance: Importance.max,
               priority: Priority.high,
             ),
-            iOS: DarwinNotificationDetails(),
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
           ),
           payload: cantoId != null && cantoId.toString().isNotEmpty ? 'visor_$cantoId' : null,
         );
