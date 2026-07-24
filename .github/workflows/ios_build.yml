@@ -125,7 +125,7 @@ jobs:
             fi
             PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$DECODED")
             PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$DECODED")
-            TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamID:0" "$DECODED")
+            TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$DECODED" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :ApplicationIdentifierPrefix:0" "$DECODED" 2>/dev/null || echo "3R4W228G24")
             echo "Signing with profile: $PROFILE_NAME ($PROFILE_UUID), team: $TEAM_ID"
 
             # 1) Signing MANUAL en el proyecto: usa el certificado y perfil ya
