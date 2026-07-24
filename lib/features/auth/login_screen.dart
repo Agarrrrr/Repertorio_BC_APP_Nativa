@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -386,54 +388,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ).animate().fade(delay: 700.ms).slideY(begin: 0.2, end: 0),
                             
-                            const SizedBox(height: 16),
-                            
-                            // Botón de Google
-                            Container(
-                              constraints: const BoxConstraints(minHeight: 52),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  )
-                                ],
-                              ),
-                              child: ElevatedButton.icon(
-                                onPressed: _isLoading ? null : () {
-                                  setState(() => _isLoading = true);
-                                  AuthController.loginWithGoogle().catchError((e) {
-                                    if (mounted) {
-                                      setState(() {
-                                        _isLoading = false;
-                                        _errorMessage = 'Error con Google: $e';
-                                      });
-                                    }
-                                  });
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.black87, size: 32),
-                                label: Text(
-                                  'Continuar con Google',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ).animate().fade(delay: 750.ms).slideY(begin: 0.2, end: 0),
 
-                            const SizedBox(height: 24),
+
+                            if (kIsWeb || !Platform.isIOS) ...[
+                              const SizedBox(height: 16),
+                              
+                              // Botón de Google (solo visible en Android / Web)
+                              Container(
+                                constraints: const BoxConstraints(minHeight: 52),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    )
+                                  ],
+                                ),
+                                child: ElevatedButton.icon(
+                                  onPressed: _isLoading ? null : () {
+                                    setState(() => _isLoading = true);
+                                    AuthController.loginWithGoogle().catchError((e) {
+                                      if (mounted) {
+                                        setState(() {
+                                          _isLoading = false;
+                                          _errorMessage = 'Error con Google: $e';
+                                        });
+                                      }
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.black87, size: 32),
+                                  label: Text(
+                                    'Continuar con Google',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ).animate().fade(delay: 750.ms).slideY(begin: 0.2, end: 0),
+                            ],
                             
                             Wrap(
                               alignment: WrapAlignment.center,
