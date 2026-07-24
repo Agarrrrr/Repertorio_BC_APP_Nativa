@@ -84,7 +84,7 @@ void _registrarActividad(String userId) {
     .catchError((_) => null); // Silencioso
 }
 
-void _registrarFcmToken(String userId) async {
+void registrarFcmToken(String userId) async {
     final token = await PushService.getToken();
     debugPrint('[FCM] Token obtenido: $token');
     if (token != null) {

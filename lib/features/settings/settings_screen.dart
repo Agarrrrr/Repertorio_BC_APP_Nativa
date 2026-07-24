@@ -104,9 +104,27 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
 
   Future<void> _requestPushPermission() async {
     final settings = await FirebaseMessaging.instance.requestPermission();
+    final isAuthorized = settings.authorizationStatus == AuthorizationStatus.authorized;
     setState(() {
-      _hasPushPermission = settings.authorizationStatus == AuthorizationStatus.authorized;
+      _hasPushPermission = isAuthorized;
     });
+
+    if (isAuthorized) {
+      final user = SupabaseService.client.auth.currentUser;
+      if (user != null) {
+        registrarFcmToken(user.id);
+        await SupabaseService.client.from('perfiles').update({'notificaciones_activas': true}).eq('id', user.id);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Notificaciones push activadas con éxito!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
