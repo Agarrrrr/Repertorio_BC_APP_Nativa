@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
@@ -66,10 +67,12 @@ class MidiVoz {
 
 /// Motor de audio MIDI 100% Nativo en Flutter utilizando [MidiPro]
 /// (FluidSynth en Android y AVFoundation/AudioUnits en iOS).
-class MidiEngine {
+class MidiEngine with WidgetsBindingObserver {
   static final MidiEngine _instance = MidiEngine._internal();
   factory MidiEngine() => _instance;
-  MidiEngine._internal();
+  MidiEngine._internal() {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   final _midiPro = MidiPro();
   final _metronomePlayer = AudioPlayer();
@@ -110,6 +113,37 @@ class MidiEngine {
 
   // Compatibilidad hacia atrás: ya no requiere WebView
   dynamic buildController() => null;
+
+  // ── Manejo del ciclo de vida de la app (iOS background audio) ──────────────
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState appState) {
+    if (!Platform.isIOS) return;
+    if (appState == AppLifecycleState.resumed) {
+      _reinitAudioAfterResume();
+    }
+  }
+
+  /// Al regresar del background en iOS, AVFoundation puede haber invalidado
+  /// la sesión de audio. Reinicializamos el SoundFont si hay un canto cargado
+  /// para restaurar el sonido del piano.
+  Future<void> _reinitAudioAfterResume() async {
+    if (_song == null) return;
+    debugPrint('🎵 [MidiEngine] iOS resume — reinicializando SoundFont...');
+    try {
+      // Reactivar la sesión de audio de iOS
+      AudioPlayer.global.setAudioContext(AudioContext(
+        iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+      ));
+      // Recargar el SoundFont para restaurar FluidSynth
+      await _midiPro.loadSoundfont(
+        sf2Path: 'assets/Piano.sf2',
+        instrumentIndex: 0,
+      );
+      debugPrint('🎵 [MidiEngine] SoundFont restaurado tras resume ✓');
+    } catch (e) {
+      debugPrint('❌ [MidiEngine] Error restaurando audio tras resume: $e');
+    }
+  }
 
   /// Inicializa el motor de audio nativo cargando el SoundFont desde los assets
   /// de Flutter. Debe llamarse una sola vez antes de reproducir.
@@ -256,11 +290,33 @@ class MidiEngine {
     }
   }
 
+  /// FIX: Cambio de velocidad sin re-disparar notas ya tocadas.
+  ///
+  /// Antes: pause() → play() limpiaba el epoch y el _startOffsetSeconds
+  /// pero conservaba _playedNoteIndices, haciendo que al re-evaluar con
+  /// la misma posición de tiempo se dispararan todas las notas de golpe.
+  ///
+  /// Ahora: capturamos la posición actual, cancelamos el timer, actualizamos
+  /// el offset y la velocidad sin tocar _playedNoteIndices, y reiniciamos
+  /// el stopwatch. El epoch se incrementa para invalidar los Note-Off pendientes
+  /// de la velocidad anterior.
   void setSpeed(double speed) {
     if (_state.isPlaying) {
-      pause();
-      _emit(_state.copyWith(speed: speed));
-      play();
+      final currentTime = _getCurrentTimeSeconds();
+
+      _stopwatch.stop();
+      _playbackTimer?.cancel();
+      _playbackEpoch++;    // Invalidar Note-Off pendientes de la velocidad anterior
+      _stopAllNotes();
+
+      // Preservar _playedNoteIndices — no limpiarlos evita el disparo masivo
+      _startOffsetSeconds = currentTime;
+      _stopwatch.reset();
+
+      _emit(_state.copyWith(speed: speed, isPlaying: true));
+
+      _stopwatch.start();
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: 20), _onTick);
     } else {
       _emit(_state.copyWith(speed: speed));
     }
@@ -361,7 +417,7 @@ class MidiEngine {
   /// El sistema de "generación" resuelve el staccato: si la misma nota se
   /// re-dispara antes de que termine la instancia anterior, el stop pendiente
   /// de la instancia vieja se ignora y solo cuenta el de la más reciente.
-  /// El "epoch" invalida stops pendientes tras pause/stop/seek.
+  /// El "epoch" invalida stops pendientes tras pause/stop/seek/setSpeed.
   void _playNativeNote(MidiNoteEvent note) {
     if (!_midiPro.initialized) return;
     try {
@@ -381,7 +437,7 @@ class MidiEngine {
       final durMs = ((note.durationSeconds / _state.speed) * 1000).round().clamp(80, 30000);
       Future.delayed(Duration(milliseconds: durMs), () {
         if (!_midiPro.initialized) return;
-        if (_playbackEpoch != epoch) return;       // hubo pause/stop/seek
+        if (_playbackEpoch != epoch) return;       // hubo pause/stop/seek/setSpeed
         if (_noteGeneration[pitch] != gen) return; // nota re-disparada
         _midiPro.stopMidiNote(midi: pitch);
       });
@@ -401,6 +457,7 @@ class MidiEngine {
   /// Detiene la reproducción actual. NO cierra el stream (el singleton vive toda la sesión).
   void dispose() {
     stop();
+    WidgetsBinding.instance.removeObserver(this);
     // El StreamController NO se cierra porque el singleton es compartido entre
     // múltiples instancias de VisorScreen. Cerrarlo rompe el stream para siempre.
   }
