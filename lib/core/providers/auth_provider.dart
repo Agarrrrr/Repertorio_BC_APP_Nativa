@@ -46,7 +46,7 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
     // Registrar actividad y FCM Token inmediatamente al detectar sesión activa,
     // de forma independiente al éxito de la consulta del perfil en red.
     _registrarActividad(user.id);
-    _registrarFcmToken(user.id);
+    registrarFcmToken(user.id);
 
     try {
       final box = Hive.box('cache');
