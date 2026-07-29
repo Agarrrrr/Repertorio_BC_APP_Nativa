@@ -597,7 +597,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Widget _buildColorDot(Color color, Color selectedColor) {
-    final isSelected = color.toARGB32() == selectedColor.toARGB32();
+    // `.value` mantiene compatibilidad con Flutter 3.24 usado por Actions.
+    final isSelected = color.value == selectedColor.value;
     return GestureDetector(
       onTap: () => ref.read(accentColorProvider.notifier).set(color),
       child: Container(

@@ -98,14 +98,32 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_KEY_ID || secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
+          run_with_diagnostics() {
+            local title="$1"
+            shift
+            local log_file="$RUNNER_TEMP/ios-build-command.log"
+            set +e
+            "$@" 2>&1 | tee "$log_file"
+            local command_status=${PIPESTATUS[0]}
+            set -e
+            if [ "$command_status" -ne 0 ]; then
+              local summary
+              summary=$(tail -n 30 "$log_file" | tr '\n' ' ' | sed 's/%/%25/g')
+              echo "::error title=$title::$summary"
+              return "$command_status"
+            fi
+          }
+
           echo "Building Flutter iOS release..."
           BUILD_NUMBER=$((33 + GITHUB_RUN_NUMBER))
           echo "Using App Store build number $BUILD_NUMBER"
-          flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
+          run_with_diagnostics "Flutter iOS build failed" \
+            flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
-            xcodebuild -workspace ios/Runner.xcworkspace \
+            run_with_diagnostics "Xcode archive failed" \
+              xcodebuild -workspace ios/Runner.xcworkspace \
                        -scheme Runner \
                        -sdk iphoneos \
                        -configuration Release \
@@ -125,7 +143,8 @@ jobs:
 
             echo "Exporting IPA with xcodebuild..."
             mkdir -p build/ios/ipa
-            xcodebuild -exportArchive \
+            run_with_diagnostics "Xcode IPA export failed" \
+              xcodebuild -exportArchive \
                        -archivePath $RUNNER_TEMP/Runner.xcarchive \
                        -exportOptionsPlist ios/export_options.plist \
                        -exportPath build/ios/ipa \
