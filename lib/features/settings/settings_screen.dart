@@ -63,7 +63,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           .or('coro_id.eq.${perfil.coroId},coro_id.eq.estatal')
           .order('creado_en', ascending: false)
           .limit(6);
-      
+
       box.put('avisos_json', jsonEncode(res));
 
       if (mounted) {
@@ -86,7 +86,9 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     try {
       final date = DateTime.parse(creadoEnStr).toLocal();
       final now = DateTime.now();
-      if (date.year == now.year && date.month == now.month && date.day == now.day) {
+      if (date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day) {
         return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
       }
       return '${date.day}/${date.month}';
@@ -98,7 +100,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   Future<void> _checkPushPermission() async {
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     setState(() {
-      _hasPushPermission = settings.authorizationStatus == AuthorizationStatus.authorized;
+      _hasPushPermission =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
     });
   }
 
@@ -108,8 +111,9 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
       badge: true,
       sound: true,
     );
-    final isAuthorized = settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional;
+    final isAuthorized =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
 
     setState(() {
       _hasPushPermission = isAuthorized;
@@ -119,7 +123,9 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
       final user = SupabaseService.client.auth.currentUser;
       if (user != null) {
         registrarFcmToken(user.id);
-        await SupabaseService.client.from('perfiles').update({'notificaciones_activas': true}).eq('id', user.id);
+        await SupabaseService.client
+            .from('perfiles')
+            .update({'notificaciones_activas': true}).eq('id', user.id);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -206,12 +212,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: confirmationController,
             builder: (context, value, child) {
-              final canDelete =
-                  value.text.trim().toUpperCase() == 'ELIMINAR';
+              final canDelete = value.text.trim().toUpperCase() == 'ELIMINAR';
               return FilledButton(
-                onPressed: canDelete
-                    ? () => Navigator.pop(dialogContext, true)
-                    : null,
+                onPressed:
+                    canDelete ? () => Navigator.pop(dialogContext, true) : null,
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 child: const Text('Eliminar definitivamente'),
               );
@@ -250,12 +254,53 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     }
   }
 
+  Future<void> _openAccountAndPrivacy() async {
+    final wantsToDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.manage_accounts_outlined),
+        title: const Text('Cuenta y privacidad'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Eliminar cuenta',
+                style: TextStyle(color: Colors.red),
+              ),
+              subtitle: const Text(
+                'Elimina permanentemente tu perfil y datos personales.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.pop(dialogContext, true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+
+    if (wantsToDelete == true && mounted) {
+      await _confirmAndDeleteAccount();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
     final accentColor = ref.watch(accentColorProvider);
     final isCarousel = ref.watch(pdfNavModeProvider);
-    
+
     // Auth Data
     final user = ref.watch(authUserProvider).value;
     final perfil = ref.watch(perfilProvider).value;
@@ -283,13 +328,14 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.close_rounded,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // 1. PERFIL
               _buildSectionTitle('PERFIL DE USUARIO'),
               Container(
@@ -306,12 +352,18 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                   children: [
                     Text(
                       perfil?.nombre ?? 'Cargando...',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.onSurface),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      user?.isAnonymous == true ? 'Cuenta de Invitado' : (user?.email ?? 'Cargando...'),
-                      style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade600),
+                      user?.isAnonymous == true
+                          ? 'Cuenta de Invitado'
+                          : (user?.email ?? 'Cargando...'),
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -319,157 +371,223 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                            if (user?.isAnonymous == true)
-                              TextButton.icon(
-                                onPressed: () async {
-                                  final emailCtrl = TextEditingController();
-                                  final passCtrl = TextEditingController();
-                                  await showDialog<bool>(
-                                    context: context,
-                                    builder: (c) => AlertDialog(
-                                      title: const Text('Vincular Correo'),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextField(
-                                            controller: emailCtrl,
-                                            keyboardType: TextInputType.emailAddress,
-                                            decoration: const InputDecoration(labelText: 'Correo Electrónico'),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          TextField(
-                                            controller: passCtrl,
-                                            obscureText: true,
-                                            decoration: const InputDecoration(labelText: 'Contraseña'),
-                                          ),
-                                        ],
+                        if (user?.isAnonymous == true)
+                          TextButton.icon(
+                            onPressed: () async {
+                              final emailCtrl = TextEditingController();
+                              final passCtrl = TextEditingController();
+                              await showDialog<bool>(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text('Vincular Correo'),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextField(
+                                        controller: emailCtrl,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Correo Electrónico'),
                                       ),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
-                                        TextButton(
-                                          onPressed: () async {
-                                            if (emailCtrl.text.isNotEmpty && passCtrl.text.isNotEmpty) {
-                                              try {
-                                                await SupabaseService.client.auth.updateUser(UserAttributes(email: emailCtrl.text, password: passCtrl.text));
-                                                if (c.mounted) {
-                                                  Navigator.pop(c, true);
-                                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cuenta vinculada correctamente', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
-                                                }
-                                              } catch (e) {
-                                                if (c.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                                              }
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: passCtrl,
+                                        obscureText: true,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Contraseña'),
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(c, false),
+                                        child: const Text('Cancelar')),
+                                    TextButton(
+                                      onPressed: () async {
+                                        if (emailCtrl.text.isNotEmpty &&
+                                            passCtrl.text.isNotEmpty) {
+                                          try {
+                                            await SupabaseService.client.auth
+                                                .updateUser(UserAttributes(
+                                                    email: emailCtrl.text,
+                                                    password: passCtrl.text));
+                                            if (c.mounted) {
+                                              Navigator.pop(c, true);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(const SnackBar(
+                                                      content: Text(
+                                                          'Cuenta vinculada correctamente',
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .white)),
+                                                      backgroundColor:
+                                                          Colors.green));
                                             }
-                                          }, 
-                                          child: const Text('Vincular'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.link_rounded, size: 18, color: Colors.green),
-                                label: Text('Vincular', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
-                            if (user?.isAnonymous != true)
-                              TextButton.icon(
-                                onPressed: () async {
-                                  final passCtrl = TextEditingController();
-                                  final confirmCtrl = TextEditingController();
-                                await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Cambiar Contraseña'),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        TextField(
-                                          controller: passCtrl,
-                                          obscureText: true,
-                                          decoration: const InputDecoration(labelText: 'Nueva Contraseña'),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        TextField(
-                                          controller: confirmCtrl,
-                                          obscureText: true,
-                                          decoration: const InputDecoration(labelText: 'Confirmar Contraseña'),
-                                        ),
-                                      ],
-                                    ),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
-                                      TextButton(
-                                        onPressed: () async {
-                                          if (passCtrl.text.isNotEmpty && passCtrl.text == confirmCtrl.text) {
-                                            try {
-                                              await SupabaseService.client.auth.updateUser(UserAttributes(password: passCtrl.text));
-                                              if (c.mounted) {
-                                                Navigator.pop(c, true);
-                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
-                                              }
-                                            } catch (e) {
-                                              if (c.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                                            }
-                                          } else {
-                                            ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Las contraseñas no coinciden')));
+                                          } catch (e) {
+                                            if (c.mounted)
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                      content:
+                                                          Text('Error: $e')));
                                           }
-                                        }, 
-                                        child: const Text('Guardar'),
+                                        }
+                                      },
+                                      child: const Text('Vincular'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.link_rounded,
+                                size: 18, color: Colors.green),
+                            label: Text('Vincular',
+                                style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        if (user?.isAnonymous != true)
+                          TextButton.icon(
+                            onPressed: () async {
+                              final passCtrl = TextEditingController();
+                              final confirmCtrl = TextEditingController();
+                              await showDialog<bool>(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text('Cambiar Contraseña'),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextField(
+                                        controller: passCtrl,
+                                        obscureText: true,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Nueva Contraseña'),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: confirmCtrl,
+                                        obscureText: true,
+                                        decoration: const InputDecoration(
+                                            labelText: 'Confirmar Contraseña'),
                                       ),
                                     ],
                                   ),
-                                );
-                              },
-                              icon: const Icon(Icons.key_rounded, size: 18, color: Colors.blue),
-                              label: Text('Clave', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue)),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(c, false),
+                                        child: const Text('Cancelar')),
+                                    TextButton(
+                                      onPressed: () async {
+                                        if (passCtrl.text.isNotEmpty &&
+                                            passCtrl.text == confirmCtrl.text) {
+                                          try {
+                                            await SupabaseService.client.auth
+                                                .updateUser(UserAttributes(
+                                                    password: passCtrl.text));
+                                            if (c.mounted) {
+                                              Navigator.pop(c, true);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(const SnackBar(
+                                                      content: Text(
+                                                          'Contraseña actualizada',
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .white)),
+                                                      backgroundColor:
+                                                          Colors.green));
+                                            }
+                                          } catch (e) {
+                                            if (c.mounted)
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                      content:
+                                                          Text('Error: $e')));
+                                          }
+                                        } else {
+                                          ScaffoldMessenger.of(c).showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'Las contraseñas no coinciden')));
+                                        }
+                                      },
+                                      child: const Text('Guardar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.key_rounded,
+                                size: 18, color: Colors.blue),
+                            label: Text('Clave',
+                                style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            TextButton.icon(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Cerrar Sesión'),
-                                    content: const Text('¿Estás seguro de que deseas salir?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(c, true), 
-                                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                        child: const Text('Salir'),
-                                      ),
-                                    ],
+                          ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('Cerrar Sesión'),
+                                content: const Text(
+                                    '¿Estás seguro de que deseas salir?'),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(c, false),
+                                      child: const Text('Cancelar')),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, true),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red),
+                                    child: const Text('Salir'),
                                   ),
-                                );
-                                if (confirm == true) {
-                                  if (context.mounted) Navigator.pop(context);
-                                  await AuthController.logout();
-                                }
-                              },
-                              icon: const Icon(Icons.logout_rounded, size: 18, color: Colors.red),
-                              label: Text('Salir', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red)),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ],
                               ),
-                            ),
+                            );
+                            if (confirm == true) {
+                              if (context.mounted) Navigator.pop(context);
+                              await AuthController.logout();
+                            }
+                          },
+                          icon: const Icon(Icons.logout_rounded,
+                              size: 18, color: Colors.red),
+                          label: Text('Salir',
+                              style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
                       ],
                     ),
                     const Divider(height: 28),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: _isDeletingAccount
-                            ? null
-                            : _confirmAndDeleteAccount,
+                        onPressed:
+                            _isDeletingAccount ? null : _openAccountAndPrivacy,
                         icon: _isDeletingAccount
                             ? const SizedBox(
                                 width: 18,
@@ -478,17 +596,11 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.delete_forever_rounded),
+                            : const Icon(Icons.manage_accounts_outlined),
                         label: Text(
                           _isDeletingAccount
                               ? 'Eliminando cuenta...'
-                              : 'Eliminar cuenta',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: BorderSide(
-                            color: Colors.red.withOpacity(0.55),
-                          ),
+                              : 'Cuenta y privacidad',
                         ),
                       ),
                     ),
@@ -515,16 +627,24 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildColorDot(const Color(0xFFD4AF37), accentColor), // Dorado
+                  _buildColorDot(
+                      const Color(0xFFD4AF37), accentColor), // Dorado
                   _buildColorDot(const Color(0xFF3B82F6), accentColor), // Azul
                   _buildColorDot(const Color(0xFF10B981), accentColor), // Verde
-                  _buildColorDot(const Color(0xFFEF4444), accentColor), // Carmesí
-                  _buildColorDot(const Color(0xFF8B5CF6), accentColor), // Púrpura
-                  _buildColorDot(const Color(0xFFF97316), accentColor), // Naranja
-                  _buildColorDot(const Color(0xFF06B6D4), accentColor), // Cian (Teal)
-                  _buildColorDot(const Color(0xFFEC4899), accentColor), // Rosa (Magenta)
-                  _buildColorDot(const Color(0xFF6366F1), accentColor), // Índigo
-                  _buildColorDot(const Color(0xFF64748B), accentColor), // Plata (Slate)
+                  _buildColorDot(
+                      const Color(0xFFEF4444), accentColor), // Carmesí
+                  _buildColorDot(
+                      const Color(0xFF8B5CF6), accentColor), // Púrpura
+                  _buildColorDot(
+                      const Color(0xFFF97316), accentColor), // Naranja
+                  _buildColorDot(
+                      const Color(0xFF06B6D4), accentColor), // Cian (Teal)
+                  _buildColorDot(
+                      const Color(0xFFEC4899), accentColor), // Rosa (Magenta)
+                  _buildColorDot(
+                      const Color(0xFF6366F1), accentColor), // Índigo
+                  _buildColorDot(
+                      const Color(0xFF64748B), accentColor), // Plata (Slate)
                 ],
               ),
               const SizedBox(height: 24),
@@ -538,7 +658,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                       title: 'Desplazamiento',
                       icon: Icons.swap_vert_rounded,
                       isSelected: !isCarousel,
-                      onTap: () => ref.read(pdfNavModeProvider.notifier).set(false),
+                      onTap: () =>
+                          ref.read(pdfNavModeProvider.notifier).set(false),
                       accentColor: accentColor,
                     ),
                   ),
@@ -548,7 +669,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                       title: 'Carrusel',
                       icon: Icons.view_carousel_rounded,
                       isSelected: isCarousel,
-                      onTap: () => ref.read(pdfNavModeProvider.notifier).set(true),
+                      onTap: () =>
+                          ref.read(pdfNavModeProvider.notifier).set(true),
                       accentColor: accentColor,
                     ),
                   ),
@@ -562,16 +684,20 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 context: context,
                 title: 'Normal (Día/Noche)',
                 icon: Icons.light_mode_rounded,
-                isSelected: currentTheme == AppThemeMode.claro || currentTheme == AppThemeMode.oscuro,
-                onTap: () => ref.read(themeProvider.notifier).setProfileNormal(),
+                isSelected: currentTheme == AppThemeMode.claro ||
+                    currentTheme == AppThemeMode.oscuro,
+                onTap: () =>
+                    ref.read(themeProvider.notifier).setProfileNormal(),
                 accentColor: accentColor,
               ),
               _buildThemeOption(
                 context: context,
                 title: 'Lectura (Sepia/Quiet)',
                 icon: Icons.auto_stories_rounded,
-                isSelected: currentTheme == AppThemeMode.sepia || currentTheme == AppThemeMode.quiet,
-                onTap: () => ref.read(themeProvider.notifier).setProfileLectura(),
+                isSelected: currentTheme == AppThemeMode.sepia ||
+                    currentTheme == AppThemeMode.quiet,
+                onTap: () =>
+                    ref.read(themeProvider.notifier).setProfileLectura(),
                 accentColor: accentColor,
               ),
             ],
@@ -607,12 +733,19 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
+          border: isSelected
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.onSurface, width: 3)
+              : null,
           boxShadow: [
-            if (isSelected) BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)
+            if (isSelected)
+              BoxShadow(
+                  color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)
           ],
         ),
-        child: isSelected ? const Icon(Icons.check_rounded, color: Colors.white, size: 20) : null,
+        child: isSelected
+            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+            : null,
       ),
     );
   }
@@ -643,8 +776,12 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, anim) => RotationTransition(turns: Tween(begin: 0.9, end: 1.0).animate(anim), child: FadeTransition(opacity: anim, child: child)),
-              child: Icon(icon, key: ValueKey(isSelected), color: isSelected ? accentColor : Colors.grey),
+              transitionBuilder: (child, anim) => RotationTransition(
+                  turns: Tween(begin: 0.9, end: 1.0).animate(anim),
+                  child: FadeTransition(opacity: anim, child: child)),
+              child: Icon(icon,
+                  key: ValueKey(isSelected),
+                  color: isSelected ? accentColor : Colors.grey),
             ),
             const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
@@ -689,25 +826,38 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, anim) => RotationTransition(turns: Tween(begin: 0.9, end: 1.0).animate(anim), child: FadeTransition(opacity: anim, child: child)),
-              child: Icon(icon, key: ValueKey(isSelected), color: isSelected ? accentColor : Colors.grey, size: 20),
+              transitionBuilder: (child, anim) => RotationTransition(
+                  turns: Tween(begin: 0.9, end: 1.0).animate(anim),
+                  child: FadeTransition(opacity: anim, child: child)),
+              child: Icon(icon,
+                  key: ValueKey(isSelected),
+                  color: isSelected ? accentColor : Colors.grey,
+                  size: 20),
             ),
             const SizedBox(width: 16),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 300),
               style: GoogleFonts.inter(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? accentColor : Theme.of(context).colorScheme.onSurface,
+                color: isSelected
+                    ? accentColor
+                    : Theme.of(context).colorScheme.onSurface,
               ),
               child: Text(title),
             ),
             const Spacer(),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
-              child: isSelected 
-                  ? Icon(Icons.check_circle_rounded, key: const ValueKey('check'), color: accentColor, size: 20)
-                  : const SizedBox(key: ValueKey('empty'), width: 20, height: 20),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: anim,
+                  child: FadeTransition(opacity: anim, child: child)),
+              child: isSelected
+                  ? Icon(Icons.check_circle_rounded,
+                      key: const ValueKey('check'),
+                      color: accentColor,
+                      size: 20)
+                  : const SizedBox(
+                      key: ValueKey('empty'), width: 20, height: 20),
             ),
           ],
         ),
@@ -765,17 +915,20 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           final mensaje = aviso['mensaje'] as String? ?? '';
           final tipo = aviso['tipo'] as String? ?? 'RECORDATORIO';
           final creadoEn = aviso['creado_en'] as String? ?? '';
-          
+
           final metadata = aviso['metadata'] as Map<String, dynamic>?;
           final cantoId = metadata?['id_canto'];
           final esVivo = tipo == 'VIVO';
 
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             dense: true,
             leading: CircleAvatar(
               radius: 14,
-              backgroundColor: esVivo ? Colors.red.withOpacity(0.1) : accentColor.withOpacity(0.1),
+              backgroundColor: esVivo
+                  ? Colors.red.withOpacity(0.1)
+                  : accentColor.withOpacity(0.1),
               child: Icon(
                 esVivo ? Icons.live_tv_rounded : Icons.campaign_rounded,
                 size: 14,
@@ -788,7 +941,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontSize: 12.5,
-                fontWeight: cantoId != null ? FontWeight.w600 : FontWeight.normal,
+                fontWeight:
+                    cantoId != null ? FontWeight.w600 : FontWeight.normal,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
