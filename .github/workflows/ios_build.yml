@@ -55,10 +55,11 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
-            if [ -z "$P12_PASSWORD" ] || [ -z "$KEYCHAIN_PASSWORD" ]; then
-              echo "::error::APPLE_P12_PASSWORD/P12_PASSWORD and KEYCHAIN_PASSWORD are required when a signing certificate is configured."
+            if [ -z "$P12_PASSWORD" ]; then
+              echo "::error::APPLE_P12_PASSWORD or P12_PASSWORD is required when a signing certificate is configured."
               exit 1
             fi
+            KEYCHAIN_PASSWORD="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 24)}"
             echo "Setting up keychain and signing certificates..."
             export CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
