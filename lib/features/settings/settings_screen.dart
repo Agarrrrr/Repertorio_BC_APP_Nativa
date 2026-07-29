@@ -10,7 +10,6 @@ import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:repertorio_bc/app/color_extensions.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key});
@@ -24,6 +23,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   List<Map<String, dynamic>> _lastNotifications = [];
   bool _loadingNotifications = true;
   bool _isInit = false;
+  bool _isDeletingAccount = false;
 
   @override
   void initState() {
@@ -148,6 +148,105 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _confirmAndDeleteAccount() async {
+    final understood = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red),
+        title: const Text('Eliminar cuenta permanentemente'),
+        content: const Text(
+          'Se eliminarán tu cuenta, perfil, suscripciones de notificaciones '
+          'y demás datos personales asociados. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Continuar'),
+          ),
+        ],
+      ),
+    );
+    if (understood != true || !mounted) return;
+
+    final confirmationController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Escribe ELIMINAR para confirmar.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmationController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'ELIMINAR',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: confirmationController,
+            builder: (context, value, child) {
+              final canDelete =
+                  value.text.trim().toUpperCase() == 'ELIMINAR';
+              return FilledButton(
+                onPressed: canDelete
+                    ? () => Navigator.pop(dialogContext, true)
+                    : null,
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Eliminar definitivamente'),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+    confirmationController.dispose();
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeletingAccount = true);
+    try {
+      await AuthController.deleteAccount();
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu cuenta y tus datos fueron eliminados.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo eliminar la cuenta. Comprueba tu conexión e inténtalo '
+            'de nuevo.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      debugPrint('Error eliminando cuenta: $error');
     }
   }
 
@@ -363,6 +462,35 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                               ),
                             ),
                       ],
+                    ),
+                    const Divider(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isDeletingAccount
+                            ? null
+                            : _confirmAndDeleteAccount,
+                        icon: _isDeletingAccount
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.delete_forever_rounded),
+                        label: Text(
+                          _isDeletingAccount
+                              ? 'Eliminando cuenta...'
+                              : 'Eliminar cuenta',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: BorderSide(
+                            color: Colors.red.withOpacity(0.55),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -125,4 +125,41 @@ class AuthController {
   static Future<void> logout() async {
     await SupabaseService.client.auth.signOut();
   }
+
+  /// Elimina permanentemente al usuario autenticado y todos los datos que
+  /// dependan de auth.users mediante las reglas ON DELETE de la base de datos.
+  ///
+  /// La función RPC es SECURITY DEFINER y solo puede borrar auth.uid(), por lo
+  /// que el cliente nunca recibe credenciales administrativas.
+  static Future<void> deleteAccount() async {
+    if (SupabaseService.client.auth.currentUser == null) {
+      throw const supabase.AuthException(
+        'La sesión expiró. Inicia sesión de nuevo para eliminar tu cuenta.',
+      );
+    }
+
+    await SupabaseService.client.rpc('eliminar_mi_cuenta');
+
+    // El usuario ya no existe en el servidor. Limpiamos la sesión persistida y
+    // los datos personales almacenados en el dispositivo.
+    try {
+      await SupabaseService.client.auth.signOut(
+        scope: supabase.SignOutScope.local,
+      );
+    } catch (_) {
+      // La revocación remota puede responder "usuario inexistente"; el borrado
+      // ya se completó, así que la limpieza local debe continuar.
+    }
+
+    final cache = Hive.box('cache');
+    await Future.wait([
+      cache.delete('perfil_json'),
+      cache.delete('avisos_json'),
+      cache.delete('eventos_permanentes'),
+    ]);
+
+    if (Hive.isBoxOpen('favoritos_box')) {
+      await Hive.box('favoritos_box').clear();
+    }
+  }
 }

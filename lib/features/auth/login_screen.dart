@@ -25,7 +25,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-  
+
+  bool get _isIos => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
   // Anti-Brute Force
   int _failedAttempts = 0;
   DateTime? _lockoutUntil;
@@ -45,7 +47,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final box = Hive.box('cache');
     _failedAttempts = box.get('login_failed_attempts', defaultValue: 0);
     final lockoutMillis = box.get('login_lockout_until');
-    
+
     if (lockoutMillis != null) {
       final lockoutTime = DateTime.fromMillisecondsSinceEpoch(lockoutMillis);
       if (lockoutTime.isAfter(DateTime.now())) {
@@ -87,7 +89,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final minutes = diff.inMinutes;
     final seconds = diff.inSeconds % 60;
     setState(() {
-      _lockoutMessage = 'Demasiados intentos. Intenta en ${minutes}m ${seconds}s';
+      _lockoutMessage =
+          'Demasiados intentos. Intenta en ${minutes}m ${seconds}s';
     });
   }
 
@@ -122,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         _failedAttempts++;
         final box = Hive.box('cache');
-        
+
         if (_failedAttempts >= 5) {
           final lockoutTime = DateTime.now().add(const Duration(minutes: 3));
           _lockoutUntil = lockoutTime;
@@ -134,7 +137,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         } else {
           box.put('login_failed_attempts', _failedAttempts);
           setState(() {
-            _errorMessage = "Credenciales incorrectas. Te quedan ${5 - _failedAttempts} intentos.";
+            _errorMessage =
+                "Credenciales incorrectas. Te quedan ${5 - _failedAttempts} intentos.";
           });
         }
       }
@@ -160,13 +164,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF001533), Color(0xFF0033A0), Color(0xFF0F52BA)], // Azul Rey profundo
+                colors: [
+                  Color(0xFF001533),
+                  Color(0xFF0033A0),
+                  Color(0xFF0F52BA)
+                ], // Azul Rey profundo
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
-          
+
           // Circulos decorativos de fondo (Glassmorphism effect support)
           Positioned(
             top: -100,
@@ -176,10 +184,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFD4AF37).withOpacity(0.15), // Círculo dorado
+                color:
+                    const Color(0xFFD4AF37).withOpacity(0.15), // Círculo dorado
               ),
-            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-             .scale(duration: 4.seconds, begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1)),
+            )
+                .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true))
+                .scale(
+                    duration: 4.seconds,
+                    begin: const Offset(0.9, 0.9),
+                    end: const Offset(1.1, 1.1)),
           ),
           Positioned(
             bottom: -150,
@@ -189,10 +203,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF0055FF).withOpacity(0.1), // Círculo azul vibrante
+                color: const Color(0xFF0055FF)
+                    .withOpacity(0.1), // Círculo azul vibrante
               ),
-            ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-             .move(duration: 5.seconds, begin: const Offset(0, 20), end: const Offset(0, -20)),
+            )
+                .animate(
+                    onPlay: (controller) => controller.repeat(reverse: true))
+                .move(
+                    duration: 5.seconds,
+                    begin: const Offset(0, 20),
+                    end: const Offset(0, -20)),
           ),
 
           // Contenido principal
@@ -206,11 +226,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 32, vertical: 48),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: AutofillGroup(
                         child: Column(
@@ -221,7 +243,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               Icons.music_note_rounded,
                               size: 72,
                               color: Colors.white.withOpacity(0.9),
-                            ).animate().fade(duration: 600.ms).scale(delay: 200.ms),
+                            )
+                                .animate()
+                                .fade(duration: 600.ms)
+                                .scale(delay: 200.ms),
                             const SizedBox(height: 16),
                             Text(
                               'Repertorio BC',
@@ -232,7 +257,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: Colors.white,
                                 letterSpacing: 1.2,
                               ),
-                            ).animate().fade(delay: 300.ms).slideY(begin: 0.2, end: 0),
+                            )
+                                .animate()
+                                .fade(delay: 300.ms)
+                                .slideY(begin: 0.2, end: 0),
                             const SizedBox(height: 8),
                             Text(
                               'Acceso exclusivo para coros',
@@ -252,16 +280,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.orangeAccent.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+                                  border: Border.all(
+                                      color:
+                                          Colors.orangeAccent.withOpacity(0.5)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.lock_clock_outlined, color: Colors.orangeAccent, size: 20),
+                                    const Icon(Icons.lock_clock_outlined,
+                                        color: Colors.orangeAccent, size: 20),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _lockoutMessage,
-                                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
+                                        style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
@@ -274,16 +307,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.redAccent.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                                  border: Border.all(
+                                      color: Colors.redAccent.withOpacity(0.5)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                                    const Icon(Icons.error_outline,
+                                        color: Colors.redAccent, size: 20),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _errorMessage!,
-                                        style: GoogleFonts.inter(color: Colors.white),
+                                        style: GoogleFonts.inter(
+                                            color: Colors.white),
                                       ),
                                     ),
                                   ],
@@ -298,9 +334,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               autofillHints: const [AutofillHints.email],
                               textInputAction: TextInputAction.next,
-                            ).animate().fade(delay: 500.ms).slideX(begin: -0.1, end: 0),
+                            )
+                                .animate()
+                                .fade(delay: 500.ms)
+                                .slideX(begin: -0.1, end: 0),
                             const SizedBox(height: 20),
-                            
+
                             // Password Field
                             _buildTextField(
                               controller: _passwordController,
@@ -312,17 +351,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               textInputAction: TextInputAction.done,
                               onSubmitted: (_) => _login(),
                               suffixIcon: IconButton(
-                                icon: Icon(_obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: Colors.white70),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
+                                    color: Colors.white70),
+                                onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword),
                               ),
-                            ).animate().fade(delay: 600.ms).slideX(begin: -0.1, end: 0),
-                            
+                            )
+                                .animate()
+                                .fade(delay: 600.ms)
+                                .slideX(begin: -0.1, end: 0),
+
                             const SizedBox(height: 16),
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () => context.push('/recover'),
-                                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap),
                                 child: Text(
                                   '¿Olvidaste tu contraseña?',
                                   style: GoogleFonts.inter(
@@ -333,9 +384,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                             ).animate().fade(delay: 650.ms),
-                            
+
                             const SizedBox(height: 32),
-                            
+
                             // Login Button
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
@@ -344,21 +395,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 gradient: LinearGradient(
                                   colors: _lockoutUntil != null
-                                      ? [Colors.grey.shade700, Colors.grey.shade800]
-                                      : [const Color(0xFFFFDF00), const Color(0xFFD4AF37)], // Dorado degradado
+                                      ? [
+                                          Colors.grey.shade700,
+                                          Colors.grey.shade800
+                                        ]
+                                      : [
+                                          const Color(0xFFFFDF00),
+                                          const Color(0xFFD4AF37)
+                                        ], // Dorado degradado
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                 ),
-                                boxShadow: _lockoutUntil != null ? [] : [
-                                  BoxShadow(
-                                    color: const Color(0xFFD4AF37).withOpacity(0.3), // Sombra dorada
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 6),
-                                  )
-                                ],
+                                boxShadow: _lockoutUntil != null
+                                    ? []
+                                    : [
+                                        BoxShadow(
+                                          color: const Color(0xFFD4AF37)
+                                              .withOpacity(
+                                                  0.3), // Sombra dorada
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 6),
+                                        )
+                                      ],
                               ),
                               child: ElevatedButton(
-                                onPressed: (_isLoading || _lockoutUntil != null) ? null : _login,
+                                onPressed: (_isLoading || _lockoutUntil != null)
+                                    ? null
+                                    : _login,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
@@ -373,29 +436,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         width: 24,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
                                         ),
                                       )
                                     : Text(
-                                        _lockoutUntil != null ? 'Bloqueado temporalmente' : 'Iniciar Sesión',
+                                        _lockoutUntil != null
+                                            ? 'Bloqueado temporalmente'
+                                            : 'Iniciar Sesión',
                                         style: GoogleFonts.inter(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
-                                          color: _lockoutUntil != null ? Colors.white60 : const Color(0xFF001533),
+                                          color: _lockoutUntil != null
+                                              ? Colors.white60
+                                              : const Color(0xFF001533),
                                           letterSpacing: 0.5,
                                         ),
                                       ),
                               ),
-                            ).animate().fade(delay: 700.ms).slideY(begin: 0.2, end: 0),
-                            
-
+                            )
+                                .animate()
+                                .fade(delay: 700.ms)
+                                .slideY(begin: 0.2, end: 0),
 
                             if (kIsWeb || !Platform.isIOS) ...[
                               const SizedBox(height: 16),
-                              
+
                               // Botón de Google (solo visible en Android / Web)
                               Container(
-                                constraints: const BoxConstraints(minHeight: 52),
+                                constraints:
+                                    const BoxConstraints(minHeight: 52),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
@@ -408,17 +479,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ],
                                 ),
                                 child: ElevatedButton.icon(
-                                  onPressed: _isLoading ? null : () {
-                                    setState(() => _isLoading = true);
-                                    AuthController.loginWithGoogle().catchError((e) {
-                                      if (mounted) {
-                                        setState(() {
-                                          _isLoading = false;
-                                          _errorMessage = 'Error con Google: $e';
-                                        });
-                                      }
-                                    });
-                                  },
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          setState(() => _isLoading = true);
+                                          AuthController.loginWithGoogle()
+                                              .catchError((e) {
+                                            if (mounted) {
+                                              setState(() {
+                                                _isLoading = false;
+                                                _errorMessage =
+                                                    'Error con Google: $e';
+                                              });
+                                            }
+                                          });
+                                        },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,
@@ -426,7 +501,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                   ),
-                                  icon: const Icon(Icons.g_mobiledata_rounded, color: Colors.black87, size: 32),
+                                  icon: const Icon(Icons.g_mobiledata_rounded,
+                                      color: Colors.black87, size: 32),
                                   label: Text(
                                     'Continuar con Google',
                                     style: GoogleFonts.inter(
@@ -436,21 +512,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ),
                                 ),
-                              ).animate().fade(delay: 750.ms).slideY(begin: 0.2, end: 0),
+                              )
+                                  .animate()
+                                  .fade(delay: 750.ms)
+                                  .slideY(begin: 0.2, end: 0),
                             ],
-                            
+
                             Wrap(
                               alignment: WrapAlignment.center,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
                                   '¿No tienes cuenta?',
-                                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+                                  style: GoogleFonts.inter(
+                                      color: Colors.white70, fontSize: 14),
                                 ),
                                 TextButton(
                                   onPressed: () => context.push('/register'),
                                   child: Text(
-                                    'Solicitar Acceso',
+                                    _isIos
+                                        ? 'Crear cuenta'
+                                        : 'Solicitar Acceso',
                                     style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontSize: 14,
@@ -506,7 +588,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           prefixIcon: Icon(icon, color: Colors.white70, size: 22),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),
     );

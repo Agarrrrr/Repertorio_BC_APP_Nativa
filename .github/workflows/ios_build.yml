@@ -99,7 +99,9 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID || secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
           echo "Building Flutter iOS release..."
-          flutter build ios --release --no-codesign
+          BUILD_NUMBER=$((33 + GITHUB_RUN_NUMBER))
+          echo "Using App Store build number $BUILD_NUMBER"
+          flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
