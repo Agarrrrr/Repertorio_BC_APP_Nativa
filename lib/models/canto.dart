@@ -4,9 +4,15 @@ class Canto {
   final String archivo;
   final List<String> temas;
   final String? midiArchivo;
-  final List<String> corosVinculados; // Array de coro_ids extraídos de cantos_coros
-  final List<String> eventosVinculados; // Array de evento_ids extraídos de eventos_cantos
+  final List<String>
+      corosVinculados; // Array de coro_ids extraídos de cantos_coros
+  final List<String>
+      eventosVinculados; // Array de evento_ids extraídos de eventos_cantos
   final String? updatedAt;
+  final String origen;
+  final String idioma;
+  final int version;
+  final int cifradoVersion;
 
   Canto({
     required this.id,
@@ -17,6 +23,10 @@ class Canto {
     required this.corosVinculados,
     this.eventosVinculados = const [],
     this.updatedAt,
+    this.origen = 'local',
+    this.idioma = 'es',
+    this.version = 1,
+    this.cifradoVersion = 1,
   });
 
   factory Canto.fromJson(Map<String, dynamic> json) {
@@ -29,7 +39,12 @@ class Canto {
         }
       }
     }
-    
+    if (json['coros_vinculados'] is List) {
+      coros = (json['coros_vinculados'] as List)
+          .map((value) => value.toString())
+          .toList();
+    }
+
     // Manejar la relación eventos_cantos
     List<String> eventos = [];
     if (json['eventos_cantos'] != null && json['eventos_cantos'] is List) {
@@ -39,16 +54,29 @@ class Canto {
         }
       }
     }
+    if (json['eventos_vinculados'] is List) {
+      eventos = (json['eventos_vinculados'] as List)
+          .map((value) => value.toString())
+          .toList();
+    }
 
     return Canto(
       id: json['id'].toString(),
       nombre: json['nombre'] as String? ?? '',
       archivo: json['archivo'] as String? ?? '',
-      temas: (json['temas'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      temas: (json['temas'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       midiArchivo: json['midi_archivo'] as String?,
       corosVinculados: coros,
       eventosVinculados: eventos,
-      updatedAt: json['updated_at']?.toString() ?? json['updatedAt']?.toString(),
+      updatedAt:
+          json['updated_at']?.toString() ?? json['updatedAt']?.toString(),
+      origen: json['origen'] as String? ?? 'local',
+      idioma: json['idioma'] as String? ?? 'es',
+      version: (json['version'] as num?)?.toInt() ?? 1,
+      cifradoVersion: (json['cifrado_version'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -59,7 +87,11 @@ class Canto {
       'archivo': archivo,
       'temas': temas,
       if (midiArchivo != null) 'midi_archivo': midiArchivo,
-      // cantos_coros no se serializa de vuelta directamente así, 
+      'origen': origen,
+      'idioma': idioma,
+      'version': version,
+      'cifrado_version': cifradoVersion,
+      // cantos_coros no se serializa de vuelta directamente así,
       // suele manejarse en endpoints separados.
     };
   }

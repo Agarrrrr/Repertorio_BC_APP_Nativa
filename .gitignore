@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/android/build/
+**/.cxx/
+**/.dart_tool/
 
 # Symbolication related
 app.*.symbols

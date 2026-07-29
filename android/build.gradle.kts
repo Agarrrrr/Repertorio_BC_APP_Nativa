@@ -16,6 +16,23 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    val proj = this
+    fun configureNamespace() {
+        if (proj.plugins.hasPlugin("com.android.library")) {
+            val androidExtension = proj.extensions.findByType(com.android.build.gradle.LibraryExtension::class.java)
+            if (androidExtension != null && androidExtension.namespace == null) {
+                androidExtension.namespace = "com.example.${proj.name.replace("-", "_").replace(" ", "_")}"
+            }
+        }
+    }
+    if (proj.state.executed) {
+        configureNamespace()
+    } else {
+        proj.afterEvaluate { configureNamespace() }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

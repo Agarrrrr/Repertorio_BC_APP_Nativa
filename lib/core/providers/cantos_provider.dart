@@ -14,7 +14,8 @@ List<Canto> _parseCantosJsonString(String jsonString) {
 
 List<Canto> _parseCantosList(List<dynamic> data) {
   final lista = data.map((e) => Canto.fromJson(e)).toList();
-  lista.sort((a, b) => _naturalSort(_normalizar(a.nombre), _normalizar(b.nombre)));
+  lista.sort(
+      (a, b) => _naturalSort(_normalizar(a.nombre), _normalizar(b.nombre)));
   return lista;
 }
 
@@ -23,12 +24,16 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
   @override
   Future<List<Canto>> build() async {
     final box = Hive.box('cache');
-    
+    final perfil = ref.watch(perfilProvider).value;
+    final userId = SupabaseService.client.auth.currentUser?.id ?? 'sin_usuario';
+    final cacheKey = 'cantos_json_${userId}_${perfil?.coroId ?? 'sin_sede'}';
+
     // 1. Carga inmediata desde caché (Offline-First)
-    final cachedData = box.get('cantos_json');
+    final cachedData = box.get(cacheKey) ?? box.get('cantos_json');
     if (cachedData != null) {
       try {
-        final lista = await compute(_parseCantosJsonString, cachedData as String);
+        final lista =
+            await compute(_parseCantosJsonString, cachedData as String);
         state = AsyncValue.data(lista); // Emitir data al instante
       } catch (e) {
         debugPrint('Error parsing cached cantos: $e');
@@ -37,15 +42,26 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
 
     // 2. Carga desde la base de datos (Supabase) en background
     try {
-      final response = await SupabaseService.client
-          .from('cantos')
-          .select('*, cantos_coros(coro_id), eventos_cantos(evento_id)');
-          
-      // Guardar el string en crudo para la proxima sesion
-      box.put('cantos_json', jsonEncode(response));
+      List<dynamic> response;
+      try {
+        final unified =
+            await SupabaseService.client.rpc('mis_cantos_disponibles');
+        response = unified as List<dynamic>;
+        if (response.isEmpty) {
+          throw const FormatException('Catálogo unificado aún no migrado');
+        }
+      } catch (error) {
+        debugPrint('Usando consulta compatible de catálogo: $error');
+        response = await SupabaseService.client
+            .from('cantos')
+            .select('*, cantos_coros(coro_id), eventos_cantos(evento_id)');
+      }
 
-      final lista = await compute(_parseCantosList, response as List<dynamic>);
-      
+      // Guardar el string en crudo para la proxima sesion
+      await box.put(cacheKey, jsonEncode(response));
+
+      final lista = await compute(_parseCantosList, response);
+
       // Emitir los nuevos datos
       return lista;
     } catch (e) {
@@ -56,7 +72,9 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
     }
   }
 }
-final cantosBaseProvider = AsyncNotifierProvider<CantosNotifier, List<Canto>>(CantosNotifier.new);
+
+final cantosBaseProvider =
+    AsyncNotifierProvider<CantosNotifier, List<Canto>>(CantosNotifier.new);
 
 // Filtro de texto (barra de busqueda)
 class SearchTextNotifier extends Notifier<String> {
@@ -64,11 +82,14 @@ class SearchTextNotifier extends Notifier<String> {
   String build() => '';
   void set(String value) => state = value;
 }
-final searchTextProvider = NotifierProvider<SearchTextNotifier, String>(SearchTextNotifier.new);
+
+final searchTextProvider =
+    NotifierProvider<SearchTextNotifier, String>(SearchTextNotifier.new);
 
 // Normalizacion de tildes (portado de JS)
 String _normalizar(String str) {
-  return str.toLowerCase()
+  return str
+      .toLowerCase()
       .replaceAll(RegExp(r'[áäâà]'), 'a')
       .replaceAll(RegExp(r'[éëêè]'), 'e')
       .replaceAll(RegExp(r'[íïîì]'), 'i')
@@ -107,14 +128,20 @@ class CategoryFilterNotifier extends Notifier<String> {
   String build() => 'local';
   void set(String value) => state = value;
 }
-final categoryFilterProvider = NotifierProvider<CategoryFilterNotifier, String>(CategoryFilterNotifier.new);
+
+final categoryFilterProvider = NotifierProvider<CategoryFilterNotifier, String>(
+    CategoryFilterNotifier.new);
 
 class FilterParams {
   final List<Canto> cantos;
   final String query;
   final String categoria;
   final String? perfilCoroId;
-  FilterParams({required this.cantos, required this.query, required this.categoria, this.perfilCoroId});
+  FilterParams(
+      {required this.cantos,
+      required this.query,
+      required this.categoria,
+      this.perfilCoroId});
 }
 
 // Algoritmo de distancia de Levenshtein (Fuzzy Search)
@@ -136,11 +163,8 @@ int _levenshtein(String s, String t) {
   for (int i = 1; i <= n; i++) {
     for (int j = 1; j <= m; j++) {
       int cost = s[i - 1] == t[j - 1] ? 0 : 1;
-      d[i][j] = [
-        d[i - 1][j] + 1,
-        d[i][j - 1] + 1,
-        d[i - 1][j - 1] + cost
-      ].reduce((min, val) => val < min ? val : min);
+      d[i][j] = [d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost]
+          .reduce((min, val) => val < min ? val : min);
     }
   }
   return d[n][m];
@@ -149,14 +173,15 @@ int _levenshtein(String s, String t) {
 // Lógica pura de filtrado extraída a nivel superior para el Isolate
 List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
   final queryNormalizada = _normalizar(params.query);
-  final queryWords = queryNormalizada.isEmpty ? <String>[] : queryNormalizada.split(' ');
+  final queryWords =
+      queryNormalizada.isEmpty ? <String>[] : queryNormalizada.split(' ');
 
   final filtrados = params.cantos.where((canto) {
     // 1. Si la barra de búsqueda tiene texto: Búsqueda Global en TODOS los cantos del catálogo
     if (queryWords.isNotEmpty) {
       final nNombre = _normalizar(canto.nombre);
       final nTemas = canto.temas.map((t) => _normalizar(t)).join(' ');
-      
+
       for (final word in queryWords) {
         if (word.length <= 2) {
           // Búsqueda exacta para palabras cortas (ej. "el", "yo", "fe", "salmo")
@@ -171,7 +196,7 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
             for (final tw in titleWords) {
               if (tw.length >= word.length - 1) {
                 int distance = _levenshtein(word, tw);
-                int allowedErrors = word.length >= 5 ? 2 : 1; 
+                int allowedErrors = word.length >= 5 ? 2 : 1;
                 if (distance <= allowedErrors) {
                   match = true;
                   break;
@@ -188,7 +213,8 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
     }
 
     // 2. Si la búsqueda está VACÍA: Filtrar estrictamente según la carpeta o categoría seleccionada
-    final esLocal = params.perfilCoroId != null && canto.corosVinculados.contains(params.perfilCoroId);
+    final esLocal = params.perfilCoroId != null &&
+        canto.corosVinculados.contains(params.perfilCoroId);
     final esEstatal = canto.corosVinculados.contains('estatal');
 
     if (params.categoria == 'local') {
@@ -200,7 +226,8 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
       if (!canto.eventosVinculados.contains(eventoId)) return false;
     } else if (params.categoria.startsWith('tema_')) {
       final temaABuscar = params.categoria.replaceFirst('tema_', '');
-      final hasTema = canto.temas.any((t) => _normalizar(t) == _normalizar(temaABuscar));
+      final hasTema =
+          canto.temas.any((t) => _normalizar(t) == _normalizar(temaABuscar));
       if (!hasTema) return false;
     } else {
       return false;
@@ -216,10 +243,10 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
       final nB = _normalizar(b.nombre);
       final nTemasA = a.temas.map((t) => _normalizar(t)).join(' ');
       final nTemasB = b.temas.map((t) => _normalizar(t)).join(' ');
-      
+
       int scoreA = 0;
       int scoreB = 0;
-      
+
       if (nA == queryNormalizada) {
         scoreA += 200;
       } else if (nA.startsWith(queryNormalizada)) {
@@ -230,7 +257,7 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
       if (nTemasA.contains(queryNormalizada)) {
         scoreA += 30;
       }
-      
+
       if (nB == queryNormalizada) {
         scoreB += 200;
       } else if (nB.startsWith(queryNormalizada)) {
@@ -241,7 +268,7 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
       if (nTemasB.contains(queryNormalizada)) {
         scoreB += 30;
       }
-      
+
       if (scoreA != scoreB) {
         return scoreB.compareTo(scoreA);
       }
@@ -258,7 +285,7 @@ final cantosFiltradosProvider = FutureProvider<List<Canto>>((ref) async {
   final query = ref.watch(searchTextProvider);
   final categoria = ref.watch(categoryFilterProvider);
   final perfilAsync = ref.watch(perfilProvider);
-  
+
   if (cantosAsync.value == null || perfilAsync.isLoading) {
     return [];
   }
@@ -280,14 +307,14 @@ final cantosFiltradosProvider = FutureProvider<List<Canto>>((ref) async {
 final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {
   final cantosAsync = ref.watch(cantosBaseProvider);
   final perfilAsync = ref.watch(perfilProvider);
-  
+
   if (cantosAsync.value == null || perfilAsync.isLoading) {
     return [];
   }
 
   final cantos = cantosAsync.value!;
   final perfil = perfilAsync.value;
-  
+
   // Si no hay perfil, no descargamos nada por seguridad
   if (perfil == null) {
     return [];
