@@ -86,13 +86,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirm = _confirmController.text;
+    final coroId =
+        _isIndependent ? _independentCoroId : _selectedCoroId;
 
     if (nombre.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
-        _selectedCoroId == null) {
-      setState(() =>
-          _errorMessage = "Por favor, completa todos los campos requeridos.");
+        confirm.isEmpty) {
+      setState(() => _errorMessage =
+          "Completa tu nombre, correo, contraseña y confirmación.");
+      return;
+    }
+    if (!_isIndependent && coroId == null) {
+      setState(() => _errorMessage =
+          "Selecciona una sede o continúa como usuario independiente.");
+      return;
+    }
+    if (_isIndependent && coroId == null) {
+      setState(() => _errorMessage =
+          "El registro independiente no está disponible. Inténtalo de nuevo.");
       return;
     }
     if (password != confirm) {
@@ -112,7 +124,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           emailRedirectTo: 'repertorioestatal://login-callback/',
           data: {
             'nombre': nombre,
-            'coro_id': _selectedCoroId,
+            'coro_id': coroId,
             'estado': 'activo',
             if (_isIos) 'registro_publico': true,
             if (_isIos) 'usuario_independiente': _isIndependent,
@@ -278,7 +290,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           _buildDropdown(
                             hint: 'Sede / Iglesia',
                             icon: Icons.church_rounded,
-                            value: _selectedCoroId,
+                            value:
+                                _isIndependent ? null : _selectedCoroId,
                             items: corosFiltrados
                                 .map((c) => DropdownMenuItem(
                                     value: c['id'] as String,
@@ -317,31 +330,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            OutlinedButton.icon(
-                              onPressed: () => setState(() {
-                                _isIndependent = true;
-                                _selectedMunicipio = null;
-                                _selectedCoroId = _independentCoroId;
-                              }),
-                              icon: Icon(
-                                _isIndependent
-                                    ? Icons.check_circle_rounded
-                                    : Icons.person_outline_rounded,
-                              ),
-                              label: const Text(
-                                'Continuar como usuario independiente',
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: _isIndependent
-                                    ? const Color(0xFFFFDF00)
-                                    : Colors.white,
-                                side: BorderSide(
-                                  color: _isIndependent
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => setState(() {
+                                  _isIndependent = true;
+                                  _selectedMunicipio = null;
+                                  _selectedCoroId = null;
+                                  _errorMessage = null;
+                                }),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _isIndependent
                                       ? const Color(0xFFFFDF00)
-                                      : Colors.white38,
+                                      : Colors.white,
+                                  side: BorderSide(
+                                    color: _isIndependent
+                                        ? const Color(0xFFFFDF00)
+                                        : Colors.white38,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _isIndependent
+                                          ? Icons.check_circle_rounded
+                                          : Icons.person_outline_rounded,
+                                    ),
+                                    const Expanded(
+                                      child: Text(
+                                        'Continuar como usuario independiente',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                  ],
                                 ),
                               ),
                             ),
