@@ -15,6 +15,7 @@ class GestorScreen extends StatefulWidget {
 class _GestorScreenState extends State<GestorScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _authBootstrapped = false;
 
   @override
   void initState() {
@@ -41,20 +42,35 @@ class _GestorScreenState extends State<GestorScreen> {
               } catch(e) { console.error(e); }
             ''');
 
-            if (_isLoading) {
+            if (!_authBootstrapped) {
               final session = Supabase.instance.client.auth.currentSession;
               if (session != null) {
+                _authBootstrapped = true;
                 final sessionStr = jsonEncode(session.toJson());
                 await _controller.runJavaScript('''
                   try {
                     const key = 'sb-mxnhmtztxgeccohlgqpt-auth-token';
-                    if (!localStorage.getItem(key)) {
-                      localStorage.setItem(key, JSON.stringify($sessionStr));
-                      window.location.reload();
-                    }
+                    const nativeSession = $sessionStr;
+
+                    // El WebView conserva su propio localStorage entre aperturas.
+                    // La sesión de Flutter es la fuente de verdad y debe sustituir
+                    // cualquier token/perfil web anterior.
+                    localStorage.setItem(key, JSON.stringify(nativeSession));
+                    localStorage.removeItem('perfil_offline');
+
+                    const destino = new URL('/gestor.html', window.location.origin);
+                    destino.searchParams.set(
+                      'native_session',
+                      nativeSession.user.id
+                    );
+                    window.location.replace(destino.toString());
                   } catch(e) { console.error(e); }
                 ''');
+                return;
               }
+            }
+
+            if (_isLoading) {
               if (mounted) {
                 setState(() {
                   _isLoading = false;
@@ -70,14 +86,15 @@ class _GestorScreenState extends State<GestorScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.onSurface),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: theme.colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
         title: Text(

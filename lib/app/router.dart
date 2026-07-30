@@ -24,7 +24,10 @@ class PendingDeepLinkNotifier extends Notifier<String?> {
   String? build() => null;
   void setState(String? value) => state = value;
 }
-final pendingDeepLinkProvider = NotifierProvider<PendingDeepLinkNotifier, String?>(PendingDeepLinkNotifier.new);
+
+final pendingDeepLinkProvider =
+    NotifierProvider<PendingDeepLinkNotifier, String?>(
+        PendingDeepLinkNotifier.new);
 
 class RouterNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
@@ -32,7 +35,7 @@ class RouterNotifier extends ChangeNotifier {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = RouterNotifier();
-  
+
   ref.listen(authUserProvider, (_, __) => notifier.notify());
   ref.listen(authLoadingProvider, (_, __) => notifier.notify());
   ref.listen(perfilProvider, (_, __) => notifier.notify());
@@ -45,7 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Redireccion global basada en autenticacion
     redirect: (context, state) {
       final isLoading = ref.read(authLoadingProvider);
-      
+
       if (isLoading) {
         return state.matchedLocation == '/splash' ? null : '/splash';
       }
@@ -60,30 +63,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       final perfilState = ref.read(perfilProvider);
       final perfil = perfilState.value;
 
-      final isAuthRoute = state.matchedLocation == '/login' || 
-                          state.matchedLocation == '/register' || 
-                          state.matchedLocation == '/recover' ||
-                          state.matchedLocation == '/update-password' ||
-                          state.matchedLocation == '/complete-google';
+      final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/recover' ||
+          state.matchedLocation == '/update-password' ||
+          state.matchedLocation == '/complete-google';
       final isSplashRoute = state.matchedLocation == '/splash';
 
       if (user == null) {
         // Si intenta acceder a una ruta protegida (ej. /visor/:id) sin sesión, guardamos su intención
         if (!isAuthRoute && !isSplashRoute && state.matchedLocation != '/') {
-          Future.microtask(() => ref.read(pendingDeepLinkProvider.notifier).setState(state.uri.toString()));
+          Future.microtask(() => ref
+              .read(pendingDeepLinkProvider.notifier)
+              .setState(state.uri.toString()));
         }
         return isAuthRoute ? null : '/login';
       }
 
       // Si el usuario existe pero no tiene perfil (y no está cargando), debe completar registro Google
       if (!perfilState.isLoading && perfil == null) {
-        return state.matchedLocation == '/complete-google' ? null : '/complete-google';
+        return state.matchedLocation == '/complete-google'
+            ? null
+            : '/complete-google';
       }
 
       if (isAuthRoute || isSplashRoute) {
         final pending = ref.read(pendingDeepLinkProvider);
         if (pending != null) {
-          Future.microtask(() => ref.read(pendingDeepLinkProvider.notifier).setState(null));
+          Future.microtask(
+              () => ref.read(pendingDeepLinkProvider.notifier).setState(null));
           return pending;
         }
         return '/';
@@ -104,7 +112,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         final perfilState = ref.read(perfilProvider);
         final perfil = perfilState.value;
         if (perfil != null) {
-          final isGestor = ['director', 'estatal', 'superadmin'].contains(perfil.rol);
+          final isGestor = [
+            'director',
+            'director_estatal',
+            'superadmin',
+            'subdirector',
+            'delegado',
+          ].contains(perfil.rol);
           if (!isGestor) return '/'; // Rol insuficiente
         }
       }
@@ -143,19 +157,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           final evId = state.uri.queryParameters['ev'];
           // Deep link /?carpeta=Nombre
           final carpeta = state.uri.queryParameters['carpeta'];
-          
+
           if (evId != null) {
             Future.microtask(() async {
-              await ref.read(eventosPermanentesProvider.notifier).manejarLinkEvento(evId);
+              await ref
+                  .read(eventosPermanentesProvider.notifier)
+                  .manejarLinkEvento(evId);
               ref.read(categoryFilterProvider.notifier).set('evento_$evId');
             });
           } else if (carpeta != null) {
-            Future.microtask(() => ref.read(categoryFilterProvider.notifier).set('tema_$carpeta'));
+            Future.microtask(() =>
+                ref.read(categoryFilterProvider.notifier).set('tema_$carpeta'));
           }
           return const DashboardScreen();
         },
       ),
-
       GoRoute(
         path: '/visor/:id',
         builder: (context, state) {

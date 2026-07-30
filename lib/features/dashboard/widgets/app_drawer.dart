@@ -18,10 +18,17 @@ class AppDrawer extends ConsumerWidget {
     final cantosFiltradosAsync = ref.watch(cantosFiltradosProvider);
     final cantosFiltrados = cantosFiltradosAsync.value ?? [];
     final carpetasEspeciales = ref.watch(eventosPermanentesProvider);
-    
+
     // Identificar gestor para agregar el botón extra
     final perfil = ref.watch(perfilProvider).value;
-    final isGestor = perfil != null && ['director', 'estatal', 'superadmin'].contains(perfil.rol);
+    final isGestor = perfil != null &&
+        [
+          'director',
+          'director_estatal',
+          'superadmin',
+          'subdirector',
+          'delegado',
+        ].contains(perfil.rol);
 
     // Lista de temas dinámicos
     final temasUnicos = cantosBase
@@ -45,7 +52,8 @@ class AppDrawer extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                border: Border(
+                    bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -60,7 +68,8 @@ class AppDrawer extends ConsumerWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.secondary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -77,34 +86,41 @@ class AppDrawer extends ConsumerWidget {
                 ],
               ),
             ),
-            
+
             // Indicador de Sincronización Offline (Movido arriba)
             Consumer(
               builder: (context, ref, child) {
                 final syncState = ref.watch(syncManagerProvider);
-                
+
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           Icon(
-                            syncState.isSyncing ? Icons.sync_rounded : Icons.cloud_done_rounded,
+                            syncState.isSyncing
+                                ? Icons.sync_rounded
+                                : Icons.cloud_done_rounded,
                             size: 14,
-                            color: syncState.isSyncing ? theme.colorScheme.secondary : Colors.green,
+                            color: syncState.isSyncing
+                                ? theme.colorScheme.secondary
+                                : Colors.green,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              syncState.isSyncing 
+                              syncState.isSyncing
                                   ? 'Sincronizando (${(syncState.progress * 100).toInt()}%)'
                                   : 'Disponible Offline',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: syncState.isSyncing ? theme.colorScheme.secondary : Colors.green,
+                                color: syncState.isSyncing
+                                    ? theme.colorScheme.secondary
+                                    : Colors.green,
                               ),
                             ),
                           ),
@@ -114,8 +130,10 @@ class AppDrawer extends ConsumerWidget {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: syncState.progress,
-                          backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation(theme.colorScheme.secondary),
+                          backgroundColor:
+                              theme.colorScheme.secondary.withOpacity(0.1),
+                          valueColor: AlwaysStoppedAnimation(
+                              theme.colorScheme.secondary),
                           borderRadius: BorderRadius.circular(10),
                           minHeight: 3,
                         ),
@@ -145,7 +163,7 @@ class AppDrawer extends ConsumerWidget {
                     id: 'estatal',
                     label: 'CORO ESTATAL',
                   ),
-                  
+
                   // MIS CARPETAS
                   if (carpetasEspeciales.isNotEmpty) ...[
                     const SizedBox(height: 10),
@@ -157,9 +175,9 @@ class AppDrawer extends ConsumerWidget {
                           label: c.nombre.toUpperCase(),
                         )),
                   ],
-                  
+
                   const SizedBox(height: 10),
-                  
+
                   // TEMAS
                   if (temasUnicos.isNotEmpty) ...[
                     _buildSectionLabel('FILTRAR POR TEMA'),
@@ -179,7 +197,8 @@ class AppDrawer extends ConsumerWidget {
             Container(
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                border: Border(
+                    top: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               padding: const EdgeInsets.only(bottom: 10, top: 10),
               child: Column(
@@ -208,7 +227,6 @@ class AppDrawer extends ConsumerWidget {
                         context.push('/gestor');
                       },
                     ),
-
                 ],
               ),
             ),
@@ -258,16 +276,23 @@ class AppDrawer extends ConsumerWidget {
           decoration: BoxDecoration(
             color: isActive ? theme.colorScheme.secondary : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: isActive 
-              ? [BoxShadow(color: theme.colorScheme.secondary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))]
-              : null,
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                        color: theme.colorScheme.secondary.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4))
+                  ]
+                : null,
           ),
           child: Text(
             label,
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.7),
+              color: isActive
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withOpacity(0.7),
             ),
           ),
         ),
@@ -288,7 +313,8 @@ class AppDrawer extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+            Icon(icon,
+                size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
             const SizedBox(width: 12),
             Text(
               label,
