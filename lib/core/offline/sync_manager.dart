@@ -1,10 +1,11 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/models/canto.dart';
 
 class SyncState {
@@ -38,19 +39,18 @@ class SyncState {
 }
 
 class SyncManagerNotifier extends Notifier<SyncState> {
+  static const _maxConcurrentDownloads = 3;
+
   bool _isSyncingInternal = false;
   List<Canto>? _pendingSyncList;
 
   @override
   SyncState build() {
-    // Escuchar el provider de cantos filtrados por sede para evitar descargas innecesarias
+    // Este provider ya contiene exclusivamente sede local + Estatal.
     ref.listen(cantosDeLaSedeProvider, (previous, next) {
-      if (next.isNotEmpty) {
-        _triggerSync(next);
-      }
+      if (next.isNotEmpty) _triggerSync(next);
     });
 
-    // Sincronización inicial al iniciar la app si ya hay datos cargados (ej. desde caché)
     final initialList = ref.read(cantosDeLaSedeProvider);
     if (initialList.isNotEmpty) {
       Future.microtask(() => _triggerSync(initialList));
@@ -61,7 +61,6 @@ class SyncManagerNotifier extends Notifier<SyncState> {
 
   void _triggerSync(List<Canto> cantos) {
     if (_isSyncingInternal) {
-      // Guardar la lista más reciente para procesarla en cuanto termine la sincronización actual
       _pendingSyncList = cantos;
       return;
     }
@@ -70,97 +69,79 @@ class SyncManagerNotifier extends Notifier<SyncState> {
   }
 
   Future<void> _startBackgroundSync(List<Canto> cantos) async {
-    int totalMissingFiles = 0;
     final dir = await getApplicationDocumentsDirectory();
     final cacheBox = Hive.box('cache');
+    final downloadQueue = <({Canto canto, String tipo})>[];
 
-    // 1. Pre-calcular archivos faltantes o desactualizados
-    List<Map<String, dynamic>> downloadQueue = [];
-
-    for (var canto in cantos) {
+    for (final canto in cantos) {
       if (canto.archivo.isNotEmpty) {
-        final pdfFile = File('${dir.path}/${canto.id}.pdf');
-        final requiereActualizacion = await _necesitaDescargarVersion(
-          file: pdfFile,
+        final needsPdf = await _necesitaDescargarVersion(
+          file: File('${dir.path}/${canto.id}.pdf'),
           versionKey: '${canto.id}_pdf_version',
           cacheBox: cacheBox,
           expectedVersion: canto.version,
         );
-
-        if (requiereActualizacion) {
-          downloadQueue.add({
-            'canto': canto,
-            'nombre': canto.nombre,
-            'tipo': 'PDF',
-          });
-          totalMissingFiles++;
-        }
+        if (needsPdf) downloadQueue.add((canto: canto, tipo: 'PDF'));
       }
-      if (canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty) {
-        final midiFile = File('${dir.path}/${canto.id}.mid');
-        final requiereActualizacion = await _necesitaDescargarVersion(
-          file: midiFile,
+
+      if (canto.midiArchivo?.isNotEmpty == true) {
+        final needsMidi = await _necesitaDescargarVersion(
+          file: File('${dir.path}/${canto.id}.mid'),
           versionKey: '${canto.id}_midi_version',
           cacheBox: cacheBox,
           expectedVersion: canto.version,
         );
-
-        if (requiereActualizacion) {
-          downloadQueue.add({
-            'canto': canto,
-            'nombre': canto.nombre,
-            'tipo': 'MIDI',
-          });
-          totalMissingFiles++;
-        }
+        if (needsMidi) downloadQueue.add((canto: canto, tipo: 'MIDI'));
       }
     }
 
-    if (totalMissingFiles == 0) {
-      debugPrint(
-          '✅ [SyncManager] Repertorio actualizado. No hay archivos nuevos ni modificados que descargar.');
+    if (downloadQueue.isEmpty) {
       _finishSync();
-      return; // No hacer ruido en la UI
+      return;
     }
 
-    // 2. Iniciar UI de sincronización solo si hay archivos por descargar/actualizar
-    debugPrint(
-        '🔄 [SyncManager] Iniciando descarga de $totalMissingFiles archivos (nuevos/actualizados)...');
     state = state.copyWith(
-        isSyncing: true, totalFiles: totalMissingFiles, downloadedFiles: 0);
+      isSyncing: true,
+      totalFiles: downloadQueue.length,
+      downloadedFiles: 0,
+    );
 
-    int downloaded = 0;
+    var downloaded = 0;
+    var nextIndex = 0;
 
-    for (var item in downloadQueue) {
-      if (!state.isSyncing) break; // Si se canceló
+    Future<void> worker() async {
+      while (state.isSyncing) {
+        if (nextIndex >= downloadQueue.length) return;
+        final item = downloadQueue[nextIndex++];
+        state = state.copyWith(currentItemName: item.canto.nombre);
 
-      state = state.copyWith(currentItemName: item['nombre']);
-
-      try {
-        debugPrint(
-            '🔄 [SyncManager] Descargando ${item['tipo']} para ${item['nombre']}');
-
-        final canto = item['canto'] as Canto;
-        if (item['tipo'] == 'PDF') {
-          await OfflineFiles.ensurePdf(canto);
-        } else {
-          await OfflineFiles.ensureMidi(canto);
+        try {
+          if (item.tipo == 'PDF') {
+            await OfflineFiles.ensurePdf(item.canto);
+          } else {
+            await OfflineFiles.ensureMidi(item.canto);
+          }
+        } catch (error) {
+          debugPrint(
+            '[SyncManager] Error al descargar ${item.tipo} '
+            'para ${item.canto.nombre}: $error',
+          );
         }
-      } catch (e) {
-        debugPrint(
-            '❌ [SyncManager] Error al descargar ${item['tipo']} para ${item['nombre']}: $e');
+
+        downloaded++;
+        state = state.copyWith(downloadedFiles: downloaded);
       }
-
-      downloaded++;
-      state = state.copyWith(downloadedFiles: downloaded);
-
-      // Pequeña pausa para no saturar el hilo principal
-      await Future.delayed(const Duration(milliseconds: 50));
     }
 
-    debugPrint('🔄 [SyncManager] Sincronización finalizada.');
+    final workerCount = downloadQueue.length < _maxConcurrentDownloads
+        ? downloadQueue.length
+        : _maxConcurrentDownloads;
+    await Future.wait(List.generate(workerCount, (_) => worker()));
+
     state = state.copyWith(
-        isSyncing: false, currentItemName: 'Sincronización completada');
+      isSyncing: false,
+      currentItemName: 'Sincronización completada',
+    );
     _finishSync();
   }
 
@@ -183,11 +164,11 @@ class SyncManagerNotifier extends Notifier<SyncState> {
 
   void _finishSync() {
     _isSyncingInternal = false;
-    if (_pendingSyncList != null) {
-      final nextList = _pendingSyncList!;
-      _pendingSyncList = null;
-      _triggerSync(nextList);
-    }
+    if (_pendingSyncList == null) return;
+
+    final nextList = _pendingSyncList!;
+    _pendingSyncList = null;
+    _triggerSync(nextList);
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/providers/theme_provider.dart';
 import 'package:repertorio_bc/core/realtime/realtime_manager.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/features/dashboard/widgets/score_card.dart';
 import 'package:repertorio_bc/features/dashboard/widgets/app_drawer.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -47,6 +48,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Inicializar el RealtimeManager para que escuche cambios en BD
     ref.watch(realtimeManagerProvider);
+    // Predescarga únicamente el repertorio autorizado de la sede y Estatal.
+    ref.watch(syncManagerProvider);
 
     final cantosAsync = ref.watch(cantosFiltradosProvider);
     final cantos = cantosAsync.value ?? [];

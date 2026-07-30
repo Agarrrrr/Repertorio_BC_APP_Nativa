@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/providers/eventos_provider.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/features/settings/settings_screen.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -86,29 +87,60 @@ class AppDrawer extends ConsumerWidget {
               ),
             ),
 
-            // Los archivos abiertos quedan disponibles sin conexión.
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.offline_pin_rounded,
-                    size: 14,
-                    color: Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Se guarda offline al abrir',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green,
+            Consumer(
+              builder: (context, ref, child) {
+                final syncState = ref.watch(syncManagerProvider);
+
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            syncState.isSyncing
+                                ? Icons.sync_rounded
+                                : Icons.cloud_done_rounded,
+                            size: 14,
+                            color: syncState.isSyncing
+                                ? theme.colorScheme.secondary
+                                : Colors.green,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              syncState.isSyncing
+                                  ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
+                                  : 'Repertorio asignado offline',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: syncState.isSyncing
+                                    ? theme.colorScheme.secondary
+                                    : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                      if (syncState.isSyncing) ...[
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: syncState.progress,
+                          backgroundColor:
+                              theme.colorScheme.secondary.withOpacity(0.1),
+                          valueColor: AlwaysStoppedAnimation(
+                              theme.colorScheme.secondary),
+                          borderRadius: BorderRadius.circular(10),
+                          minHeight: 3,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
 
             // SCROLL AREA (Carpetas + Temas)
