@@ -18,7 +18,7 @@ class OfflineFiles {
   static String resolvePdfUrl(Canto canto) {
     if (canto.archivo.startsWith('http')) return canto.archivo;
     if (_isUnifiedObjectKey(canto.archivo)) {
-      return '${SupabaseService.storageUrl}/v1/files/${canto.id}/pdf';
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf';
     }
     return '${SupabaseService.storageUrl}/partituras/${canto.archivo}';
   }
@@ -27,13 +27,22 @@ class OfflineFiles {
     final midi = canto.midiArchivo!;
     if (midi.startsWith('http')) return midi;
     if (_isUnifiedObjectKey(midi)) {
-      return '${SupabaseService.storageUrl}/v1/files/${canto.id}/midi';
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi';
     }
     return '${SupabaseService.storageUrl}/midi_files/$midi';
   }
 
   static bool _isUnifiedObjectKey(String value) =>
       value.startsWith('global/') || value.startsWith('local/');
+
+  static String _assetOwnerId(Canto canto, String objectKey) {
+    if (objectKey.startsWith('global/') &&
+        canto.derivadoDe != null &&
+        canto.derivadoDe!.isNotEmpty) {
+      return canto.derivadoDe!;
+    }
+    return canto.id;
+  }
 
   static Future<Directory> _docsDir() => getApplicationDocumentsDirectory();
 

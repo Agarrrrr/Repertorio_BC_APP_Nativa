@@ -13,6 +13,7 @@ class Canto {
   final String idioma;
   final int version;
   final int cifradoVersion;
+  final String? derivadoDe;
 
   Canto({
     required this.id,
@@ -27,6 +28,7 @@ class Canto {
     this.idioma = 'es',
     this.version = 1,
     this.cifradoVersion = 1,
+    this.derivadoDe,
   });
 
   factory Canto.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,7 @@ class Canto {
       idioma: json['idioma'] as String? ?? 'es',
       version: (json['version'] as num?)?.toInt() ?? 1,
       cifradoVersion: (json['cifrado_version'] as num?)?.toInt() ?? 1,
+      derivadoDe: json['derivado_de']?.toString(),
     );
   }
 
@@ -91,6 +94,7 @@ class Canto {
       'idioma': idioma,
       'version': version,
       'cifrado_version': cifradoVersion,
+      if (derivadoDe != null) 'derivado_de': derivadoDe,
       // cantos_coros no se serializa de vuelta directamente así,
       // suele manejarse en endpoints separados.
     };
