@@ -9,7 +9,6 @@ import 'package:repertorio_bc/core/providers/theme_provider.dart';
 import 'package:repertorio_bc/core/realtime/realtime_manager.dart';
 import 'package:repertorio_bc/features/dashboard/widgets/score_card.dart';
 import 'package:repertorio_bc/features/dashboard/widgets/app_drawer.dart';
-import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'package:repertorio_bc/core/notifications/push_service.dart';
@@ -42,19 +41,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final isLoadingAuth = ref.watch(authLoadingProvider);
     if (isLoadingAuth) {
-      return Scaffold(backgroundColor: Theme.of(context).scaffoldBackgroundColor);
+      return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor);
     }
 
     // Inicializar el RealtimeManager para que escuche cambios en BD
     ref.watch(realtimeManagerProvider);
-    // Forzar inicio de la sincronización y descarga de archivos (PDF/MIDI) al iniciar la app
-    ref.watch(syncManagerProvider);
-    
+
     final cantosAsync = ref.watch(cantosFiltradosProvider);
     final cantos = cantosAsync.value ?? [];
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // Quitar el Splash Screen una vez que terminaron de cargar los cantos iniciales
     final isLoadingBase = ref.watch(cantosBaseProvider).isLoading;
     if (!isLoadingBase) {
@@ -75,13 +73,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
-                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                border: Border(
+                    bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
               ),
               child: Row(
                 children: [
                   Builder(
                     builder: (context) => IconButton(
-                      icon: Icon(Icons.menu_rounded, color: theme.colorScheme.onSurface),
+                      icon: Icon(Icons.menu_rounded,
+                          color: theme.colorScheme.onSurface),
                       onPressed: () => Scaffold.of(context).openDrawer(),
                     ),
                   ),
@@ -92,38 +92,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       decoration: BoxDecoration(
                         color: theme.colorScheme.onSurface.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.1)),
+                        border: Border.all(
+                            color:
+                                theme.colorScheme.onSurface.withOpacity(0.1)),
                       ),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) {
                           ref.read(searchTextProvider.notifier).set(val);
-                          setState(() {}); // Forzar rebuild para mostrar/ocultar el botón X
+                          setState(
+                              () {}); // Forzar rebuild para mostrar/ocultar el botón X
                         },
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w500),
                         decoration: InputDecoration(
                           hintText: 'Buscar canto por título...',
-                          hintStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-                          prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Colors.grey),
+                          hintStyle: const TextStyle(
+                              color: Colors.grey, fontWeight: FontWeight.w500),
+                          prefixIcon: const Icon(Icons.search_rounded,
+                              size: 20, color: Colors.grey),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 20, color: Colors.grey),
+                                  icon: const Icon(Icons.close_rounded,
+                                      size: 20, color: Colors.grey),
                                   onPressed: () {
                                     _searchController.clear();
-                                    ref.read(searchTextProvider.notifier).set('');
+                                    ref
+                                        .read(searchTextProvider.notifier)
+                                        .set('');
                                     setState(() {});
                                   },
                                 )
                               : null,
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 14),
                         ),
                       ),
                     ),
                   ),
                   IconButton(
                     icon: Icon(
-                      isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                      isDark
+                          ? Icons.light_mode_rounded
+                          : Icons.dark_mode_rounded,
                       color: theme.colorScheme.onSurface,
                     ),
                     onPressed: () {
@@ -133,12 +145,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
             ),
-            
+
             // Lista Vertical de Cantos
             Expanded(
               child: ref.watch(cantosBaseProvider).isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+                      child:
+                          CircularProgressIndicator(color: Color(0xFFD4AF37)),
                     )
                   : cantos.isEmpty
                       ? LayoutBuilder(
@@ -151,18 +164,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   height: constraints.maxHeight,
                                   child: Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.library_music_rounded, size: 64, color: Colors.grey.withOpacity(0.3)),
+                                        Icon(Icons.library_music_rounded,
+                                            size: 64,
+                                            color:
+                                                Colors.grey.withOpacity(0.3)),
                                         const SizedBox(height: 16),
                                         Text(
                                           'Aún no hay partituras asignadas',
-                                          style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 16),
+                                          style: GoogleFonts.inter(
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
                                           'Tu director debe añadir cantos a tu coro.',
-                                          style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w400, fontSize: 14),
+                                          style: GoogleFonts.inter(
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 14),
                                         ),
                                       ],
                                     ),
@@ -173,18 +196,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         )
                       : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: cantos.length,
-                      itemBuilder: (context, index) {
-                        final canto = cantos[index];
-                        return ScoreCard(
-                          canto: canto,
-                          index: index,
-                          onTap: () => context.push('/visor/${canto.id}'),
-                        );
-                      },
-                    ),
+                          padding: const EdgeInsets.all(16),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: cantos.length,
+                          itemBuilder: (context, index) {
+                            final canto = cantos[index];
+                            return ScoreCard(
+                              canto: canto,
+                              index: index,
+                              onTap: () => context.push('/visor/${canto.id}'),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
