@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -78,42 +79,15 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     return PdfEngineState();
   }
 
-  Future<void> init(String newCantoId) async {
-    if (state.cantoId == newCantoId && state.localPath != null) return;
+  Future<void> init(Canto canto) async {
+    if (state.cantoId == canto.id &&
+        (state.isLoading || state.localPath != null)) {
+      return;
+    }
     
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$newCantoId.pdf');
-      final exists = await file.exists();
-
-      // Si el archivo ya existe localmente, cargarlo inmediatamente sin pasar por estado 'loading'
-      if (exists) {
-        state = PdfEngineState(
-          cantoId: newCantoId,
-          isLoading: false,
-          localPath: file.path,
-        );
-        return;
-      }
-
-      // Si no existe, entrar en modo de carga y esperar descarga
-      state = PdfEngineState(cantoId: newCantoId, isLoading: true);
-
-      bool downloaded = false;
-      for (int i = 0; i < 20; i++) {
-        await Future.delayed(const Duration(seconds: 1));
-        if (await file.exists()) {
-          downloaded = true;
-          break;
-        }
-      }
-      if (!downloaded) {
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Partitura no disponible offline',
-        );
-        return;
-      }
+      state = PdfEngineState(cantoId: canto.id, isLoading: true);
+      final file = await OfflineFiles.ensurePdf(canto);
 
       state = state.copyWith(
         isLoading: false,
@@ -121,9 +95,10 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
       );
     } catch (e) {
       state = PdfEngineState(
-        cantoId: newCantoId,
+        cantoId: canto.id,
         isLoading: false,
-        error: 'Error al cargar partitura: $e',
+        error:
+            'No se pudo descargar la partitura. Revisa tu conexión e inténtalo de nuevo.',
       );
     }
   }

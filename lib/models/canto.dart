@@ -1,4 +1,16 @@
 class Canto {
+  static String limpiarNombre(String value) {
+    return value
+        .replaceFirst(
+          RegExp(
+            r'^\s*envi[oó]\s+señal\s+en\s+vivo\s*:\s*',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+  }
+
   final String id;
   final String nombre;
   final String archivo;
@@ -64,7 +76,7 @@ class Canto {
 
     return Canto(
       id: json['id'].toString(),
-      nombre: json['nombre'] as String? ?? '',
+      nombre: limpiarNombre(json['nombre'] as String? ?? ''),
       archivo: json['archivo'] as String? ?? '',
       temas: (json['temas'] as List<dynamic>?)
               ?.map((e) => e.toString())

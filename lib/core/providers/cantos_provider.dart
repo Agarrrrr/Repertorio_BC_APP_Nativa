@@ -29,7 +29,7 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
     final cacheKey = 'cantos_json_${userId}_${perfil?.coroId ?? 'sin_sede'}';
 
     // 1. Carga inmediata desde caché (Offline-First)
-    final cachedData = box.get(cacheKey) ?? box.get('cantos_json');
+    final cachedData = box.get(cacheKey);
     if (cachedData != null) {
       try {
         final lista =
@@ -47,14 +47,19 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
         final unified =
             await SupabaseService.client.rpc('mis_cantos_disponibles');
         response = unified as List<dynamic>;
-        if (response.isEmpty) {
-          throw const FormatException('Catálogo unificado aún no migrado');
-        }
       } catch (error) {
         debugPrint('Usando consulta compatible de catálogo: $error');
         response = await SupabaseService.client
             .from('cantos')
             .select('*, cantos_coros(coro_id), eventos_cantos(evento_id)');
+        response = response.where((item) {
+          final relaciones = item['cantos_coros'];
+          if (relaciones is! List || perfil == null) return false;
+          return relaciones.any((relacion) {
+            final coroId = relacion['coro_id']?.toString();
+            return coroId == perfil.coroId || coroId == 'estatal';
+          });
+        }).toList();
       }
 
       // Guardar el string en crudo para la proxima sesion
@@ -177,6 +182,12 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
       queryNormalizada.isEmpty ? <String>[] : queryNormalizada.split(' ');
 
   final filtrados = params.cantos.where((canto) {
+    // La búsqueda nunca debe saltar al repertorio de otra sede.
+    final perteneceALaSede = params.perfilCoroId != null &&
+        (canto.corosVinculados.contains(params.perfilCoroId) ||
+            canto.corosVinculados.contains('estatal'));
+    if (!perteneceALaSede) return false;
+
     // 1. Si la barra de búsqueda tiene texto: Búsqueda Global en TODOS los cantos del catálogo
     if (queryWords.isNotEmpty) {
       final nNombre = _normalizar(canto.nombre);

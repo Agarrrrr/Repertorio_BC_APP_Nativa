@@ -44,7 +44,7 @@ class ScoreCard extends ConsumerWidget {
             onHighlightChanged: (isHighlighted) {
               if (isHighlighted) {
                 // 🚀 PREFETCH: Iniciar carga del PDF y resolución de rutas en el momento del toque
-                ref.read(pdfEngineProvider.notifier).init(canto.id);
+                ref.read(pdfEngineProvider.notifier).init(canto);
               }
             },
             borderRadius: BorderRadius.circular(18),

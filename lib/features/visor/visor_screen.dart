@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'dart:math'; // For layoutPages max()
 import 'package:repertorio_bc/core/pdf/pdf_engine.dart';
+import 'package:repertorio_bc/core/offline/offline_files.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:repertorio_bc/features/visor/widgets/annotation_layer.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
@@ -60,18 +60,28 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   @override
   void initState() {
     super.initState();
-    _initMidi();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(pdfEngineProvider.notifier).init(widget.cantoId);
+      _initAssets();
     });
   }
 
-  void _initMidi() async {
-    final cantos = ref.read(cantosBaseProvider).value ?? [];
+  Future<void> _initAssets() async {
+    final cantos = await ref.read(cantosBaseProvider.future);
     final canto = cantos.firstWhere(
       (c) => c.id == widget.cantoId,
       orElse: () => Canto(id: '', nombre: 'Partitura', archivo: '', temas: [], corosVinculados: []),
     );
+
+    if (canto.id.isEmpty) {
+      debugPrint('[Visor] El canto ${widget.cantoId} no está disponible.');
+      return;
+    }
+
+    await ref.read(pdfEngineProvider.notifier).init(canto);
+    await _initMidi(canto);
+  }
+
+  Future<void> _initMidi(Canto canto) async {
 
     debugPrint('🎵 [MidiEngine] Inicializando para el canto: ${canto.nombre}');
     debugPrint('🎵 [MidiEngine] midiArchivo del canto: "${canto.midiArchivo}"');
@@ -85,32 +95,14 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       _hasMidi = true;
     });
 
-    final dir = await getApplicationDocumentsDirectory();
-    final localMidi = File('${dir.path}/${canto.id}.mid');
-    debugPrint('🎵 [NativeMidiEngine] Ruta esperada para el archivo MIDI: ${localMidi.path}');
-    
-    if (await localMidi.exists()) {
-      debugPrint('🎵 [NativeMidiEngine] ¡El archivo MIDI existe localmente! Cargándolo...');
-      _midi.loadMidi(localMidi.path, canto.nombre);
-    } else {
-      debugPrint('🎵 [NativeMidiEngine] El archivo MIDI NO existe localmente. Esperando descarga...');
-      _esperarDescargaMidi(localMidi.path, canto.nombre);
-    }
-  }
-
-  Future<void> _esperarDescargaMidi(String path, String nombre) async {
-    for (int i = 0; i < 20; i++) {
-      await Future.delayed(const Duration(seconds: 1));
+    try {
+      final localMidi = await OfflineFiles.ensureMidi(canto);
       if (!mounted) return;
-      final fileExists = await File(path).exists();
-      debugPrint('🎵 [NativeMidiEngine] Intento ${i + 1}/20: ¿Existe el archivo MIDI? $fileExists');
-      if (fileExists) {
-        debugPrint('🎵 [NativeMidiEngine] ¡El archivo MIDI se ha descargado y detectado! Cargándolo...');
-        _midi.loadMidi(path, nombre);
-        return;
-      }
+      await _midi.loadMidi(localMidi.path, canto.nombre);
+    } catch (error) {
+      debugPrint(
+          '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
     }
-    debugPrint('🎵 [MidiEngine] Agotado el tiempo de espera (20s) y el archivo MIDI no apareció.');
   }
 
   @override
