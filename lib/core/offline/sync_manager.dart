@@ -12,12 +12,16 @@ class SyncState {
   final bool isSyncing;
   final int totalFiles;
   final int downloadedFiles;
+  final int failedFiles;
+  final Set<String> failedCantoIds;
   final String currentItemName;
 
-  SyncState({
+  const SyncState({
     this.isSyncing = false,
     this.totalFiles = 0,
     this.downloadedFiles = 0,
+    this.failedFiles = 0,
+    this.failedCantoIds = const {},
     this.currentItemName = '',
   });
 
@@ -25,12 +29,16 @@ class SyncState {
     bool? isSyncing,
     int? totalFiles,
     int? downloadedFiles,
+    int? failedFiles,
+    Set<String>? failedCantoIds,
     String? currentItemName,
   }) {
     return SyncState(
       isSyncing: isSyncing ?? this.isSyncing,
       totalFiles: totalFiles ?? this.totalFiles,
       downloadedFiles: downloadedFiles ?? this.downloadedFiles,
+      failedFiles: failedFiles ?? this.failedFiles,
+      failedCantoIds: failedCantoIds ?? this.failedCantoIds,
       currentItemName: currentItemName ?? this.currentItemName,
     );
   }
@@ -39,43 +47,67 @@ class SyncState {
 }
 
 class SyncManagerNotifier extends Notifier<SyncState> {
-  static const _maxConcurrentDownloads = 3;
-
   bool _isSyncingInternal = false;
   List<Canto>? _pendingSyncList;
+  int _generation = 0;
 
   @override
   SyncState build() {
-    // Este provider ya contiene exclusivamente sede local + Estatal.
-    ref.listen(cantosDeLaSedeProvider, (previous, next) {
-      if (next.isNotEmpty) _triggerSync(next);
+    ref.listen(cantosOfflineStateProvider, (previous, next) {
+      if (next.hasValue) _triggerSync(next.value!);
     });
 
-    final initialList = ref.read(cantosDeLaSedeProvider);
-    if (initialList.isNotEmpty) {
-      Future.microtask(() => _triggerSync(initialList));
+    final initial = ref.read(cantosOfflineStateProvider);
+    if (initial.hasValue) {
+      Future.microtask(() => _triggerSync(initial.value!));
     }
 
-    return SyncState();
+    return const SyncState();
   }
 
   void _triggerSync(List<Canto> cantos) {
     if (_isSyncingInternal) {
+      _generation++;
       _pendingSyncList = cantos;
       return;
     }
+
     _isSyncingInternal = true;
-    _startBackgroundSync(cantos);
+    final generation = ++_generation;
+    _runSync(cantos, generation);
   }
 
-  Future<void> _startBackgroundSync(List<Canto> cantos) async {
+  Future<void> _runSync(List<Canto> cantos, int generation) async {
+    try {
+      await _startBackgroundSync(cantos, generation);
+    } catch (error) {
+      debugPrint('[SyncManager] Error preparando el modo offline: $error');
+      if (generation == _generation) {
+        state = state.copyWith(
+          isSyncing: false,
+          failedFiles: state.failedFiles + 1,
+          currentItemName: 'No se pudo preparar el repertorio offline',
+        );
+      }
+    } finally {
+      _finishSync();
+    }
+  }
+
+  Future<void> _startBackgroundSync(
+    List<Canto> cantos,
+    int generation,
+  ) async {
     final dir = await getApplicationDocumentsDirectory();
     final cacheBox = Hive.box('cache');
-    final downloadQueue = <({Canto canto, String tipo})>[];
 
+    await _removeUnassignedFiles(cantos, dir, cacheBox);
+    if (generation != _generation) return;
+
+    final downloadQueue = <({Canto canto, String tipo})>[];
     for (final canto in cantos) {
       if (canto.archivo.isNotEmpty) {
-        final needsPdf = await _necesitaDescargarVersion(
+        final needsPdf = await _needsDownload(
           file: File('${dir.path}/${canto.id}.pdf'),
           versionKey: '${canto.id}_pdf_version',
           cacheBox: cacheBox,
@@ -85,7 +117,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
       }
 
       if (canto.midiArchivo?.isNotEmpty == true) {
-        final needsMidi = await _necesitaDescargarVersion(
+        final needsMidi = await _needsDownload(
           file: File('${dir.path}/${canto.id}.mid'),
           versionKey: '${canto.id}_midi_version',
           cacheBox: cacheBox,
@@ -95,57 +127,94 @@ class SyncManagerNotifier extends Notifier<SyncState> {
       }
     }
 
+    if (generation != _generation) return;
     if (downloadQueue.isEmpty) {
-      _finishSync();
+      state = const SyncState(
+        currentItemName: 'Repertorio asignado disponible offline',
+      );
       return;
     }
 
-    state = state.copyWith(
+    state = SyncState(
       isSyncing: true,
       totalFiles: downloadQueue.length,
-      downloadedFiles: 0,
     );
 
-    var downloaded = 0;
-    var nextIndex = 0;
+    var processed = 0;
+    var failedFiles = 0;
+    final failedCantoIds = <String>{};
 
-    Future<void> worker() async {
-      while (state.isSyncing) {
-        if (nextIndex >= downloadQueue.length) return;
-        final item = downloadQueue[nextIndex++];
-        state = state.copyWith(currentItemName: item.canto.nombre);
+    // Intencionalmente secuencial: mantiene una sola transferencia activa,
+    // evita competir con el visor y no agrega pausas artificiales.
+    for (final item in downloadQueue) {
+      if (generation != _generation) return;
+      state = state.copyWith(currentItemName: item.canto.nombre);
 
-        try {
-          if (item.tipo == 'PDF') {
-            await OfflineFiles.ensurePdf(item.canto);
-          } else {
-            await OfflineFiles.ensureMidi(item.canto);
-          }
-        } catch (error) {
-          debugPrint(
-            '[SyncManager] Error al descargar ${item.tipo} '
-            'para ${item.canto.nombre}: $error',
-          );
+      try {
+        if (item.tipo == 'PDF') {
+          await OfflineFiles.ensurePdf(item.canto);
+        } else {
+          await OfflineFiles.ensureMidi(item.canto);
         }
-
-        downloaded++;
-        state = state.copyWith(downloadedFiles: downloaded);
+      } catch (error) {
+        failedFiles++;
+        failedCantoIds.add(item.canto.id);
+        debugPrint(
+          '[SyncManager] Falta ${item.tipo} de ${item.canto.nombre}: $error',
+        );
       }
-    }
 
-    final workerCount = downloadQueue.length < _maxConcurrentDownloads
-        ? downloadQueue.length
-        : _maxConcurrentDownloads;
-    await Future.wait(List.generate(workerCount, (_) => worker()));
+      processed++;
+      state = state.copyWith(
+        downloadedFiles: processed,
+        failedFiles: failedFiles,
+        failedCantoIds: Set.unmodifiable(failedCantoIds),
+      );
+    }
 
     state = state.copyWith(
       isSyncing: false,
-      currentItemName: 'Sincronización completada',
+      currentItemName: failedFiles == 0
+          ? 'Repertorio asignado disponible offline'
+          : 'Faltan $failedFiles archivos',
     );
-    _finishSync();
   }
 
-  Future<bool> _necesitaDescargarVersion({
+  Future<void> _removeUnassignedFiles(
+    List<Canto> cantos,
+    Directory dir,
+    Box cacheBox,
+  ) async {
+    final expectedTypes = <String, Set<String>>{
+      for (final canto in cantos)
+        canto.id: {
+          if (canto.archivo.isNotEmpty) 'pdf',
+          if (canto.midiArchivo?.isNotEmpty == true) 'midi',
+        },
+    };
+    final versionKeyPattern = RegExp(r'^(.+)_(pdf|midi)_version$');
+
+    for (final rawKey in cacheBox.keys.toList(growable: false)) {
+      if (rawKey is! String) continue;
+      final match = versionKeyPattern.firstMatch(rawKey);
+      if (match == null) continue;
+
+      final cantoId = match.group(1)!;
+      final type = match.group(2)!;
+      if (expectedTypes[cantoId]?.contains(type) == true) continue;
+
+      final extension = type == 'pdf' ? 'pdf' : 'mid';
+      final file = File('${dir.path}/$cantoId.$extension');
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (error) {
+        debugPrint('[SyncManager] No se pudo retirar ${file.path}: $error');
+      }
+      await cacheBox.delete(rawKey);
+    }
+  }
+
+  Future<bool> _needsDownload({
     required File file,
     required String versionKey,
     required Box cacheBox,

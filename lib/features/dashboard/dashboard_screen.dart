@@ -50,6 +50,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.watch(realtimeManagerProvider);
     // Predescarga únicamente el repertorio autorizado de la sede y Estatal.
     ref.watch(syncManagerProvider);
+    ref.listen(syncManagerProvider, (previous, next) {
+      final justFinished = previous?.isSyncing == true && !next.isSyncing;
+      if (justFinished && next.failedFiles > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade800,
+            content: Text(
+              'Faltan ${next.failedFiles} archivos. '
+              'Las partituras afectadas están marcadas en rojo.',
+            ),
+          ),
+        );
+      }
+    });
 
     final cantosAsync = ref.watch(cantosFiltradosProvider);
     final cantos = cantosAsync.value ?? [];
@@ -159,7 +173,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   : cantos.isEmpty
                       ? LayoutBuilder(
                           builder: (context, constraints) => RefreshIndicator(
-                            onRefresh: () async {},
+                            onRefresh: () async {
+                              ref.invalidate(cantosBaseProvider);
+                              await ref.read(cantosBaseProvider.future);
+                            },
                             child: ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               children: [

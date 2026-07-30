@@ -90,6 +90,12 @@ class AppDrawer extends ConsumerWidget {
             Consumer(
               builder: (context, ref, child) {
                 final syncState = ref.watch(syncManagerProvider);
+                final hasFailures = syncState.failedFiles > 0;
+                final statusColor = hasFailures
+                    ? Colors.red
+                    : syncState.isSyncing
+                        ? theme.colorScheme.secondary
+                        : Colors.green;
 
                 return Container(
                   padding:
@@ -100,26 +106,26 @@ class AppDrawer extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            syncState.isSyncing
-                                ? Icons.sync_rounded
-                                : Icons.cloud_done_rounded,
+                            hasFailures
+                                ? Icons.error_outline_rounded
+                                : syncState.isSyncing
+                                    ? Icons.sync_rounded
+                                    : Icons.cloud_done_rounded,
                             size: 14,
-                            color: syncState.isSyncing
-                                ? theme.colorScheme.secondary
-                                : Colors.green,
+                            color: statusColor,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              syncState.isSyncing
-                                  ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
-                                  : 'Repertorio asignado offline',
+                              hasFailures
+                                  ? 'Faltan ${syncState.failedFiles} archivos'
+                                  : syncState.isSyncing
+                                      ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
+                                      : 'Repertorio asignado offline',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: syncState.isSyncing
-                                    ? theme.colorScheme.secondary
-                                    : Colors.green,
+                                color: statusColor,
                               ),
                             ),
                           ),
@@ -129,10 +135,8 @@ class AppDrawer extends ConsumerWidget {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: syncState.progress,
-                          backgroundColor:
-                              theme.colorScheme.secondary.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation(
-                              theme.colorScheme.secondary),
+                          backgroundColor: statusColor.withOpacity(0.1),
+                          valueColor: AlwaysStoppedAnimation(statusColor),
                           borderRadius: BorderRadius.circular(10),
                           minHeight: 3,
                         ),

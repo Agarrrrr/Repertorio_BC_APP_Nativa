@@ -315,12 +315,12 @@ final cantosFiltradosProvider = FutureProvider<List<Canto>>((ref) async {
 });
 
 // Provider específico para descargas offline (evita bajar cantos de otras sedes)
-final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {
+final cantosOfflineStateProvider = Provider<AsyncValue<List<Canto>>>((ref) {
   final cantosAsync = ref.watch(cantosBaseProvider);
   final perfilAsync = ref.watch(perfilProvider);
 
   if (cantosAsync.value == null || perfilAsync.isLoading) {
-    return [];
+    return const AsyncValue.loading();
   }
 
   final cantos = cantosAsync.value!;
@@ -328,10 +328,10 @@ final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {
 
   // Si no hay perfil, no descargamos nada por seguridad
   if (perfil == null) {
-    return [];
+    return const AsyncValue.data([]);
   }
 
-  return cantos.where((canto) {
+  final permitidos = cantos.where((canto) {
     // Es de la sede local del usuario
     if (canto.corosVinculados.contains(perfil.coroId)) {
       return true;
@@ -342,4 +342,10 @@ final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {
     }
     return false;
   }).toList();
+
+  return AsyncValue.data(permitidos);
+});
+
+final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {
+  return ref.watch(cantosOfflineStateProvider).value ?? [];
 });

@@ -21,7 +21,6 @@ import 'package:repertorio_bc/core/storage/android_file_saver.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 
-
 const List<double> _kSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
 enum _MidiExportKind { ensemble, allVoices, voice }
@@ -34,7 +33,6 @@ class _MidiExportSelection {
 
   const _MidiExportSelection(this.kind, [this.voice]);
 }
-
 
 class VisorScreen extends ConsumerStatefulWidget {
   final String cantoId;
@@ -52,7 +50,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
   final MidiEngine _midi = MidiEngine();
   bool _hasMidi = false;
-  
+
   final PdfViewerController _pdfController = PdfViewerController();
   Orientation? _lastOrientation;
   double _minScaleLimit = 0.1;
@@ -69,7 +67,12 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final cantos = await ref.read(cantosBaseProvider.future);
     final canto = cantos.firstWhere(
       (c) => c.id == widget.cantoId,
-      orElse: () => Canto(id: '', nombre: 'Partitura', archivo: '', temas: [], corosVinculados: []),
+      orElse: () => Canto(
+          id: '',
+          nombre: 'Partitura',
+          archivo: '',
+          temas: [],
+          corosVinculados: []),
     );
 
     if (canto.id.isEmpty) {
@@ -82,10 +85,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   }
 
   Future<void> _initMidi(Canto canto) async {
-
     debugPrint('🎵 [MidiEngine] Inicializando para el canto: ${canto.nombre}');
     debugPrint('🎵 [MidiEngine] midiArchivo del canto: "${canto.midiArchivo}"');
-    
+
     if (canto.midiArchivo == null || canto.midiArchivo!.isEmpty) {
       debugPrint('🎵 [MidiEngine] Este canto no tiene archivo MIDI asignado.');
       return;
@@ -172,7 +174,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       }
     }
   }
-
 
   Future<void> _mostrarExportacionMidi(Canto canto) async {
     List<MidiExportVoice> voices;
@@ -456,7 +457,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
   void _ajustarZoomAlAncho() {
     if (_pdfController.isReady) {
-      final matrix = _pdfController.calcMatrixFitWidthForPage(pageNumber: _pdfController.pageNumber ?? 1);
+      final matrix = _pdfController.calcMatrixFitWidthForPage(
+          pageNumber: _pdfController.pageNumber ?? 1);
       if (matrix != null) {
         _pdfController.value = matrix;
       }
@@ -494,11 +496,18 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final cantos = ref.watch(cantosBaseProvider).value ?? [];
     final canto = cantos.firstWhere(
       (c) => c.id == widget.cantoId,
-      orElse: () => Canto(id: '', nombre: 'Partitura', archivo: '', temas: [], corosVinculados: []),
+      orElse: () => Canto(
+          id: '',
+          nombre: 'Partitura',
+          archivo: '',
+          temas: [],
+          corosVinculados: []),
     );
 
     final perfil = ref.watch(perfilProvider).value;
-    final isDirector = perfil != null && ['director', 'director_estatal', 'superadmin', 'subdirector'].contains(perfil.rol);
+    final isDirector = perfil != null &&
+        ['director', 'director_estatal', 'superadmin', 'subdirector']
+            .contains(perfil.rol);
 
     final orientation = MediaQuery.of(context).orientation;
     if (_lastOrientation != null && _lastOrientation != orientation) {
@@ -517,30 +526,79 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     // Evaluamos el brillo del sistema directamente, ya que el modo "Sepia" ahora delega en el SO el cambio a oscuro (Quiet)
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isSepiaProfile = themeMode == AppThemeMode.sepia || themeMode == AppThemeMode.quiet;
+    final isSepiaProfile =
+        themeMode == AppThemeMode.sepia || themeMode == AppThemeMode.quiet;
 
     // Filtro para modo oscuro (Quiet) que mapea el fondo blanco a gris oscuro y notas a claro
     const quietFilter = ColorFilter.matrix([
-      -0.65098,  0.0,       0.0,       0.0, 226.0,
-       0.0,     -0.66275,   0.0,       0.0, 232.0,
-       0.0,      0.0,      -0.68235,   0.0, 240.0,
-       0.0,      0.0,       0.0,       1.0,   0.0,
+      -0.65098,
+      0.0,
+      0.0,
+      0.0,
+      226.0,
+      0.0,
+      -0.66275,
+      0.0,
+      0.0,
+      232.0,
+      0.0,
+      0.0,
+      -0.68235,
+      0.0,
+      240.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ]);
 
     // Filtro original en negativo (para tema oscuro normal)
     const invertFilter = ColorFilter.matrix([
-      -1.0,  0.0,  0.0, 0.0, 255.0,
-       0.0, -1.0,  0.0, 0.0, 255.0,
-       0.0,  0.0, -1.0, 0.0, 255.0,
-       0.0,  0.0,  0.0, 1.0,   0.0,
+      -1.0,
+      0.0,
+      0.0,
+      0.0,
+      255.0,
+      0.0,
+      -1.0,
+      0.0,
+      0.0,
+      255.0,
+      0.0,
+      0.0,
+      -1.0,
+      0.0,
+      255.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ]);
 
     // Filtro sepia para la partitura en modo sepia (blanco -> #F4ECD8, negro -> #5b4636)
     const sepiaFilter = ColorFilter.matrix([
-      0.60000, 0.0,     0.0,     0.0, 91.0,
-      0.0,     0.65098, 0.0,     0.0, 70.0,
-      0.0,     0.0,     0.63529, 0.0, 54.0,
-      0.0,     0.0,     0.0,     1.0, 0.0,
+      0.60000,
+      0.0,
+      0.0,
+      0.0,
+      91.0,
+      0.0,
+      0.65098,
+      0.0,
+      0.0,
+      70.0,
+      0.0,
+      0.0,
+      0.63529,
+      0.0,
+      54.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
     ]);
 
     return PopScope(
@@ -556,10 +614,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
-          bottom: false,
+          bottom: Platform.isAndroid,
           child: Stack(
             children: [
-
               Column(
                 children: [
                   // ── Top Bar ─────────────────────────────────────────────────
@@ -569,7 +626,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                     height: _showTopBar ? 60 : 0,
                     decoration: BoxDecoration(
                       color: theme.scaffoldBackgroundColor,
-                      border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                      border: Border(
+                          bottom:
+                              BorderSide(color: Colors.grey.withOpacity(0.2))),
                     ),
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
@@ -578,7 +637,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                         child: Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                  size: 20),
                               onPressed: () {
                                 if (context.canPop()) {
                                   context.pop();
@@ -587,297 +647,426 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 }
                               },
                             ),
-                          Expanded(
-                            child: Text(
-                              canto.nombre,
-                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Expanded(
+                              child: Text(
+                                canto.nombre,
+                                style: GoogleFonts.inter(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          if (_hasMidi)
+                            if (_hasMidi)
+                              _TopBarBtn(
+                                icon: Icons.piano_rounded,
+                                isActive: _showMidi,
+                                activeColor: accentColor,
+                                onTap: _toggleMidi,
+                                tooltip: 'Reproductor MIDI',
+                              ),
+                            if (_hasMidi && Platform.isAndroid)
+                              _TopBarBtn(
+                                icon: Icons.audio_file_rounded,
+                                isActive: false,
+                                onTap: () => _mostrarExportacionMidi(canto),
+                                tooltip: 'Exportar MIDI a MP3',
+                              ),
+                            if (isDirector && perfil.coroId.isNotEmpty)
+                              _TopBarBtn(
+                                icon: Icons.cell_tower_rounded,
+                                isActive: false,
+                                onTap: () =>
+                                    _enviarSenalVivo(canto, perfil.coroId),
+                                tooltip: 'Transmitir en VIVO al coro',
+                              ),
+                            if (!Platform.isIOS)
+                              _TopBarBtn(
+                                icon: Icons.ios_share_rounded,
+                                isActive: false,
+                                onTap: () => ref
+                                    .read(pdfEngineProvider.notifier)
+                                    .exportPdf(canto.nombre),
+                                tooltip: 'Exportar PDF',
+                              ),
                             _TopBarBtn(
-                              icon: Icons.piano_rounded,
-                              isActive: _showMidi,
-                              activeColor: accentColor,
-                              onTap: _toggleMidi,
-                              tooltip: 'Reproductor MIDI',
+                              icon: _showTools
+                                  ? Icons.edit_off_rounded
+                                  : Icons.edit_rounded,
+                              isActive: _showTools,
+                              onTap: _toggleTools,
+                              tooltip: 'Herramientas de dibujo',
                             ),
-                          if (_hasMidi && Platform.isAndroid)
-                            _TopBarBtn(
-                              icon: Icons.audio_file_rounded,
-                              isActive: false,
-                              onTap: () => _mostrarExportacionMidi(canto),
-                              tooltip: 'Exportar MIDI a MP3',
-                            ),
-                          if (isDirector && perfil.coroId.isNotEmpty)
-                            _TopBarBtn(
-                              icon: Icons.cell_tower_rounded,
-                              isActive: false,
-                              onTap: () => _enviarSenalVivo(canto, perfil.coroId),
-                              tooltip: 'Transmitir en VIVO al coro',
-                            ),
-                          if (!Platform.isIOS)
-                            _TopBarBtn(
-                              icon: Icons.ios_share_rounded,
-                              isActive: false,
-                              onTap: () => ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre),
-                              tooltip: 'Exportar PDF',
-                            ),
-                          _TopBarBtn(
-                            icon: _showTools ? Icons.edit_off_rounded : Icons.edit_rounded,
-                            isActive: _showTools,
-                            onTap: _toggleTools,
-                            tooltip: 'Herramientas de dibujo',
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // ── PDF Viewer ───────────────────────────────────────────────
-                Expanded(
-                  child: Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: _toggleTopBar,
-                        child: state.isLoading
-                            ? _LoadingPlaceholder()
-                            : state.error != null
-                                ? Center(child: Text(state.error!))
-                                : ColorFiltered(
-                                    colorFilter: isDark 
-                                        ? (isSepiaProfile ? quietFilter : invertFilter) 
-                                        : (isSepiaProfile ? sepiaFilter : const ColorFilter.mode(Colors.transparent, BlendMode.multiply)),
-                                    child: PdfViewer.file(
-                                      state.localPath!,
-                                      key: ValueKey('${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
-                                      controller: _pdfController,
-                                      params: PdfViewerParams(
-                                        enableTextSelection: false,
-                                        minScale: _minScaleLimit,
-                                        boundaryMargin: EdgeInsets.zero,
-                                        onViewerReady: (document, controller) {
-                                          _calcularLimiteEscala(document);
-                                          _ajustarZoomAlAncho();
-                                        },
-                                        panEnabled: !state.isDrawingMode,
-                                        scaleEnabled: true,
-                                        layoutPages: isCarousel ? (pages, params) {
-                                          final height = pages.fold(0.0, (prev, page) => max(prev, page.height)) + params.margin * 2;
-                                          final pageLayouts = <Rect>[];
-                                          double x = params.margin;
-                                          for (final page in pages) {
-                                            pageLayouts.add(Rect.fromLTWH(x, (height - page.height) / 2, page.width, page.height));
-                                            x += page.width + params.margin;
-                                          }
-                                          return PdfPageLayout(pageLayouts: pageLayouts, documentSize: Size(x, height));
-                                        } : null,
-                                        backgroundColor: Colors.white,
-                                        pageDropShadow: null,
-                                        pageOverlaysBuilder: (context, pageRect, page) => [
-                                          Positioned.fill(
-                                            child: AnnotationLayer(
-                                              cantoId: widget.cantoId,
-                                              pageNumber: page.pageNumber,
-                                              pageSize: Size(pageRect.width, pageRect.height),
+                  // ── PDF Viewer ───────────────────────────────────────────────
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        GestureDetector(
+                          onTap: _toggleTopBar,
+                          child: state.isLoading
+                              ? _LoadingPlaceholder()
+                              : state.error != null
+                                  ? Center(child: Text(state.error!))
+                                  : ColorFiltered(
+                                      colorFilter: isDark
+                                          ? (isSepiaProfile
+                                              ? quietFilter
+                                              : invertFilter)
+                                          : (isSepiaProfile
+                                              ? sepiaFilter
+                                              : const ColorFilter.mode(
+                                                  Colors.transparent,
+                                                  BlendMode.multiply)),
+                                      child: PdfViewer.file(
+                                        state.localPath!,
+                                        key: ValueKey(
+                                            '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
+                                        controller: _pdfController,
+                                        params: PdfViewerParams(
+                                          enableTextSelection: false,
+                                          minScale: _minScaleLimit,
+                                          boundaryMargin: EdgeInsets.zero,
+                                          onViewerReady:
+                                              (document, controller) {
+                                            _calcularLimiteEscala(document);
+                                            _ajustarZoomAlAncho();
+                                          },
+                                          panEnabled: !state.isDrawingMode,
+                                          scaleEnabled: true,
+                                          layoutPages: isCarousel
+                                              ? (pages, params) {
+                                                  final height = pages.fold(
+                                                          0.0,
+                                                          (prev, page) => max(
+                                                              prev,
+                                                              page.height)) +
+                                                      params.margin * 2;
+                                                  final pageLayouts = <Rect>[];
+                                                  double x = params.margin;
+                                                  for (final page in pages) {
+                                                    pageLayouts.add(Rect.fromLTWH(
+                                                        x,
+                                                        (height - page.height) /
+                                                            2,
+                                                        page.width,
+                                                        page.height));
+                                                    x += page.width +
+                                                        params.margin;
+                                                  }
+                                                  return PdfPageLayout(
+                                                      pageLayouts: pageLayouts,
+                                                      documentSize:
+                                                          Size(x, height));
+                                                }
+                                              : null,
+                                          backgroundColor: Colors.white,
+                                          pageDropShadow: null,
+                                          pageOverlaysBuilder:
+                                              (context, pageRect, page) => [
+                                            Positioned.fill(
+                                              child: AnnotationLayer(
+                                                cantoId: widget.cantoId,
+                                                pageNumber: page.pageNumber,
+                                                pageSize: Size(pageRect.width,
+                                                    pageRect.height),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                      ),
+                        ),
 
-                      // ── Panel MIDI Flotante ──────────────────────────────
-                      // NOTA: Se mueve a -380 cuando está cerrado para asegurar que no se asome
-                      // de manera poco profesional en pantallas cortas o con partituras de una página.
-                      StreamBuilder<MidiState>(
-                        stream: _midi.stateStream,
-                        initialData: _midi.state,
-                        builder: (context, snapshot) {
-                          final currentMidiState = snapshot.data ?? _midi.state;
-                          return AnimatedPositioned(
-                            duration: const Duration(milliseconds: 350),
-                            curve: Curves.easeInOutCubic,
-                            bottom: _showMidi ? (16 + MediaQuery.of(context).padding.bottom) : -380,
-                            left: 12,
-                            right: 12,
-                            child: _MidiPanel(
-                              midiState: currentMidiState,
-                              onPlay: () { currentMidiState.isPlaying ? _midi.pause() : _midi.play(); },
-                              onStop: _midi.stop,
-                              onSeek: _midi.seek,
-                              onSpeedChange: _midi.setSpeed,
-                              onMetronomo: _midi.toggleMetronomo,
-                              onVozToggle: (trackIndex, muted) => _midi.setTrackMute(trackIndex, muted),
-                              onVozSolo: (soloTrackIndex) {
-                                // Activar solo la voz seleccionada y mutear las demás
-                                for (var v in currentMidiState.voces) {
-                                  final shouldMute = v.trackIndex != soloTrackIndex;
-                                  _midi.setTrackMute(v.trackIndex, shouldMute);
-                                }
-                              },
-                              isLoaded: currentMidiState.isLoaded,
-                              isReady: currentMidiState.isReady,
-                              accentColor: accentColor,
-                            ),
-                          );
-                        },
-                      ),
-
-                      // ── Panel Herramientas de Dibujo ─────────────────────
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        bottom: _showTools ? 20 : -100,
-                        left: 0,
-                        right: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: theme.scaffoldBackgroundColor,
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+                        // ── Panel MIDI Flotante ──────────────────────────────
+                        // NOTA: Se mueve a -380 cuando está cerrado para asegurar que no se asome
+                        // de manera poco profesional en pantallas cortas o con partituras de una página.
+                        StreamBuilder<MidiState>(
+                          stream: _midi.stateStream,
+                          initialData: _midi.state,
+                          builder: (context, snapshot) {
+                            final currentMidiState =
+                                snapshot.data ?? _midi.state;
+                            return AnimatedPositioned(
+                              duration: const Duration(milliseconds: 350),
+                              curve: Curves.easeInOutCubic,
+                              bottom: _showMidi
+                                  ? (16 + MediaQuery.of(context).padding.bottom)
+                                  : -380,
+                              left: 12,
+                              right: 12,
+                              child: _MidiPanel(
+                                midiState: currentMidiState,
+                                onPlay: () {
+                                  currentMidiState.isPlaying
+                                      ? _midi.pause()
+                                      : _midi.play();
+                                },
+                                onStop: _midi.stop,
+                                onSeek: _midi.seek,
+                                onSpeedChange: _midi.setSpeed,
+                                onMetronomo: _midi.toggleMetronomo,
+                                onVozToggle: (trackIndex, muted) =>
+                                    _midi.setTrackMute(trackIndex, muted),
+                                onVozSolo: (soloTrackIndex) {
+                                  // Activar solo la voz seleccionada y mutear las demás
+                                  for (var v in currentMidiState.voces) {
+                                    final shouldMute =
+                                        v.trackIndex != soloTrackIndex;
+                                    _midi.setTrackMute(
+                                        v.trackIndex, shouldMute);
+                                  }
+                                },
+                                isLoaded: currentMidiState.isLoaded,
+                                isReady: currentMidiState.isReady,
+                                accentColor: accentColor,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _ToolBtn(icon: Icons.pan_tool_rounded, isActive: !state.isDrawingMode, onTap: () => ref.read(pdfEngineProvider.notifier).setDrawingMode(false)),
-                                  Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
-                                  _ToolBtn(
-                                    icon: Icons.edit_rounded,
-                                    isActive: state.isDrawingMode && state.currentTool == ToolType.pencil,
-                                    onTap: () { 
-                                      final e = ref.read(pdfEngineProvider.notifier); 
-                                      e.setDrawingMode(true); 
-                                      e.setTool(ToolType.pencil); 
-                                      setState(() => _showDrawingPalette = false);
-                                    },
-                                    onDoubleTap: () {
-                                      final e = ref.read(pdfEngineProvider.notifier); 
-                                      e.setDrawingMode(true); 
-                                      e.setTool(ToolType.pencil);
-                                      setState(() => _showDrawingPalette = !_showDrawingPalette);
-                                    },
-                                  ),
-                                  _ToolBtn(
-                                    icon: Icons.text_fields_rounded,
-                                    isActive: state.isDrawingMode && state.currentTool == ToolType.text,
-                                    onTap: () { 
-                                      final e = ref.read(pdfEngineProvider.notifier); 
-                                      e.setDrawingMode(true); 
-                                      e.setTool(ToolType.text); 
-                                      setState(() => _showDrawingPalette = false);
-                                    }
-                                  ),
-                                  _ToolBtn(
-                                    icon: Icons.cleaning_services_rounded,
-                                    isActive: state.isDrawingMode && state.currentTool == ToolType.eraser,
-                                    onTap: () { 
-                                      final e = ref.read(pdfEngineProvider.notifier); 
-                                      e.setDrawingMode(true); 
-                                      e.setTool(ToolType.eraser); 
-                                      setState(() => _showDrawingPalette = false);
-                                    },
-                                    onDoubleTap: () {
-                                      final e = ref.read(pdfEngineProvider.notifier); 
-                                      e.setDrawingMode(true); 
-                                      e.setTool(ToolType.eraser);
-                                      setState(() => _showDrawingPalette = !_showDrawingPalette);
-                                    },
-                                  ),
-                                  if (state.isDrawingMode) ...[
-                                    Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 5)),
-                                    _ToolBtn(
-                                      icon: Icons.undo_rounded,
-                                      isActive: false,
-                                      onTap: () => ref.read(pdfEngineProvider.notifier).undo(),
-                                    ),
-                                    _ToolBtn(
-                                      icon: Icons.redo_rounded,
-                                      isActive: false,
-                                      onTap: () => ref.read(pdfEngineProvider.notifier).redo(),
-                                    ),
-                                    _ToolBtn(
-                                      icon: Icons.delete_sweep_rounded,
-                                      isActive: false,
-                                      onTap: () => ref.read(pdfEngineProvider.notifier).clearAllGlobal(),
-                                    ),
+                            );
+                          },
+                        ),
+
+                        // ── Panel Herramientas de Dibujo ─────────────────────
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          bottom: _showTools ? 20 : -100,
+                          left: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: theme.scaffoldBackgroundColor,
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 10)
                                   ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      // ── Paleta de Dibujo Flotante (Grosor y Color) ─────────
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        bottom: (_showTools && _showDrawingPalette) ? 75 : -100,
-                        left: 0,
-                        right: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: theme.scaffoldBackgroundColor,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Slider de grosor
-                                  SizedBox(
-                                    width: 100,
-                                    child: SliderTheme(
-                                      data: SliderThemeData(
-                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                                        trackHeight: 2,
-                                        activeTrackColor: accentColor,
-                                        inactiveTrackColor: Colors.grey.withOpacity(0.3),
-                                        thumbColor: accentColor,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _ToolBtn(
+                                        icon: Icons.pan_tool_rounded,
+                                        isActive: !state.isDrawingMode,
+                                        onTap: () => ref
+                                            .read(pdfEngineProvider.notifier)
+                                            .setDrawingMode(false)),
+                                    Container(
+                                        width: 1,
+                                        height: 20,
+                                        color: Colors.grey.withOpacity(0.3),
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 5)),
+                                    _ToolBtn(
+                                      icon: Icons.edit_rounded,
+                                      isActive: state.isDrawingMode &&
+                                          state.currentTool == ToolType.pencil,
+                                      onTap: () {
+                                        final e = ref
+                                            .read(pdfEngineProvider.notifier);
+                                        e.setDrawingMode(true);
+                                        e.setTool(ToolType.pencil);
+                                        setState(
+                                            () => _showDrawingPalette = false);
+                                      },
+                                      onDoubleTap: () {
+                                        final e = ref
+                                            .read(pdfEngineProvider.notifier);
+                                        e.setDrawingMode(true);
+                                        e.setTool(ToolType.pencil);
+                                        setState(() => _showDrawingPalette =
+                                            !_showDrawingPalette);
+                                      },
+                                    ),
+                                    _ToolBtn(
+                                        icon: Icons.text_fields_rounded,
+                                        isActive: state.isDrawingMode &&
+                                            state.currentTool == ToolType.text,
+                                        onTap: () {
+                                          final e = ref
+                                              .read(pdfEngineProvider.notifier);
+                                          e.setDrawingMode(true);
+                                          e.setTool(ToolType.text);
+                                          setState(() =>
+                                              _showDrawingPalette = false);
+                                        }),
+                                    _ToolBtn(
+                                      icon: Icons.cleaning_services_rounded,
+                                      isActive: state.isDrawingMode &&
+                                          state.currentTool == ToolType.eraser,
+                                      onTap: () {
+                                        final e = ref
+                                            .read(pdfEngineProvider.notifier);
+                                        e.setDrawingMode(true);
+                                        e.setTool(ToolType.eraser);
+                                        setState(
+                                            () => _showDrawingPalette = false);
+                                      },
+                                      onDoubleTap: () {
+                                        final e = ref
+                                            .read(pdfEngineProvider.notifier);
+                                        e.setDrawingMode(true);
+                                        e.setTool(ToolType.eraser);
+                                        setState(() => _showDrawingPalette =
+                                            !_showDrawingPalette);
+                                      },
+                                    ),
+                                    if (state.isDrawingMode) ...[
+                                      Container(
+                                          width: 1,
+                                          height: 20,
+                                          color: Colors.grey.withOpacity(0.3),
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 5)),
+                                      _ToolBtn(
+                                        icon: Icons.undo_rounded,
+                                        isActive: false,
+                                        onTap: () => ref
+                                            .read(pdfEngineProvider.notifier)
+                                            .undo(),
                                       ),
-                                      child: Slider(
-                                        value: state.currentTool == ToolType.eraser ? state.eraserSize : state.currentSize,
-                                        min: 1.0,
-                                        max: state.currentTool == ToolType.eraser ? 40.0 : 15.0,
-                                        onChanged: (val) => ref.read(pdfEngineProvider.notifier).setCurrentSize(val),
+                                      _ToolBtn(
+                                        icon: Icons.redo_rounded,
+                                        isActive: false,
+                                        onTap: () => ref
+                                            .read(pdfEngineProvider.notifier)
+                                            .redo(),
+                                      ),
+                                      _ToolBtn(
+                                        icon: Icons.delete_sweep_rounded,
+                                        isActive: false,
+                                        onTap: () => ref
+                                            .read(pdfEngineProvider.notifier)
+                                            .clearAllGlobal(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ── Paleta de Dibujo Flotante (Grosor y Color) ─────────
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          bottom:
+                              (_showTools && _showDrawingPalette) ? 75 : -100,
+                          left: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: theme.scaffoldBackgroundColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 10)
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Slider de grosor
+                                    SizedBox(
+                                      width: 100,
+                                      child: SliderTheme(
+                                        data: SliderThemeData(
+                                          thumbShape:
+                                              const RoundSliderThumbShape(
+                                                  enabledThumbRadius: 6),
+                                          overlayShape:
+                                              const RoundSliderOverlayShape(
+                                                  overlayRadius: 12),
+                                          trackHeight: 2,
+                                          activeTrackColor: accentColor,
+                                          inactiveTrackColor:
+                                              Colors.grey.withOpacity(0.3),
+                                          thumbColor: accentColor,
+                                        ),
+                                        child: Slider(
+                                          value: state.currentTool ==
+                                                  ToolType.eraser
+                                              ? state.eraserSize
+                                              : state.currentSize,
+                                          min: 1.0,
+                                          max: state.currentTool ==
+                                                  ToolType.eraser
+                                              ? 40.0
+                                              : 15.0,
+                                          onChanged: (val) => ref
+                                              .read(pdfEngineProvider.notifier)
+                                              .setCurrentSize(val),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  
-                                  // Selector de colores solo si no es borrador
-                                  if (state.currentTool != ToolType.eraser) ...[
-                                    Container(width: 1, height: 20, color: Colors.grey.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 10)),
-                                    _ColorBtn(color: Colors.black, isActive: state.currentColor == Colors.black, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.black)),
-                                    _ColorBtn(color: Colors.red, isActive: state.currentColor == Colors.red, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.red)),
-                                    _ColorBtn(color: Colors.blue, isActive: state.currentColor == Colors.blue, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.blue)),
-                                    _ColorBtn(color: Colors.white, isActive: state.currentColor == Colors.white, onTap: () => ref.read(pdfEngineProvider.notifier).setCurrentColor(Colors.white)),
-                                  ]
-                                ],
+
+                                    // Selector de colores solo si no es borrador
+                                    if (state.currentTool !=
+                                        ToolType.eraser) ...[
+                                      Container(
+                                          width: 1,
+                                          height: 20,
+                                          color: Colors.grey.withOpacity(0.3),
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 10)),
+                                      _ColorBtn(
+                                          color: Colors.black,
+                                          isActive: state.currentColor ==
+                                              Colors.black,
+                                          onTap: () => ref
+                                              .read(pdfEngineProvider.notifier)
+                                              .setCurrentColor(Colors.black)),
+                                      _ColorBtn(
+                                          color: Colors.red,
+                                          isActive:
+                                              state.currentColor == Colors.red,
+                                          onTap: () => ref
+                                              .read(pdfEngineProvider.notifier)
+                                              .setCurrentColor(Colors.red)),
+                                      _ColorBtn(
+                                          color: Colors.blue,
+                                          isActive:
+                                              state.currentColor == Colors.blue,
+                                          onTap: () => ref
+                                              .read(pdfEngineProvider.notifier)
+                                              .setCurrentColor(Colors.blue)),
+                                      _ColorBtn(
+                                          color: Colors.white,
+                                          isActive: state.currentColor ==
+                                              Colors.white,
+                                          onTap: () => ref
+                                              .read(pdfEngineProvider.notifier)
+                                              .setCurrentColor(Colors.white)),
+                                    ]
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1386,12 +1575,26 @@ class _LoadingPlaceholder extends StatelessWidget {
         children: [
           const Icon(Icons.picture_as_pdf_rounded, size: 60, color: Colors.grey)
               .animate(onPlay: (c) => c.repeat())
-              .shimmer(duration: 1500.ms, color: theme.colorScheme.primary.withOpacity(0.5))
-              .scaleXY(begin: 0.95, end: 1.05, duration: 1500.ms, curve: Curves.easeInOutSine)
+              .shimmer(
+                  duration: 1500.ms,
+                  color: theme.colorScheme.primary.withOpacity(0.5))
+              .scaleXY(
+                  begin: 0.95,
+                  end: 1.05,
+                  duration: 1500.ms,
+                  curve: Curves.easeInOutSine)
               .then()
-              .scaleXY(begin: 1.05, end: 0.95, duration: 1500.ms, curve: Curves.easeInOutSine),
+              .scaleXY(
+                  begin: 1.05,
+                  end: 0.95,
+                  duration: 1500.ms,
+                  curve: Curves.easeInOutSine),
           const SizedBox(height: 20),
-          Text('Preparando partitura...', style: GoogleFonts.inter(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w500))
+          Text('Preparando partitura...',
+                  style: GoogleFonts.inter(
+                      color: Colors.grey,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500))
               .animate(onPlay: (c) => c.repeat())
               .fade(duration: 1500.ms, begin: 0.4, end: 1.0)
               .then()
@@ -1409,7 +1612,12 @@ class _TopBarBtn extends StatelessWidget {
   final VoidCallback onTap;
   final String tooltip;
 
-  const _TopBarBtn({required this.icon, required this.isActive, this.activeColor, required this.onTap, required this.tooltip});
+  const _TopBarBtn(
+      {required this.icon,
+      required this.isActive,
+      this.activeColor,
+      required this.onTap,
+      required this.tooltip});
 
   @override
   Widget build(BuildContext context) {
@@ -1445,7 +1653,7 @@ class _GoldIconBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactiveColor = Colors.grey.withOpacity(0.6);
-    
+
     return Tooltip(
       message: tooltip,
       child: GestureDetector(
@@ -1453,14 +1661,16 @@ class _GoldIconBtn extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
+            color:
+                isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
             shape: BoxShape.circle,
           ),
-          child: child ?? Icon(
-            icon,
-            size: size,
-            color: isActive ? activeColor : inactiveColor,
-          ),
+          child: child ??
+              Icon(
+                icon,
+                size: size,
+                color: isActive ? activeColor : inactiveColor,
+              ),
         ),
       ),
     );
@@ -1499,7 +1709,7 @@ class MetronomePainter extends CustomPainter {
     // Move pivot point to the bottom center of the metronome
     canvas.translate(size.width * 0.5, size.height * 0.8);
     canvas.rotate(rotationAngle);
-    
+
     // Draw needle straight up
     canvas.drawLine(
       Offset.zero,
@@ -1509,12 +1719,12 @@ class MetronomePainter extends CustomPainter {
 
     // 3. Dibujar la pesa del péndulo
     canvas.drawCircle(Offset(0, -size.height * 0.35), 3, fillPaint);
-    
+
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant MetronomePainter oldDelegate) => 
+  bool shouldRepaint(covariant MetronomePainter oldDelegate) =>
       oldDelegate.rotationAngle != rotationAngle || oldDelegate.color != color;
 }
 
@@ -1523,8 +1733,8 @@ class MetronomeIcon extends StatelessWidget {
   final double size;
   final double rotationAngle;
   const MetronomeIcon({
-    super.key, 
-    required this.color, 
+    super.key,
+    required this.color,
     this.size = 22,
     this.rotationAngle = 0.0,
   });
@@ -1544,7 +1754,11 @@ class _ToolBtn extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
 
-  const _ToolBtn({required this.icon, required this.isActive, required this.onTap, this.onDoubleTap});
+  const _ToolBtn(
+      {required this.icon,
+      required this.isActive,
+      required this.onTap,
+      this.onDoubleTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1556,10 +1770,14 @@ class _ToolBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isActive ? theme.colorScheme.primary.withOpacity(0.1) : Colors.transparent,
+          color: isActive
+              ? theme.colorScheme.primary.withOpacity(0.1)
+              : Colors.transparent,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 20, color: isActive ? theme.colorScheme.primary : Colors.grey),
+        child: Icon(icon,
+            size: 20,
+            color: isActive ? theme.colorScheme.primary : Colors.grey),
       ),
     );
   }
@@ -1570,7 +1788,8 @@ class _ColorBtn extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  const _ColorBtn({required this.color, required this.isActive, required this.onTap});
+  const _ColorBtn(
+      {required this.color, required this.isActive, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1583,7 +1802,9 @@ class _ColorBtn extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: isActive ? theme.colorScheme.primary.withOpacity(0.2) : Colors.transparent,
+          color: isActive
+              ? theme.colorScheme.primary.withOpacity(0.2)
+              : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: Container(
@@ -1594,7 +1815,10 @@ class _ColorBtn extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(color: borderColor, width: 1),
             boxShadow: [
-              if (isActive) BoxShadow(color: theme.colorScheme.primary.withOpacity(0.5), blurRadius: 4),
+              if (isActive)
+                BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.5),
+                    blurRadius: 4),
             ],
           ),
         ),
