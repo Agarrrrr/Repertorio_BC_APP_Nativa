@@ -11,6 +11,8 @@ import 'package:repertorio_bc/models/canto.dart';
 class OfflineFiles {
   OfflineFiles._();
 
+  static final Map<String, Future<File>> _inFlight = {};
+
   static final Dio _dio = Dio()
     ..options.connectTimeout = const Duration(seconds: 10)
     ..options.receiveTimeout = const Duration(seconds: 60);
@@ -57,6 +59,13 @@ class OfflineFiles {
   }
 
   static Future<File> ensurePdf(Canto canto) async {
+    return _singleFlight(
+      'pdf:${canto.id}',
+      () => _ensurePdf(canto),
+    );
+  }
+
+  static Future<File> _ensurePdf(Canto canto) async {
     final file = await pdfFile(canto.id);
     final metadataKey = '${canto.id}_pdf_version';
     if (await _cachedVersionIsCurrent(
@@ -74,6 +83,13 @@ class OfflineFiles {
   }
 
   static Future<File> ensureMidi(Canto canto) async {
+    return _singleFlight(
+      'midi:${canto.id}',
+      () => _ensureMidi(canto),
+    );
+  }
+
+  static Future<File> _ensureMidi(Canto canto) async {
     final file = await midiFile(canto.id);
     final metadataKey = '${canto.id}_midi_version';
     if (await _cachedVersionIsCurrent(
@@ -88,6 +104,19 @@ class OfflineFiles {
     await _download(resolveMidiUrl(canto), file, FileCrypto.isMidi);
     await Hive.box('cache').put(metadataKey, canto.version);
     return file;
+  }
+
+  static Future<File> _singleFlight(
+    String key,
+    Future<File> Function() operation,
+  ) {
+    final active = _inFlight[key];
+    if (active != null) return active;
+
+    final future = operation();
+    _inFlight[key] = future;
+    future.whenComplete(() => _inFlight.remove(key)).ignore();
+    return future;
   }
 
   static Future<void> _download(

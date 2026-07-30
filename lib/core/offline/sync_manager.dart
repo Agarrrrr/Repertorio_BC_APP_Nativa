@@ -1,13 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
-import 'package:repertorio_bc/core/security/file_crypto.dart';
-import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/models/canto.dart';
 
 class SyncState {
@@ -75,11 +72,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
   Future<void> _startBackgroundSync(List<Canto> cantos) async {
     int totalMissingFiles = 0;
     final dir = await getApplicationDocumentsDirectory();
-    final dio = Dio();
     final cacheBox = Hive.box('cache');
-
-    dio.options.connectTimeout = const Duration(seconds: 5);
-    dio.options.receiveTimeout = const Duration(seconds: 10);
 
     // 1. Pre-calcular archivos faltantes o desactualizados
     List<Map<String, dynamic>> downloadQueue = [];
@@ -87,52 +80,36 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     for (var canto in cantos) {
       if (canto.archivo.isNotEmpty) {
         final pdfFile = File('${dir.path}/${canto.id}.pdf');
-        final pdfUrl = OfflineFiles.resolvePdfUrl(canto);
-        final pdfMetaKey = '${canto.id}_pdf_meta';
-
-        final requiereActualizacion = await _necesitaDescargar(
-          dio: dio,
+        final requiereActualizacion = await _necesitaDescargarVersion(
           file: pdfFile,
-          url: pdfUrl,
-          metaKey: pdfMetaKey,
+          versionKey: '${canto.id}_pdf_version',
           cacheBox: cacheBox,
-          updatedAt: canto.updatedAt,
+          expectedVersion: canto.version,
         );
 
         if (requiereActualizacion) {
           downloadQueue.add({
+            'canto': canto,
             'nombre': canto.nombre,
-            'url': pdfUrl,
-            'path': pdfFile.path,
             'tipo': 'PDF',
-            'metaKey': pdfMetaKey,
-            'updatedAt': canto.updatedAt,
           });
           totalMissingFiles++;
         }
       }
       if (canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty) {
         final midiFile = File('${dir.path}/${canto.id}.mid');
-        final midiUrl = OfflineFiles.resolveMidiUrl(canto);
-        final midiMetaKey = '${canto.id}_midi_meta';
-
-        final requiereActualizacion = await _necesitaDescargar(
-          dio: dio,
+        final requiereActualizacion = await _necesitaDescargarVersion(
           file: midiFile,
-          url: midiUrl,
-          metaKey: midiMetaKey,
+          versionKey: '${canto.id}_midi_version',
           cacheBox: cacheBox,
-          updatedAt: canto.updatedAt,
+          expectedVersion: canto.version,
         );
 
         if (requiereActualizacion) {
           downloadQueue.add({
+            'canto': canto,
             'nombre': canto.nombre,
-            'url': midiUrl,
-            'path': midiFile.path,
             'tipo': 'MIDI',
-            'metaKey': midiMetaKey,
-            'updatedAt': canto.updatedAt,
           });
           totalMissingFiles++;
         }
@@ -163,46 +140,12 @@ class SyncManagerNotifier extends Notifier<SyncState> {
         debugPrint(
             '🔄 [SyncManager] Descargando ${item['tipo']} para ${item['nombre']}');
 
-        final targetFile = File(item['path']);
-        if (await targetFile.exists()) {
-          try {
-            await targetFile.delete();
-          } catch (_) {}
+        final canto = item['canto'] as Canto;
+        if (item['tipo'] == 'PDF') {
+          await OfflineFiles.ensurePdf(canto);
+        } else {
+          await OfflineFiles.ensureMidi(canto);
         }
-
-        final token = SupabaseService.client.auth.currentSession?.accessToken;
-        final response = await dio.download(
-          item['url'],
-          item['path'],
-          options: Options(
-            headers: {
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-          ),
-        );
-
-        final downloadedFile = File(item['path']);
-        final source = await downloadedFile.readAsBytes();
-        final clearBytes = FileCrypto.decryptIfNeeded(source);
-        final valid = item['tipo'] == 'PDF'
-            ? FileCrypto.isPdf(clearBytes)
-            : FileCrypto.isMidi(clearBytes);
-        if (!valid) {
-          throw const FormatException('El archivo sincronizado no es válido');
-        }
-        await downloadedFile.writeAsBytes(clearBytes, flush: true);
-
-        final etag = response.headers.value('etag');
-        final lastModified = response.headers.value('last-modified');
-        final contentLength = response.headers.value('content-length');
-
-        cacheBox.put(item['metaKey'], {
-          'url': item['url'],
-          'updated_at': item['updatedAt'],
-          'etag': etag,
-          'last_modified': lastModified,
-          'content_length': contentLength,
-        });
       } catch (e) {
         debugPrint(
             '❌ [SyncManager] Error al descargar ${item['tipo']} para ${item['nombre']}: $e');
@@ -221,55 +164,21 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     _finishSync();
   }
 
-  Future<bool> _necesitaDescargar({
-    required Dio dio,
+  Future<bool> _necesitaDescargarVersion({
     required File file,
-    required String url,
-    required String metaKey,
+    required String versionKey,
     required Box cacheBox,
-    String? updatedAt,
+    required int expectedVersion,
   }) async {
     if (!await file.exists()) return true;
 
-    final metaRaw = cacheBox.get(metaKey);
-    if (metaRaw == null || metaRaw is! Map || metaRaw['url'] != url) {
-      return true;
-    }
-    if (updatedAt != null && metaRaw['updated_at'] != updatedAt) return true;
-
-    try {
-      final token = SupabaseService.client.auth.currentSession?.accessToken;
-      final response = await dio.get(
-        url,
-        options: Options(
-          headers: {
-            'range': 'bytes=0-10',
-            if (token != null) 'Authorization': 'Bearer $token',
-          },
-          validateStatus: (status) => status != null && status < 400,
-          receiveTimeout: const Duration(seconds: 4),
-          sendTimeout: const Duration(seconds: 4),
-        ),
-      );
-
-      final etag = response.headers.value('etag');
-      final lastModified = response.headers.value('last-modified');
-      final contentLength = response.headers.value('content-length') ??
-          response.headers.value('content-range');
-
-      if (etag != null && etag != metaRaw['etag']) return true;
-      if (lastModified != null && lastModified != metaRaw['last_modified']) {
-        return true;
-      }
-      if (contentLength != null && contentLength != metaRaw['content_length']) {
-        return true;
-      }
-    } catch (e) {
-      // En caso de estar offline o error de red, mantener el archivo local actual
+    final cachedVersion = cacheBox.get(versionKey) as int?;
+    if (cachedVersion == expectedVersion) return false;
+    if (cachedVersion == null && expectedVersion == 1) {
+      await cacheBox.put(versionKey, 1);
       return false;
     }
-
-    return false;
+    return true;
   }
 
   void _finishSync() {
