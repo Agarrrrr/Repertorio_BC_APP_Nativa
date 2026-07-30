@@ -120,10 +120,17 @@ jobs:
           }
 
           echo "Building Flutter iOS release..."
-          BUILD_NUMBER=$((33 + GITHUB_RUN_NUMBER))
-          echo "Using App Store build number $BUILD_NUMBER"
+          BUILD_NAME=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+          BUILD_NUMBER=$((34 + GITHUB_RUN_NUMBER))
+          if [ -z "$BUILD_NAME" ]; then
+            echo "::error::Could not read the marketing version from pubspec.yaml."
+            exit 1
+          fi
+          echo "Using App Store version $BUILD_NAME ($BUILD_NUMBER)"
           run_with_diagnostics "Flutter iOS build failed" \
-            flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
+            flutter build ios --release --no-codesign \
+              --build-name="$BUILD_NAME" \
+              --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
             echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
