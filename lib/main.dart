@@ -43,8 +43,6 @@ void main() async {
   );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  FlutterNativeSplash.remove();
-
   runApp(
     const ProviderScope(
       child: RepertorioApp(),

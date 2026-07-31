@@ -20,8 +20,9 @@ class ScoreCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasAudio = canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty;
-    final syncState = ref.watch(syncManagerProvider);
-    final hasMissingFile = syncState.failedCantoIds.contains(canto.id);
+    final hasMissingFile = ref.watch(
+      syncManagerProvider.select((s) => s.failedCantoIds.contains(canto.id)),
+    );
 
     final cardBg = hasMissingFile
         ? (isDark ? const Color(0xFF35191B) : const Color(0xFFFFEBEE))

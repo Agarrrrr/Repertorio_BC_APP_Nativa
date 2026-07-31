@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,8 +105,8 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     await _removeUnassignedFiles(cantos, dir, cacheBox);
     if (generation != _generation) return;
 
-    final downloadQueue = <({Canto canto, String tipo})>[];
-    for (final canto in cantos) {
+    final checkFutures = cantos.map((canto) async {
+      final items = <({Canto canto, String tipo})>[];
       if (canto.archivo.isNotEmpty) {
         final needsPdf = await _needsDownload(
           file: File('${dir.path}/${canto.id}.pdf'),
@@ -113,7 +114,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
           cacheBox: cacheBox,
           expectedVersion: canto.version,
         );
-        if (needsPdf) downloadQueue.add((canto: canto, tipo: 'PDF'));
+        if (needsPdf) items.add((canto: canto, tipo: 'PDF'));
       }
 
       if (canto.midiArchivo?.isNotEmpty == true) {
@@ -123,11 +124,19 @@ class SyncManagerNotifier extends Notifier<SyncState> {
           cacheBox: cacheBox,
           expectedVersion: canto.version,
         );
-        if (needsMidi) downloadQueue.add((canto: canto, tipo: 'MIDI'));
+        if (needsMidi) items.add((canto: canto, tipo: 'MIDI'));
       }
+      return items;
+    });
+
+    final results = await Future.wait(checkFutures);
+    if (generation != _generation) return;
+
+    final downloadQueue = <({Canto canto, String tipo})>[];
+    for (final list in results) {
+      downloadQueue.addAll(list);
     }
 
-    if (generation != _generation) return;
     if (downloadQueue.isEmpty) {
       state = const SyncState(
         currentItemName: 'Repertorio asignado disponible offline',
@@ -144,33 +153,49 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     var failedFiles = 0;
     final failedCantoIds = <String>{};
 
-    // Intencionalmente secuencial: mantiene una sola transferencia activa,
-    // evita competir con el visor y no agrega pausas artificiales.
-    for (final item in downloadQueue) {
-      if (generation != _generation) return;
-      state = state.copyWith(currentItemName: item.canto.nombre);
+    // Descarga paralela controlada (máximo 3 transferencias simultáneas)
+    const maxConcurrency = 3;
+    var index = 0;
 
-      try {
-        if (item.tipo == 'PDF') {
-          await OfflineFiles.ensurePdf(item.canto);
-        } else {
-          await OfflineFiles.ensureMidi(item.canto);
+    Future<void> worker() async {
+      while (index < downloadQueue.length) {
+        if (generation != _generation) return;
+        final currentIndex = index++;
+        final item = downloadQueue[currentIndex];
+
+        try {
+          if (item.tipo == 'PDF') {
+            await OfflineFiles.ensurePdf(item.canto);
+          } else {
+            await OfflineFiles.ensureMidi(item.canto);
+          }
+        } catch (error) {
+          failedFiles++;
+          failedCantoIds.add(item.canto.id);
+          debugPrint(
+            '[SyncManager] Falta ${item.tipo} de ${item.canto.nombre}: $error',
+          );
         }
-      } catch (error) {
-        failedFiles++;
-        failedCantoIds.add(item.canto.id);
-        debugPrint(
-          '[SyncManager] Falta ${item.tipo} de ${item.canto.nombre}: $error',
-        );
-      }
 
-      processed++;
-      state = state.copyWith(
-        downloadedFiles: processed,
-        failedFiles: failedFiles,
-        failedCantoIds: Set.unmodifiable(failedCantoIds),
-      );
+        processed++;
+        if (generation == _generation) {
+          state = state.copyWith(
+            downloadedFiles: processed,
+            failedFiles: failedFiles,
+            failedCantoIds: Set.unmodifiable(failedCantoIds),
+            currentItemName: item.canto.nombre,
+          );
+        }
+      }
     }
+
+    final workers = List.generate(
+      math.min(maxConcurrency, downloadQueue.length),
+      (_) => worker(),
+    );
+    await Future.wait(workers);
+
+    if (generation != _generation) return;
 
     state = state.copyWith(
       isSyncing: false,

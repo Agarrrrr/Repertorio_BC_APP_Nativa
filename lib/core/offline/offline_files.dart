@@ -175,8 +175,12 @@ class OfflineFiles {
   ) async {
     if (!await file.exists()) return false;
     try {
+      final raf = await file.open(mode: FileMode.read);
+      final header = await raf.read(4);
+      await raf.close();
+      if (validator(header)) return true;
+
       final bytes = await file.readAsBytes();
-      if (validator(bytes)) return true;
       await _decryptAndWrite(bytes, file, validator);
       return true;
     } catch (_) {
@@ -192,7 +196,7 @@ class OfflineFiles {
     File target,
     bool Function(List<int>) validator,
   ) async {
-    final clearBytes = FileCrypto.decryptIfNeeded(source);
+    final clearBytes = await compute(FileCrypto.decryptIfNeeded, source);
     if (!validator(clearBytes)) {
       throw const FormatException('El archivo descifrado no es válido');
     }
