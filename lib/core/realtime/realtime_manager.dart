@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
+import 'package:repertorio_bc/core/activity/activity_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final realtimeManagerProvider = Provider<RealtimeManager>((ref) {
@@ -87,6 +88,7 @@ class RealtimeManager {
           await main.track({
             'user_id': SupabaseService.client.auth.currentUser?.id,
             'sede': coroId,
+            'plataforma': ActivityService.platform,
             'online_at': DateTime.now().toUtc().toIso8601String(),
           });
           debugPrint('[Realtime] Sede $coroId conectada.');

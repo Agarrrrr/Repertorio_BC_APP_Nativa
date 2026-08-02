@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter/foundation.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/activity/activity_service.dart';
 import 'package:repertorio_bc/models/perfil.dart';
 import 'package:hive/hive.dart';
 import 'dart:convert';
@@ -52,7 +53,7 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
 
   // Registrar actividad y FCM Token inmediatamente al detectar sesión activa,
   // de forma independiente al éxito de la consulta del perfil en red.
-  _registrarActividad(user.id);
+  ActivityService.register();
   registrarFcmToken(user.id);
 
   try {
@@ -86,12 +87,6 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
     return null;
   }
 });
-
-// Funcion helper para registrar_actividad silencioso
-void _registrarActividad(String userId) {
-  SupabaseService.client.rpc('registrar_actividad_usuario',
-      params: {'user_id': userId}).catchError((_) => null); // Silencioso
-}
 
 void registrarFcmToken(String userId) async {
   final token = await PushService.getToken();

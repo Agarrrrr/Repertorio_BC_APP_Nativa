@@ -117,6 +117,10 @@ class GestorRepository {
     final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 7));
     final analyticsCutoff =
         DateTime.now().toUtc().subtract(Duration(days: analyticsDays));
+    final activityRaw = await client.rpc(
+      'actividad_app_iglesia',
+      params: {'p_coro_id': sedeId},
+    );
     final supplemental = await Future.wait([
       client
           .from('telemetria_vistas')
@@ -136,6 +140,16 @@ class GestorRepository {
           .order('fecha', ascending: false)
           .limit(100),
     ]);
+
+    final activity = List<Map<String, dynamic>>.from(activityRaw as List);
+    final activityByUser = {
+      for (final row in activity) row['usuario_id'].toString(): row,
+    };
+    for (final profile in roster) {
+      final row = activityByUser[profile['id'].toString()];
+      profile['_app_last_access'] = row?['ultimo_acceso_app'];
+      profile['_app_platform'] = row?['plataforma'];
+    }
 
     var subscriptions = <String>{};
     if (ids.isNotEmpty) {
@@ -164,7 +178,7 @@ class GestorRepository {
     }
 
     final activos = roster.where((profile) {
-      final value = profile['ultimo_acceso']?.toString();
+      final value = profile['_app_last_access']?.toString();
       final date = value == null ? null : DateTime.tryParse(value)?.toUtc();
       return date != null && date.isAfter(cutoff);
     }).length;
@@ -245,7 +259,8 @@ class GestorRepository {
     }
     if (bytes.isEmpty || bytes.length > max) {
       throw FormatException(
-          'El archivo supera el límite de ${type == 'pdf' ? '25' : '5'} MB.');
+        'El archivo supera el límite de ${type == 'pdf' ? '25' : '5'} MB.',
+      );
     }
 
     final token = client.auth.currentSession?.accessToken;
@@ -342,7 +357,8 @@ class GestorRepository {
     final current = await repertorio(sedeId);
     if (current
         .any((song) => song.id == source.id || song.derivadoDe == source.id)) {
-      throw StateError('Esta partitura ya está en el repertorio de la sede.');
+      throw StateError(
+          'Esta partitura ya está en el repertorio de la iglesia.');
     }
     await guardarLocal(
       original: source,

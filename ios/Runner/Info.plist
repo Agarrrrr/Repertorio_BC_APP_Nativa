@@ -62,7 +62,7 @@
 		<key>UIFileSharingEnabled</key>
 		<true/>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Repertorio LLDM BC solicita acceso únicamente cuando un director elige un archivo desde su dispositivo para administrar el repertorio de su sede. Solo se procesan los archivos PDF y MIDI seleccionados por el usuario.</string>
+		<string>Repertorio LLDM BC solicita acceso únicamente cuando un director elige un PDF o MIDI para editar el repertorio de su iglesia. Solo se procesa el archivo seleccionado por el usuario.</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 	</dict>

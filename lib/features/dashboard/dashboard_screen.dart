@@ -13,6 +13,7 @@ import 'package:repertorio_bc/features/dashboard/widgets/app_drawer.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/activity/activity_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -21,11 +22,13 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
@@ -33,6 +36,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ActivityService.register(force: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushService.requestPermission().then((enabled) {
         if (!mounted || enabled || PushService.isAvailable) return;
@@ -44,6 +49,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       });
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ActivityService.register();
+    }
   }
 
   @override

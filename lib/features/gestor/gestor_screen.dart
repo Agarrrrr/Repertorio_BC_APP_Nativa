@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:repertorio_bc/core/activity/activity_service.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/features/gestor/gestor_preview.dart';
@@ -26,7 +27,6 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
   final TextEditingController _reminder = TextEditingController();
   final TextEditingController _localSearch = TextEditingController();
   final TextEditingController _globalSearch = TextEditingController();
-  final TextEditingController _ensembleSearch = TextEditingController();
   late final TabController _tabs;
 
   List<Map<String, dynamic>> _sedes = [];
@@ -47,7 +47,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 6, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
     _tabs.addListener(() {
       if (mounted) setState(() {});
     });
@@ -59,7 +59,6 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     _reminder.dispose();
     _localSearch.dispose();
     _globalSearch.dispose();
-    _ensembleSearch.dispose();
     _tabs.dispose();
     final channel = _presence;
     if (channel != null) SupabaseService.client.removeChannel(channel);
@@ -76,7 +75,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           (item) => item?['id']?.toString() == _sedeId,
           orElse: () => null,
         );
-    return row?['nombre']?.toString() ?? 'Mi sede';
+    return row?['nombre']?.toString() ?? 'Mi iglesia';
   }
 
   Future<void> _bootstrap() async {
@@ -182,6 +181,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
         await channel.track({
           'user_id': SupabaseService.client.auth.currentUser?.id,
           'sede': sede,
+          'plataforma': ActivityService.platform,
           'online_at': DateTime.now().toUtc().toIso8601String(),
         });
       }
@@ -269,7 +269,6 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
               Tab(icon: Icon(Icons.space_dashboard_outlined), text: 'Resumen'),
               Tab(icon: Icon(Icons.library_music_outlined), text: 'Partituras'),
               Tab(icon: Icon(Icons.public_rounded), text: 'Catálogo'),
-              Tab(icon: Icon(Icons.graphic_eq_rounded), text: 'Ensamble'),
               Tab(icon: Icon(Icons.folder_copy_outlined), text: 'Carpetas'),
               Tab(icon: Icon(Icons.groups_outlined), text: 'Miembros'),
             ],
@@ -285,8 +284,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                 children: [
                   _buildOverview(),
                   _buildLocal(),
-                  _buildGlobal(ensembleOnly: false),
-                  _buildGlobal(ensembleOnly: true),
+                  _buildGlobal(),
                   _buildEvents(),
                   _buildMembers(),
                 ],
@@ -298,13 +296,6 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
               ),
           ],
         ),
-        floatingActionButton: !_loading && _tabs.index == 1
-            ? FloatingActionButton.extended(
-                onPressed: () => _editSong(),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Nueva partitura'),
-              )
-            : null,
       ),
     );
   }
@@ -356,7 +347,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
             ),
           ),
           const SizedBox(height: 20),
-          Text('Estado de la sede',
+          Text('Estado de la iglesia',
               style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 10),
           GridView.count(
@@ -385,7 +376,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                   onTap: () => _showMetricDetail('members')),
               _MetricCard('Partituras con voces', metrics?.conMidi ?? 0,
                   Icons.library_music, Colors.indigo,
-                  detail: 'de ${metrics?.repertorio ?? 0} en la sede',
+                  detail: 'de ${metrics?.repertorio ?? 0} en la iglesia',
                   onTap: () => _showMetricDetail('midi')),
             ],
           ),
@@ -485,7 +476,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     return _SearchableSongList(
       controller: _localSearch,
       songs: _local,
-      emptyText: 'Esta sede todavía no tiene partituras.',
+      emptyText: 'Esta iglesia todavía no tiene partituras.',
       onChanged: () => setState(() {}),
       itemBuilder: (song) => ListTile(
         leading: CircleAvatar(
@@ -506,22 +497,25 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'preview', child: Text('Vista previa')),
             PopupMenuItem(
-                value: 'edit', child: Text('Editar copia de la sede')),
-            PopupMenuItem(value: 'remove', child: Text('Quitar de esta sede')),
+              value: 'edit',
+              child: Text('Editar copia de la iglesia'),
+            ),
+            PopupMenuItem(
+              value: 'remove',
+              child: Text('Quitar de esta iglesia'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGlobal({required bool ensembleOnly}) {
+  Widget _buildGlobal() {
     if (_globalLoading && _global.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    final source = ensembleOnly
-        ? _global.where((song) => song.midiArchivo?.isNotEmpty == true).toList()
-        : _global;
-    final controller = ensembleOnly ? _ensembleSearch : _globalSearch;
+    final source = _global;
+    final controller = _globalSearch;
     final query = controller.text.trim().toLowerCase();
     final filtered = query.isEmpty
         ? source
@@ -548,18 +542,14 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                ensembleOnly
-                    ? 'Explora antes de decidir qué estudiar'
-                    : 'Primero busca la partitura',
+                'Explora el catálogo',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
               ),
               const SizedBox(height: 4),
               Text(
-                ensembleOnly
-                    ? 'Abre una partitura y escucha sus voces al mismo tiempo.'
-                    : 'Revisa el PDF y el ensamble. Si te convence, añádela a tu sede.',
+                'Abre una opción para revisar la partitura y escuchar sus voces antes de añadirla a tu iglesia.',
               ),
               const SizedBox(height: 12),
               TextField(
@@ -587,35 +577,20 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                   ),
                 ),
               ),
-              if (!ensembleOnly) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        query.isEmpty
-                            ? '${source.length} opciones para explorar'
-                            : '${filtered.length} coincidencias',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _editSong(),
-                      icon: const Icon(Icons.upload_file_rounded),
-                      label: const Text('No está: subir la propia'),
-                    ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 10),
+              Text(
+                query.isEmpty
+                    ? '${source.length} opciones para explorar'
+                    : '${filtered.length} coincidencias',
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
         Expanded(
           child: filtered.isEmpty
               ? _CatalogEmpty(
-                  ensembleOnly: ensembleOnly,
                   hasQuery: query.isNotEmpty,
-                  onCreate: () => _editSong(),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
@@ -629,7 +604,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                       child: InkWell(
                         onTap: () => _openCatalogDetail(
                           song,
-                          canAdd: !ensembleOnly,
+                          canAdd: true,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(14),
@@ -673,14 +648,11 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              if (!ensembleOnly)
-                                IconButton.filledTonal(
-                                  tooltip: 'Añadir a la sede',
-                                  onPressed: () => _addGlobal(song),
-                                  icon: const Icon(Icons.add_rounded),
-                                )
-                              else
-                                const Icon(Icons.play_circle_outline_rounded),
+                              IconButton.filledTonal(
+                                tooltip: 'Añadir a la iglesia',
+                                onPressed: () => _addGlobal(song),
+                                icon: const Icon(Icons.add_rounded),
+                              ),
                             ],
                           ),
                         ),
@@ -708,7 +680,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           if (_events.isEmpty)
             const _EmptyState(
               icon: Icons.folder_off_outlined,
-              text: 'No hay carpetas o eventos para esta sede.',
+              text: 'No hay carpetas o eventos para esta iglesia.',
             ),
           ..._events.map((event) {
             final scoreCount = (event['eventos_cantos'] as List?)?.length ?? 0;
@@ -716,8 +688,9 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
               child: ListTile(
                 leading: const Icon(Icons.folder_copy_outlined),
                 title: Text(event['nombre']?.toString() ?? 'Sin nombre'),
-                subtitle:
-                    Text('${event['fecha'] ?? ''} · $scoreCount partituras'),
+                subtitle: Text(
+                  '${_formatDateOnly(event['fecha'])} · $scoreCount partituras',
+                ),
                 onTap: () => _editEventSongs(event),
                 trailing: IconButton(
                   tooltip: 'Eliminar carpeta',
@@ -770,7 +743,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           if (_members.isEmpty) {
             return const _EmptyState(
               icon: Icons.group_off_outlined,
-              text: 'No hay miembros registrados en esta sede.',
+              text: 'No hay miembros registrados en esta iglesia.',
             );
           }
           final member = _members[index - 1];
@@ -784,7 +757,9 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
               ),
               title: Text(member['nombre']?.toString() ?? 'Sin nombre'),
               subtitle: Text(
-                '${member['rol']} · ${member['estado']}${hasPush ? ' · notificaciones' : ''}',
+                '${member['rol']} · ${member['estado']}'
+                '${member['_app_platform'] == null ? '' : ' · ${_platformLabel(member['_app_platform'])}'}'
+                '${hasPush ? ' · notificaciones' : ''}',
               ),
               trailing: PopupMenuButton<String>(
                 onSelected: (value) => _changeMember(member, value),
@@ -841,9 +816,9 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     });
   }
 
-  Future<void> _editSong([Canto? song]) async {
-    final sede = _sedeId;
-    if (sede == null) return;
+  Future<void> _editSong(Canto song) async {
+    final iglesia = _sedeId;
+    if (iglesia == null) return;
     final result = await showModalBottomSheet<_SongDraft>(
       context: context,
       isScrollControlled: true,
@@ -856,29 +831,28 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
       String? midi;
       if (result.pdf != null) {
         pdf = await _repository.upload(
-          sedeId: sede,
+          sedeId: iglesia,
           type: 'pdf',
           bytes: result.pdf!,
         );
       }
       if (result.midi != null) {
         midi = await _repository.upload(
-          sedeId: sede,
+          sedeId: iglesia,
           type: 'midi',
           bytes: result.midi!,
         );
       }
       await _repository.guardarLocal(
         original: song,
-        sedeId: sede,
+        sedeId: iglesia,
         nombre: result.name,
         temas: result.topics,
         archivo: pdf,
         midi: midi,
         quitarMidi: result.removeMidi,
       );
-      _showMessage(
-          song == null ? 'Partitura creada.' : 'Copia de la sede actualizada.');
+      _showMessage('Partitura de la iglesia actualizada.');
       await _reload();
     });
   }
@@ -887,18 +861,20 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     final yes = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Quitar de esta sede'),
+        title: const Text('Quitar de esta iglesia'),
         content: Text(
           '${song.nombre} dejará de estar disponible en $_sedeName. '
-          'El catálogo global y las demás sedes no cambiarán.',
+          'El catálogo global y las demás iglesias no cambiarán.',
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Quitar')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Quitar'),
+          ),
         ],
       ),
     );
@@ -980,12 +956,63 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
 
   String _formatTimestamp(Object? value) {
     final date = value == null ? null : DateTime.tryParse(value.toString());
-    if (date == null) return 'Sin registro reciente';
+    if (date == null) return 'Sin acceso registrado desde la app';
     final local = date.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${two(local.day)}/${two(local.month)}/${local.year} '
-        '${two(local.hour)}:${two(local.minute)}';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(local.year, local.month, local.day);
+    final difference = today.difference(day).inDays;
+    final hour =
+        local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final minute = local.minute.toString().padLeft(2, '0');
+    final time = '$hour:$minute ${local.hour >= 12 ? 'p. m.' : 'a. m.'}';
+    if (difference == 0) return 'Hoy, $time';
+    if (difference == 1) return 'Ayer, $time';
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic'
+    ];
+    final year = local.year == now.year ? '' : ' ${local.year}';
+    return '${local.day} ${months[local.month - 1]}$year, $time';
   }
+
+  String _formatDateOnly(Object? value) {
+    final date = value == null ? null : DateTime.tryParse(value.toString());
+    if (date == null) return 'Sin fecha';
+    final local = date.toLocal();
+    const months = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre'
+    ];
+    return '${local.day} de ${months[local.month - 1]} de ${local.year}';
+  }
+
+  String _platformLabel(Object? value) => switch (value?.toString()) {
+        'ios' => 'iOS',
+        'android' => 'Android',
+        'web' => 'Web',
+        _ => 'Sin plataforma',
+      };
 
   Future<void> _showMetricDetail(String type) async {
     final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 7));
@@ -997,7 +1024,8 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     } else if (type == 'active') {
       title = 'Activos esta semana';
       members = _members.where((row) {
-        final date = DateTime.tryParse(row['ultimo_acceso']?.toString() ?? '');
+        final date =
+            DateTime.tryParse(row['_app_last_access']?.toString() ?? '');
         return date != null && date.toUtc().isAfter(cutoff);
       }).toList();
     } else if (type == 'online') {
@@ -1009,7 +1037,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
       title = 'Descarga offline preparada';
       members = _members.where((row) => row['offline_ready'] == true).toList();
     } else if (type == 'members') {
-      title = 'Miembros de la sede';
+      title = 'Miembros de la iglesia';
       members = List<Map<String, dynamic>>.from(_members);
     } else {
       title = 'Partituras con voces de ensayo';
@@ -1027,7 +1055,8 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
               ? (_local
                       .where((song) => song.midiArchivo?.isNotEmpty == true)
                       .isEmpty
-                  ? const Text('No hay partituras con voces MIDI en esta sede.')
+                  ? const Text(
+                      'No hay partituras con voces MIDI en esta iglesia.')
                   : ListView(
                       shrinkWrap: true,
                       children: _local
@@ -1070,9 +1099,9 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                           subtitle: Text(
                             type == 'notifications'
                                 ? 'Registrado: ${_formatTimestamp(notificationRegistered)}\n'
-                                    'Último acceso: ${_formatTimestamp(member['ultimo_acceso'])}'
+                                    'Último acceso en app: ${_formatTimestamp(member['_app_last_access'])} · ${_platformLabel(member['_app_platform'])}'
                                 : '${member['rol']} · ${member['estado']}\n'
-                                    'Último acceso: ${_formatTimestamp(member['ultimo_acceso'])}',
+                                    'Último acceso en app: ${_formatTimestamp(member['_app_last_access'])} · ${_platformLabel(member['_app_platform'])}',
                           ),
                           isThreeLine: true,
                         );
@@ -1101,7 +1130,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           content: SizedBox(
             width: 560,
             child: _local.isEmpty
-                ? const Text('La sede todavía no tiene partituras.')
+                ? const Text('La iglesia todavía no tiene partituras.')
                 : ListView.builder(
                     shrinkWrap: true,
                     itemCount: _local.length,
@@ -1173,7 +1202,7 @@ class _SedeSelector extends StatelessWidget {
       );
     }
     return PopupMenuButton<String>(
-      tooltip: 'Cambiar sede administrada',
+      tooltip: 'Cambiar iglesia administrada',
       initialValue: selected,
       onSelected: onSelected,
       itemBuilder: (_) => sedes
@@ -1249,6 +1278,7 @@ class _SearchableSongList extends StatelessWidget {
     required this.onChanged,
     required this.itemBuilder,
   });
+
   final TextEditingController controller;
   final List<Canto> songs;
   final String emptyText;
@@ -1286,7 +1316,7 @@ class _SearchableSongList extends StatelessWidget {
               : RefreshIndicator(
                   onRefresh: () async => onChanged(),
                   child: ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 88),
+                    padding: const EdgeInsets.only(bottom: 24),
                     itemCount: filtered.length,
                     itemBuilder: (_, index) => itemBuilder(filtered[index]),
                   ),
@@ -1320,14 +1350,10 @@ class _EmptyState extends StatelessWidget {
 
 class _CatalogEmpty extends StatelessWidget {
   const _CatalogEmpty({
-    required this.ensembleOnly,
     required this.hasQuery,
-    required this.onCreate,
   });
 
-  final bool ensembleOnly;
   final bool hasQuery;
-  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -1345,25 +1371,17 @@ class _CatalogEmpty extends StatelessWidget {
               Text(
                 hasQuery
                     ? 'No encontramos esa partitura'
-                    : ensembleOnly
-                        ? 'Todavía no hay ensambles disponibles'
-                        : 'El catálogo está vacío',
+                    : 'El catálogo está vacío',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
               ),
-              if (!ensembleOnly && hasQuery) ...[
+              if (hasQuery) ...[
                 const SizedBox(height: 6),
                 const Text(
-                  'Puedes agregar tu propio PDF y MIDI para esta sede. No se enviará al catálogo global.',
+                  'Prueba con una parte del título o con otro tema.',
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: onCreate,
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Agregar mi propia partitura'),
                 ),
               ],
             ],
@@ -1380,6 +1398,7 @@ class _SongDraft {
     this.midi,
     this.removeMidi = false,
   });
+
   final String name;
   final List<String> topics;
   final Uint8List? pdf;
@@ -1388,8 +1407,9 @@ class _SongDraft {
 }
 
 class _SongEditor extends StatefulWidget {
-  const _SongEditor({this.song});
-  final Canto? song;
+  const _SongEditor({required this.song});
+
+  final Canto song;
 
   @override
   State<_SongEditor> createState() => _SongEditorState();
@@ -1397,9 +1417,9 @@ class _SongEditor extends StatefulWidget {
 
 class _SongEditorState extends State<_SongEditor> {
   late final TextEditingController _name =
-      TextEditingController(text: widget.song?.nombre ?? '');
+      TextEditingController(text: widget.song.nombre);
   late final TextEditingController _topics =
-      TextEditingController(text: widget.song?.temas.join(', ') ?? '');
+      TextEditingController(text: widget.song.temas.join(', '));
   Uint8List? _pdf;
   Uint8List? _midi;
   String? _pdfName;
@@ -1436,7 +1456,7 @@ class _SongEditorState extends State<_SongEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final existingMidi = widget.song?.midiArchivo?.isNotEmpty == true;
+    final existingMidi = widget.song.midiArchivo?.isNotEmpty == true;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -1449,9 +1469,7 @@ class _SongEditorState extends State<_SongEditor> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.song == null
-                  ? 'Nueva partitura'
-                  : 'Editar copia de la sede',
+              'Editar partitura de la iglesia',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -1460,7 +1478,9 @@ class _SongEditorState extends State<_SongEditor> {
               maxLength: 150,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                  labelText: 'Nombre', border: OutlineInputBorder()),
+                labelText: 'Nombre',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -1474,10 +1494,7 @@ class _SongEditorState extends State<_SongEditor> {
             const SizedBox(height: 16),
             _FileButton(
               icon: Icons.picture_as_pdf_outlined,
-              label: _pdfName ??
-                  (widget.song == null
-                      ? 'Seleccionar PDF (obligatorio)'
-                      : 'Reemplazar PDF'),
+              label: _pdfName ?? 'Reemplazar PDF',
               onTap: () => _pick(true),
             ),
             const SizedBox(height: 8),
@@ -1504,10 +1521,7 @@ class _SongEditorState extends State<_SongEditor> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () {
-                  if (_name.text.trim().isEmpty ||
-                      (widget.song == null && _pdf == null)) {
-                    return;
-                  }
+                  if (_name.text.trim().isEmpty) return;
                   Navigator.pop(
                     context,
                     _SongDraft(
@@ -1525,7 +1539,7 @@ class _SongEditorState extends State<_SongEditor> {
                   );
                 },
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Guardar en esta sede'),
+                label: const Text('Guardar en esta iglesia'),
               ),
             ),
           ],
@@ -1536,8 +1550,12 @@ class _SongEditorState extends State<_SongEditor> {
 }
 
 class _FileButton extends StatelessWidget {
-  const _FileButton(
-      {required this.icon, required this.label, required this.onTap});
+  const _FileButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
   final IconData icon;
   final String label;
   final VoidCallback onTap;
