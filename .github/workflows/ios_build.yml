@@ -136,25 +136,22 @@ jobs:
               --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-            echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
+            echo "Creating unsigned Xcode archive; distribution signing happens during export..."
             run_with_diagnostics "Xcode archive failed" \
               xcodebuild -workspace ios/Runner.xcworkspace \
                        -scheme Runner \
                        -sdk iphoneos \
                        -configuration Release \
                        -archivePath $RUNNER_TEMP/Runner.xcarchive \
-                       CODE_SIGN_IDENTITY="Apple Distribution" \
-                       DEVELOPMENT_TEAM=3R4W228G24 \
-                       -allowProvisioningUpdates \
-                       -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
-                       -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
-                       -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID \
+                       CODE_SIGNING_ALLOWED=NO \
+                       CODE_SIGNING_REQUIRED=NO \
+                       CODE_SIGN_IDENTITY="" \
                        archive
 
             echo "Generating export_options.plist..."
             EXPORT_PLIST="ios/export_options.plist"
             rm -f "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :method string app-store-connect" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :signingStyle string automatic" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :teamID string 3R4W228G24" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :signingCertificate string 'Apple Distribution'" "$EXPORT_PLIST"
