@@ -389,6 +389,22 @@ class GestorRepository {
     await client.from('eventos').delete().eq('id', eventId);
   }
 
+  Future<void> guardarCantosEvento(
+    String eventId,
+    List<String> cantoIds,
+  ) async {
+    await client.from('eventos_cantos').delete().eq('evento_id', eventId);
+    if (cantoIds.isEmpty) return;
+    await client.from('eventos_cantos').insert([
+      for (var index = 0; index < cantoIds.length; index++)
+        {
+          'evento_id': eventId,
+          'canto_id': cantoIds[index],
+          'orden': index,
+        },
+    ]);
+  }
+
   Future<void> _audit(
     String action,
     String sedeId,

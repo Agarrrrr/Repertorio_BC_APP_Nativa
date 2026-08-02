@@ -526,6 +526,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                 title: Text(event['nombre']?.toString() ?? 'Sin nombre'),
                 subtitle:
                     Text('${event['fecha'] ?? ''} · $scoreCount partituras'),
+                onTap: () => _editEventSongs(event),
                 trailing: IconButton(
                   tooltip: 'Eliminar carpeta',
                   onPressed: () => _confirmDeleteEvent(event),
@@ -750,6 +751,61 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
         await _repository.actualizarMiembro(member['id'].toString(),
             estado: value);
       }
+      await _reload();
+    });
+  }
+
+  Future<void> _editEventSongs(Map<String, dynamic> event) async {
+    final selected = ((event['eventos_cantos'] as List?) ?? const [])
+        .map((row) => (row as Map)['canto_id'].toString())
+        .toSet();
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(event['nombre']?.toString() ?? 'Carpeta'),
+          content: SizedBox(
+            width: 560,
+            child: _local.isEmpty
+                ? const Text('La sede todavía no tiene partituras.')
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _local.length,
+                    itemBuilder: (_, index) {
+                      final song = _local[index];
+                      return CheckboxListTile(
+                        value: selected.contains(song.id),
+                        title: Text(song.nombre),
+                        onChanged: (checked) => setDialogState(() {
+                          if (checked == true) {
+                            selected.add(song.id);
+                          } else {
+                            selected.remove(song.id);
+                          }
+                        }),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, selected),
+              child: const Text('Guardar selección'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result == null) return;
+    await _run(() async {
+      await _repository.guardarCantosEvento(
+        event['id'].toString(),
+        result.toList(),
+      );
       await _reload();
     });
   }
