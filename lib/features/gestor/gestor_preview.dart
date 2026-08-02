@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:repertorio_bc/core/midi/midi_engine.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
@@ -14,6 +15,184 @@ class GestorPdfPreview extends StatefulWidget {
 
   @override
   State<GestorPdfPreview> createState() => _GestorPdfPreviewState();
+}
+
+class CatalogDetailScreen extends StatefulWidget {
+  const CatalogDetailScreen({
+    super.key,
+    required this.canto,
+    this.onAdd,
+  });
+
+  final Canto canto;
+  final Future<void> Function()? onAdd;
+
+  @override
+  State<CatalogDetailScreen> createState() => _CatalogDetailScreenState();
+}
+
+class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
+  late final Future<File> _pdf = OfflineFiles.ensurePdf(widget.canto);
+  bool _adding = false;
+  bool _added = false;
+  bool _midiReady = false;
+  Object? _assetError;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareAssets();
+  }
+
+  Future<void> _prepareAssets() async {
+    try {
+      await _pdf;
+      if (widget.canto.midiArchivo?.isNotEmpty == true) {
+        await OfflineFiles.ensureMidi(widget.canto);
+        if (mounted) setState(() => _midiReady = true);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _assetError = error);
+    }
+  }
+
+  Future<void> _add() async {
+    final action = widget.onAdd;
+    if (action == null || _adding) return;
+    setState(() => _adding = true);
+    try {
+      await action();
+      if (mounted) setState(() => _added = true);
+    } finally {
+      if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMidi = widget.canto.midiArchivo?.isNotEmpty == true;
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: baseTheme.copyWith(
+        textTheme: GoogleFonts.interTextTheme(baseTheme.textTheme),
+      ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.canto.nombre, overflow: TextOverflow.ellipsis),
+              Text(
+                hasMidi ? 'Partitura y ensamble' : 'Vista previa de partitura',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+          actions: [
+            if (widget.onAdd != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilledButton.tonalIcon(
+                  onPressed: _adding || _added ? null : _add,
+                  icon: _adding
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_added ? Icons.check_rounded : Icons.add_rounded),
+                  label: Text(_added ? 'Añadida' : 'Añadir'),
+                ),
+              ),
+          ],
+        ),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final pdf = _CatalogPdf(file: _pdf);
+              final player = hasMidi && _midiReady
+                  ? EnsemblePlayer(canto: widget.canto, compact: true)
+                  : hasMidi
+                      ? (_assetError == null
+                          ? const Center(child: CircularProgressIndicator())
+                          : _PreviewError(
+                              message:
+                                  'No fue posible cargar el ensamble.\n$_assetError',
+                            ))
+                      : const _NoEnsemble();
+              if (constraints.maxWidth >= 850) {
+                return Row(
+                  children: [
+                    Expanded(flex: 7, child: pdf),
+                    const VerticalDivider(width: 1),
+                    SizedBox(width: 370, child: player),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  Expanded(flex: hasMidi ? 6 : 1, child: pdf),
+                  if (hasMidi) ...[
+                    const Divider(height: 1),
+                    Expanded(flex: 4, child: player),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogPdf extends StatelessWidget {
+  const _CatalogPdf({required this.file});
+
+  final Future<File> file;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<File>(
+        future: file,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _PreviewError(
+              message: 'No fue posible abrir el PDF.\n${snapshot.error}',
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return PdfViewer.file(
+            snapshot.data!.path,
+            params: const PdfViewerParams(
+              enableTextSelection: false,
+              boundaryMargin: EdgeInsets.only(bottom: 24),
+            ),
+          );
+        },
+      );
+}
+
+class _NoEnsemble extends StatelessWidget {
+  const _NoEnsemble();
+
+  @override
+  Widget build(BuildContext context) => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.music_off_outlined, size: 44),
+              SizedBox(height: 10),
+              Text(
+                'Esta partitura todavía no tiene ensamble MIDI.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _GestorPdfPreviewState extends State<GestorPdfPreview> {
@@ -50,9 +229,14 @@ class _GestorPdfPreviewState extends State<GestorPdfPreview> {
 }
 
 class EnsemblePlayer extends StatefulWidget {
-  const EnsemblePlayer({super.key, required this.canto});
+  const EnsemblePlayer({
+    super.key,
+    required this.canto,
+    this.compact = false,
+  });
 
   final Canto canto;
+  final bool compact;
 
   @override
   State<EnsemblePlayer> createState() => _EnsemblePlayerState();
@@ -100,16 +284,27 @@ class _EnsemblePlayerState extends State<EnsemblePlayer> {
       return const Center(child: CircularProgressIndicator());
     }
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(widget.compact ? 14 : 20),
       children: [
-        Text(
-          widget.canto.nombre,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
+        if (!widget.compact)
+          Text(
+            widget.canto.nombre,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
         const SizedBox(height: 8),
-        const Text('Escucha el ensamble completo o aísla cada voz.'),
+        Text(
+          widget.compact
+              ? 'ENSAMBLE · escucha mientras revisas la partitura'
+              : 'Escucha el ensamble completo o aísla cada voz.',
+          style: widget.compact
+              ? Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w800)
+              : null,
+        ),
         const SizedBox(height: 20),
         Slider(
           value: _state.progress.clamp(0, 1),

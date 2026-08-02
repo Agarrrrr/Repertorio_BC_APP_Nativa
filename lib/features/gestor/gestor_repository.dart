@@ -109,13 +109,14 @@ class GestorRepository {
     String sedeId, {
     List<Canto>? cantos,
     List<Map<String, dynamic>>? perfiles,
+    int analyticsDays = 30,
   }) async {
     final roster = perfiles ?? await miembros(sedeId);
     final songs = cantos ?? await repertorio(sedeId);
     final ids = roster.map((p) => p['id'].toString()).toSet();
     final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 7));
     final analyticsCutoff =
-        DateTime.now().toUtc().subtract(const Duration(days: 30));
+        DateTime.now().toUtc().subtract(Duration(days: analyticsDays));
     final supplemental = await Future.wait([
       client
           .from('telemetria_vistas')
@@ -140,13 +141,22 @@ class GestorRepository {
     if (ids.isNotEmpty) {
       final rows = await client
           .from('suscripciones_push')
-          .select('usuario_id,endpoint')
+          .select('usuario_id,endpoint,creado_en')
           .inFilter('usuario_id', ids.toList());
       subscriptions = List<Map<String, dynamic>>.from(rows)
           .where(
               (row) => (row['endpoint']?.toString().trim().isNotEmpty ?? false))
           .map((row) => row['usuario_id'].toString())
           .toSet();
+      final registeredAt = <String, String>{};
+      for (final row in List<Map<String, dynamic>>.from(rows)) {
+        final id = row['usuario_id']?.toString();
+        final created = row['creado_en']?.toString();
+        if (id != null && created != null) registeredAt[id] = created;
+      }
+      for (final profile in roster) {
+        profile['_push_registered_at'] = registeredAt[profile['id'].toString()];
+      }
     }
     for (final profile in roster) {
       profile['_push_active'] =

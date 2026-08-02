@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/features/gestor/gestor_preview.dart';
@@ -25,6 +26,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
   final TextEditingController _reminder = TextEditingController();
   final TextEditingController _localSearch = TextEditingController();
   final TextEditingController _globalSearch = TextEditingController();
+  final TextEditingController _ensembleSearch = TextEditingController();
   late final TabController _tabs;
 
   List<Map<String, dynamic>> _sedes = [];
@@ -38,6 +40,8 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
   bool _globalLoading = true;
   bool _working = false;
   int _online = 0;
+  Set<String> _onlineUserIds = {};
+  int _analyticsDays = 30;
   RealtimeChannel? _presence;
 
   @override
@@ -55,6 +59,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     _reminder.dispose();
     _localSearch.dispose();
     _globalSearch.dispose();
+    _ensembleSearch.dispose();
     _tabs.dispose();
     final channel = _presence;
     if (channel != null) SupabaseService.client.removeChannel(channel);
@@ -107,6 +112,7 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
         sede,
         cantos: local,
         perfiles: members,
+        analyticsDays: _analyticsDays,
       );
       if (!mounted) return;
       setState(() {
@@ -136,6 +142,20 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     }
   }
 
+  Future<void> _changeAnalyticsRange(int days) async {
+    if (days == _analyticsDays || _sedeId == null) return;
+    setState(() => _analyticsDays = days);
+    await _run(() async {
+      final metrics = await _repository.metricas(
+        _sedeId!,
+        cantos: _local,
+        perfiles: _members,
+        analyticsDays: days,
+      );
+      if (mounted) setState(() => _metrics = metrics);
+    });
+  }
+
   Future<void> _connectPresence(String sede) async {
     final previous = _presence;
     if (previous != null) await SupabaseService.client.removeChannel(previous);
@@ -150,7 +170,12 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
           users.add(id ?? entry.presenceRef);
         }
       }
-      if (mounted) setState(() => _online = users.length);
+      if (mounted) {
+        setState(() {
+          _online = users.length;
+          _onlineUserIds = users;
+        });
+      }
     });
     channel.subscribe((status, [error]) async {
       if (status == RealtimeSubscribeStatus.subscribed) {
@@ -209,72 +234,78 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Volver al repertorio',
-          onPressed: () => context.pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        titleSpacing: 0,
-        title: _SedeSelector(
-          title: _sedeName,
-          canChange: _canChangeSede,
-          selected: _sedeId,
-          sedes: _sedes,
-          onSelected: _selectSede,
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: _loading ? null : _reload,
-            icon: const Icon(Icons.refresh_rounded),
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: baseTheme.copyWith(
+        textTheme: GoogleFonts.interTextTheme(baseTheme.textTheme),
+      ),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Volver al repertorio',
+            onPressed: () => context.pop(),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(icon: Icon(Icons.space_dashboard_outlined), text: 'Resumen'),
-            Tab(icon: Icon(Icons.library_music_outlined), text: 'Partituras'),
-            Tab(icon: Icon(Icons.public_rounded), text: 'Catálogo'),
-            Tab(icon: Icon(Icons.graphic_eq_rounded), text: 'Ensamble'),
-            Tab(icon: Icon(Icons.folder_copy_outlined), text: 'Carpetas'),
-            Tab(icon: Icon(Icons.groups_outlined), text: 'Miembros'),
+          titleSpacing: 0,
+          title: _SedeSelector(
+            title: _sedeName,
+            canChange: _canChangeSede,
+            selected: _sedeId,
+            sedes: _sedes,
+            onSelected: _selectSede,
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Actualizar',
+              onPressed: _loading ? null : _reload,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabs,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(icon: Icon(Icons.space_dashboard_outlined), text: 'Resumen'),
+              Tab(icon: Icon(Icons.library_music_outlined), text: 'Partituras'),
+              Tab(icon: Icon(Icons.public_rounded), text: 'Catálogo'),
+              Tab(icon: Icon(Icons.graphic_eq_rounded), text: 'Ensamble'),
+              Tab(icon: Icon(Icons.folder_copy_outlined), text: 'Carpetas'),
+              Tab(icon: Icon(Icons.groups_outlined), text: 'Miembros'),
+            ],
+          ),
+        ),
+        body: Stack(
+          children: [
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else
+              TabBarView(
+                controller: _tabs,
+                children: [
+                  _buildOverview(),
+                  _buildLocal(),
+                  _buildGlobal(ensembleOnly: false),
+                  _buildGlobal(ensembleOnly: true),
+                  _buildEvents(),
+                  _buildMembers(),
+                ],
+              ),
+            if (_working)
+              ColoredBox(
+                color: Colors.black26,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
+        floatingActionButton: !_loading && _tabs.index == 1
+            ? FloatingActionButton.extended(
+                onPressed: () => _editSong(),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Nueva partitura'),
+              )
+            : null,
       ),
-      body: Stack(
-        children: [
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else
-            TabBarView(
-              controller: _tabs,
-              children: [
-                _buildOverview(),
-                _buildLocal(),
-                _buildGlobal(ensembleOnly: false),
-                _buildGlobal(ensembleOnly: true),
-                _buildEvents(),
-                _buildMembers(),
-              ],
-            ),
-          if (_working)
-            ColoredBox(
-              color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
-      floatingActionButton: !_loading && _tabs.index == 1
-          ? FloatingActionButton.extended(
-              onPressed: () => _editSong(),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Nueva partitura'),
-            )
-          : null,
     );
   }
 
@@ -334,21 +365,28 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.45,
+            childAspectRatio:
+                MediaQuery.sizeOf(context).width > 700 ? 1.7 : 1.25,
             children: [
               _MetricCard('Conectados ahora', _online, Icons.wifi_tethering,
-                  Colors.green),
+                  Colors.green,
+                  onTap: () => _showMetricDetail('online')),
               _MetricCard('Activos esta semana', metrics?.activosSemana ?? 0,
-                  Icons.calendar_view_week, Colors.blue),
+                  Icons.calendar_view_week, Colors.blue,
+                  onTap: () => _showMetricDetail('active')),
               _MetricCard('Notificaciones reales', metrics?.notificaciones ?? 0,
-                  Icons.notifications_active, Colors.amber.shade800),
+                  Icons.notifications_active, Colors.amber.shade800,
+                  onTap: () => _showMetricDetail('notifications')),
               _MetricCard('Offline preparado', metrics?.offline ?? 0,
-                  Icons.offline_pin, Colors.teal),
+                  Icons.offline_pin, Colors.teal,
+                  onTap: () => _showMetricDetail('offline')),
               _MetricCard('Miembros', metrics?.miembros ?? 0, Icons.groups,
-                  Colors.deepPurple),
-              _MetricCard('Partituras / MIDI', metrics?.repertorio ?? 0,
+                  Colors.deepPurple,
+                  onTap: () => _showMetricDetail('members')),
+              _MetricCard('Partituras con voces', metrics?.conMidi ?? 0,
                   Icons.library_music, Colors.indigo,
-                  detail: '${metrics?.conMidi ?? 0} con MIDI'),
+                  detail: 'de ${metrics?.repertorio ?? 0} en la sede',
+                  onTap: () => _showMetricDetail('midi')),
             ],
           ),
           const SizedBox(height: 20),
@@ -366,8 +404,28 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                 .toList(),
           ),
           const SizedBox(height: 20),
-          Text('Partituras más consultadas · 30 días',
-              style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Partituras más consultadas',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              DropdownButton<int>(
+                value: _analyticsDays,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 30, child: Text('1 mes')),
+                  DropdownMenuItem(value: 180, child: Text('6 meses')),
+                  DropdownMenuItem(value: 365, child: Text('1 año')),
+                ],
+                onChanged: (value) {
+                  if (value != null) _changeAnalyticsRange(value);
+                },
+              ),
+            ],
+          ),
           if (metrics?.topCantos.isEmpty ?? true)
             const ListTile(
               contentPadding: EdgeInsets.zero,
@@ -463,41 +521,175 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     final source = ensembleOnly
         ? _global.where((song) => song.midiArchivo?.isNotEmpty == true).toList()
         : _global;
-    return _SearchableSongList(
-      controller: _globalSearch,
-      songs: source,
-      emptyText: ensembleOnly
-          ? 'No hay MIDI disponibles para escuchar.'
-          : 'No hay partituras en el catálogo global.',
-      onChanged: () => setState(() {}),
-      itemBuilder: (song) => Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: ListTile(
-          leading: Icon(ensembleOnly ? Icons.graphic_eq : Icons.public),
-          title: Text(song.nombre),
-          subtitle: Text(ensembleOnly
-              ? 'Reproductor de ensamble'
-              : '${song.temas.join(' · ')}${song.midiArchivo != null ? ' · MIDI' : ''}'),
-          onTap: () => ensembleOnly ? _openEnsemble(song) : _openPdf(song),
-          trailing: ensembleOnly
-              ? const Icon(Icons.play_circle_outline_rounded)
-              : Wrap(
-                  spacing: 2,
-                  children: [
-                    IconButton(
-                      tooltip: 'Vista previa',
-                      onPressed: () => _openPdf(song),
-                      icon: const Icon(Icons.visibility_outlined),
+    final controller = ensembleOnly ? _ensembleSearch : _globalSearch;
+    final query = controller.text.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? source
+        : source
+            .where((song) =>
+                song.nombre.toLowerCase().contains(query) ||
+                song.temas.any((topic) => topic.toLowerCase().contains(query)))
+            .toList();
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primaryContainer,
+                Theme.of(context).colorScheme.surface,
+              ],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                ensembleOnly
+                    ? 'Explora antes de decidir qué estudiar'
+                    : 'Primero busca la partitura',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
-                    IconButton.filledTonal(
-                      tooltip: 'Agregar a la sede',
-                      onPressed: () => _addGlobal(song),
-                      icon: const Icon(Icons.add_rounded),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                ensembleOnly
+                    ? 'Abre una partitura y escucha sus voces al mismo tiempo.'
+                    : 'Revisa el PDF y el ensamble. Si te convence, añádela a tu sede.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                onChanged: (_) => setState(() {}),
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  hintText: 'Escribe el nombre de la partitura…',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Limpiar búsqueda',
+                          onPressed: () {
+                            controller.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              if (!ensembleOnly) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        query.isEmpty
+                            ? '${source.length} opciones para explorar'
+                            : '${filtered.length} coincidencias',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _editSong(),
+                      icon: const Icon(Icons.upload_file_rounded),
+                      label: const Text('No está: subir la propia'),
                     ),
                   ],
                 ),
+              ],
+            ],
+          ),
         ),
-      ),
+        Expanded(
+          child: filtered.isEmpty
+              ? _CatalogEmpty(
+                  ensembleOnly: ensembleOnly,
+                  hasQuery: query.isNotEmpty,
+                  onCreate: () => _editSong(),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, index) {
+                    final song = filtered[index];
+                    final hasMidi = song.midiArchivo?.isNotEmpty == true;
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _openCatalogDetail(
+                          song,
+                          canAdd: !ensembleOnly,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                child: Icon(hasMidi
+                                    ? Icons.library_music_rounded
+                                    : Icons.picture_as_pdf_outlined),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      song.nombre,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      hasMidi
+                                          ? 'PDF + ensamble de voces'
+                                          : 'PDF disponible',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    if (song.temas.isNotEmpty)
+                                      Text(
+                                        song.temas.take(3).join(' · '),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              if (!ensembleOnly)
+                                IconButton.filledTonal(
+                                  tooltip: 'Añadir a la sede',
+                                  onPressed: () => _addGlobal(song),
+                                  icon: const Icon(Icons.add_rounded),
+                                )
+                              else
+                                const Icon(Icons.play_circle_outline_rounded),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -545,15 +737,43 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
       onRefresh: _reload,
       child: ListView.builder(
         padding: const EdgeInsets.all(12),
-        itemCount: _members.isEmpty ? 1 : _members.length,
+        itemCount: _members.isEmpty ? 2 : _members.length + 1,
         itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.calendar_view_week, size: 18),
+                    label: Text(
+                        '${_metrics?.activosSemana ?? 0} activos esta semana'),
+                    onPressed: () => _showMetricDetail('active'),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.notifications_active, size: 18),
+                    label: Text(
+                        '${_metrics?.notificaciones ?? 0} con notificaciones'),
+                    onPressed: () => _showMetricDetail('notifications'),
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.wifi_tethering, size: 18),
+                    label: Text('$_online conectados ahora'),
+                    onPressed: () => _showMetricDetail('online'),
+                  ),
+                ],
+              ),
+            );
+          }
           if (_members.isEmpty) {
             return const _EmptyState(
               icon: Icons.group_off_outlined,
               text: 'No hay miembros registrados en esta sede.',
             );
           }
-          final member = _members[index];
+          final member = _members[index - 1];
           final active = member['estado'] == 'activo';
           final hasPush = member['_push_active'] == true;
           return Card(
@@ -597,12 +817,15 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     );
   }
 
-  Future<void> _openEnsemble(Canto song) async {
+  Future<void> _openCatalogDetail(
+    Canto song, {
+    required bool canAdd,
+  }) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Reproductor de ensamble')),
-          body: SafeArea(child: EnsemblePlayer(canto: song)),
+        builder: (_) => CatalogDetailScreen(
+          canto: song,
+          onAdd: canAdd ? () => _addGlobal(song) : null,
         ),
       ),
     );
@@ -755,6 +978,117 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     });
   }
 
+  String _formatTimestamp(Object? value) {
+    final date = value == null ? null : DateTime.tryParse(value.toString());
+    if (date == null) return 'Sin registro reciente';
+    final local = date.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Future<void> _showMetricDetail(String type) async {
+    final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 7));
+    late final String title;
+    late final List<Map<String, dynamic>> members;
+    if (type == 'notifications') {
+      title = 'Notificaciones activas';
+      members = _members.where((row) => row['_push_active'] == true).toList();
+    } else if (type == 'active') {
+      title = 'Activos esta semana';
+      members = _members.where((row) {
+        final date = DateTime.tryParse(row['ultimo_acceso']?.toString() ?? '');
+        return date != null && date.toUtc().isAfter(cutoff);
+      }).toList();
+    } else if (type == 'online') {
+      title = 'Conectados en este momento';
+      members = _members
+          .where((row) => _onlineUserIds.contains(row['id'].toString()))
+          .toList();
+    } else if (type == 'offline') {
+      title = 'Descarga offline preparada';
+      members = _members.where((row) => row['offline_ready'] == true).toList();
+    } else if (type == 'members') {
+      title = 'Miembros de la sede';
+      members = List<Map<String, dynamic>>.from(_members);
+    } else {
+      title = 'Partituras con voces de ensayo';
+      members = const [];
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 620,
+          height: MediaQuery.sizeOf(context).height * .62,
+          child: type == 'midi'
+              ? (_local
+                      .where((song) => song.midiArchivo?.isNotEmpty == true)
+                      .isEmpty
+                  ? const Text('No hay partituras con voces MIDI en esta sede.')
+                  : ListView(
+                      shrinkWrap: true,
+                      children: _local
+                          .where((song) => song.midiArchivo?.isNotEmpty == true)
+                          .map((song) => ListTile(
+                                leading: const CircleAvatar(
+                                  child: Icon(Icons.graphic_eq_rounded),
+                                ),
+                                title: Text(song.nombre),
+                                subtitle: Text(song.temas.isEmpty
+                                    ? 'Ensamble disponible'
+                                    : song.temas.join(' · ')),
+                                onTap: () {
+                                  Navigator.pop(dialogContext);
+                                  _openCatalogDetail(song, canAdd: false);
+                                },
+                              ))
+                          .toList(),
+                    ))
+              : (members.isEmpty
+                  ? const Text('No hay registros para mostrar.')
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: members.length,
+                      itemBuilder: (_, index) {
+                        final member = members[index];
+                        final notificationRegistered =
+                            member['_push_registered_at'];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              (member['nombre']?.toString() ?? '?')
+                                  .characters
+                                  .first
+                                  .toUpperCase(),
+                            ),
+                          ),
+                          title: Text(
+                              member['nombre']?.toString() ?? 'Sin nombre'),
+                          subtitle: Text(
+                            type == 'notifications'
+                                ? 'Registrado: ${_formatTimestamp(notificationRegistered)}\n'
+                                    'Último acceso: ${_formatTimestamp(member['ultimo_acceso'])}'
+                                : '${member['rol']} · ${member['estado']}\n'
+                                    'Último acceso: ${_formatTimestamp(member['ultimo_acceso'])}',
+                          ),
+                          isThreeLine: true,
+                        );
+                      },
+                    )),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _editEventSongs(Map<String, dynamic> event) async {
     final selected = ((event['eventos_cantos'] as List?) ?? const [])
         .map((row) => (row as Map)['canto_id'].toString())
@@ -861,28 +1195,46 @@ class _SedeSelector extends StatelessWidget {
 
 class _MetricCard extends StatelessWidget {
   const _MetricCard(this.label, this.value, this.icon, this.color,
-      {this.detail});
+      {this.detail, this.onTap});
   final String label;
   final int value;
   final IconData icon;
   final Color color;
   final String? detail;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(icon, color: color),
-            Text('$value',
-                style:
-                    const TextStyle(fontSize: 25, fontWeight: FontWeight.w900)),
-            Text(detail ?? label, maxLines: 2, overflow: TextOverflow.ellipsis),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '$value',
+                  style: const TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                detail ?? label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -960,6 +1312,60 @@ class _EmptyState extends StatelessWidget {
               Icon(icon, size: 48, color: Colors.grey),
               const SizedBox(height: 12),
               Text(text, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
+}
+
+class _CatalogEmpty extends StatelessWidget {
+  const _CatalogEmpty({
+    required this.ensembleOnly,
+    required this.hasQuery,
+    required this.onCreate,
+  });
+
+  final bool ensembleOnly;
+  final bool hasQuery;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                hasQuery ? Icons.search_off_rounded : Icons.music_off_outlined,
+                size: 54,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                hasQuery
+                    ? 'No encontramos esa partitura'
+                    : ensembleOnly
+                        ? 'Todavía no hay ensambles disponibles'
+                        : 'El catálogo está vacío',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              if (!ensembleOnly && hasQuery) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  'Puedes agregar tu propio PDF y MIDI para esta sede. No se enviará al catálogo global.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onCreate,
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Agregar mi propia partitura'),
+                ),
+              ],
             ],
           ),
         ),
