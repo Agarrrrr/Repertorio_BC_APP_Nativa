@@ -10,6 +10,7 @@ import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:repertorio_bc/core/notifications/push_service.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key});
@@ -20,6 +21,8 @@ class SettingsDialog extends ConsumerStatefulWidget {
 
 class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   bool _hasPushPermission = false;
+  bool _pushSupported = true;
+  String? _pushUnavailableMessage;
   List<Map<String, dynamic>> _lastNotifications = [];
   bool _loadingNotifications = true;
   bool _isInit = false;
@@ -98,14 +101,41 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Future<void> _checkPushPermission() async {
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
-    setState(() {
-      _hasPushPermission =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
-    });
+    if (!PushService.isAvailable) {
+      if (!mounted) return;
+      setState(() {
+        _hasPushPermission = false;
+        _pushSupported = false;
+        _pushUnavailableMessage = PushService.unavailableReason ??
+            'Este dispositivo no permite activar notificaciones.';
+      });
+      return;
+    }
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      if (!mounted) return;
+      setState(() {
+        _pushSupported = true;
+        _hasPushPermission =
+            settings.authorizationStatus == AuthorizationStatus.authorized ||
+                settings.authorizationStatus == AuthorizationStatus.provisional;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pushSupported = false;
+        _pushUnavailableMessage =
+            'El servicio de notificaciones no está disponible en este dispositivo.';
+      });
+    }
   }
 
   Future<void> _requestPushPermission() async {
+    if (!PushService.isAvailable) {
+      await _checkPushPermission();
+      return;
+    }
     final settings = await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -612,6 +642,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               _buildSectionTitle('NOTIFICACIONES'),
               NotificationCard(
                 hasPermission: _hasPushPermission,
+                isSupported: _pushSupported,
+                unavailableMessage: _pushUnavailableMessage,
                 onRequestPermission: _requestPushPermission,
               ),
               const SizedBox(height: 24),

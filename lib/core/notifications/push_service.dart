@@ -11,21 +11,35 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushService {
-  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  
+  static final FirebaseMessaging _firebaseMessaging =
+      FirebaseMessaging.instance;
+  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
   static void Function(String)? onNotificationTap;
   static String? pendingPayload;
   static String? lastNotifiedCantoId;
+  static bool _firebaseReady = false;
+  static String? _unavailableReason;
+
+  static bool get isAvailable => _firebaseReady;
+  static String? get unavailableReason => _unavailableReason;
 
   static Future<void> init() async {
     // 1. Inicializar Firebase (requiere GoogleService-Info.plist en iOS y google-services.json en Android)
     try {
       await Firebase.initializeApp();
+      _firebaseReady = true;
+      _unavailableReason = null;
       debugPrint('Firebase inicializado correctamente');
     } catch (e) {
-      debugPrint('Firebase init falló (probablemente falta configuración iOS): $e');
-      debugPrint('Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
+      _firebaseReady = false;
+      _unavailableReason =
+          'Este dispositivo no puede activar notificaciones en este momento.';
+      debugPrint(
+          'Firebase init falló (probablemente falta configuración iOS): $e');
+      debugPrint(
+          'Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
       return; // Salir sin configurar notificaciones push
     }
 
@@ -33,13 +47,15 @@ class PushService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 3. Configurar notificaciones locales para cuando la app esté en primer plano
-    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+    const androidInit =
+        AndroidInitializationSettings('@drawable/ic_notification');
     const darwinInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const initSettings = InitializationSettings(android: androidInit, iOS: darwinInit, macOS: darwinInit);
+    const initSettings = InitializationSettings(
+        android: androidInit, iOS: darwinInit, macOS: darwinInit);
     await _localNotificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (details) {
@@ -50,7 +66,8 @@ class PushService {
     );
 
     // 4. Chequear si la app se abrió desde una notificación (Cold Start)
-    final launchDetails = await _localNotificationsPlugin.getNotificationAppLaunchDetails();
+    final launchDetails =
+        await _localNotificationsPlugin.getNotificationAppLaunchDetails();
     if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
       if (launchDetails.notificationResponse?.payload != null) {
         pendingPayload = launchDetails.notificationResponse!.payload;
@@ -73,11 +90,12 @@ class PushService {
 
     // 7. Escuchar notificaciones en primer plano
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Recibida notificación en primer plano: ${message.notification?.title}');
-      
+      debugPrint(
+          'Recibida notificación en primer plano: ${message.notification?.title}');
+
       final notification = message.notification;
       final cantoId = message.data['canto_id'];
-      
+
       if (notification != null) {
         _localNotificationsPlugin.show(
           notification.hashCode,
@@ -87,7 +105,8 @@ class PushService {
             android: AndroidNotificationDetails(
               'repertorio_bc_channel', // id
               'Avisos y Actualizaciones', // title
-              channelDescription: 'Notificaciones sobre setlists y actualizaciones',
+              channelDescription:
+                  'Notificaciones sobre setlists y actualizaciones',
               importance: Importance.max,
               priority: Priority.high,
             ),
@@ -97,22 +116,25 @@ class PushService {
               presentSound: true,
             ),
           ),
-          payload: cantoId != null && cantoId.toString().isNotEmpty ? 'visor_$cantoId' : null,
+          payload: cantoId != null && cantoId.toString().isNotEmpty
+              ? 'visor_$cantoId'
+              : null,
         );
       }
     });
 
-
     // 8. Escuchar clics en notificaciones cuando la app está en segundo plano (pero no cerrada)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('FCM: Notificación cliqueada en segundo plano: ${message.data}');
+      debugPrint(
+          'FCM: Notificación cliqueada en segundo plano: ${message.data}');
       _handleMessageClick(message);
     });
 
     // 9. Chequear si la app se abrió desde una notificación cerrada (Cold Start de FCM)
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('FCM: App abierta desde notificación con cold start: ${initialMessage.data}');
+      debugPrint(
+          'FCM: App abierta desde notificación con cold start: ${initialMessage.data}');
       _handleMessageClick(initialMessage);
     }
   }
@@ -130,6 +152,7 @@ class PushService {
   }
 
   static Future<String?> getToken() async {
+    if (!_firebaseReady) return null;
     try {
       if (Platform.isIOS) {
         // En iOS, se requiere asegurar que APNs Token esté recibido antes de pedir el FCM Token.
@@ -152,7 +175,12 @@ class PushService {
     }
   }
 
-  static Future<void> requestPermission() async {
+  static Future<bool> requestPermission() async {
+    if (!_firebaseReady || (!Platform.isIOS && !Platform.isAndroid)) {
+      _unavailableReason =
+          'Las notificaciones no están disponibles en este dispositivo.';
+      return false;
+    }
     if (Platform.isIOS || Platform.isAndroid) {
       final settings = await _firebaseMessaging.requestPermission(
         alert: true,
@@ -160,8 +188,11 @@ class PushService {
         sound: true,
         provisional: false,
       );
-      debugPrint('[PushService] Estado de permiso: ${settings.authorizationStatus}');
+      debugPrint(
+          '[PushService] Estado de permiso: ${settings.authorizationStatus}');
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
     }
+    return false;
   }
-
 }

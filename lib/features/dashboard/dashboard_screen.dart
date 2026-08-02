@@ -34,7 +34,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      PushService.requestPermission();
+      PushService.requestPermission().then((enabled) {
+        if (!mounted || enabled || PushService.isAvailable) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(PushService.unavailableReason ??
+                'Este dispositivo no permite activar notificaciones.'),
+          ),
+        );
+      });
     });
   }
 
