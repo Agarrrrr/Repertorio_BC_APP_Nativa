@@ -153,14 +153,13 @@ jobs:
               --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-            echo "Creating an automatically signed Xcode archive..."
+            echo "Archiving with xcodebuild and -allowProvisioningUpdates..."
             run_with_diagnostics "Xcode archive failed" \
               xcodebuild -workspace ios/Runner.xcworkspace \
                        -scheme Runner \
                        -sdk iphoneos \
                        -configuration Release \
                        -archivePath $RUNNER_TEMP/Runner.xcarchive \
-                       DEVELOPMENT_TEAM=3R4W228G24 \
                        -allowProvisioningUpdates \
                        -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
                        -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
@@ -170,10 +169,8 @@ jobs:
             echo "Generating export_options.plist..."
             EXPORT_PLIST="ios/export_options.plist"
             rm -f "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :method string app-store-connect" "$EXPORT_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :method string app-store" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :signingStyle string automatic" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :teamID string 3R4W228G24" "$EXPORT_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :signingCertificate string 'Apple Distribution'" "$EXPORT_PLIST"
             /usr/libexec/PlistBuddy -c "Add :stripSwiftSymbols bool true" "$EXPORT_PLIST"
 
             echo "Exporting IPA with xcodebuild..."
@@ -197,12 +194,11 @@ jobs:
             ENTITLEMENTS_FILE="$RUNNER_TEMP/runner-entitlements.plist"
             codesign -d --entitlements :- "$VERIFY_DIR/Payload/Runner.app" \
               2> "$ENTITLEMENTS_FILE"
-            APNS_ENVIRONMENT=$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' "$ENTITLEMENTS_FILE")
-            echo "Signed IPA aps-environment: $APNS_ENVIRONMENT"
-            if [ "$APNS_ENVIRONMENT" != "production" ]; then
+            if ! grep -A1 '<key>aps-environment</key>' "$ENTITLEMENTS_FILE" | grep -q '<string>production</string>'; then
               echo "::error::La IPA final no contiene aps-environment=production."
               exit 1
             fi
+            echo "Signed IPA aps-environment: production"
           else
             echo "App Store Connect API Key not provided. Skipping signed archive and export."
           fi
