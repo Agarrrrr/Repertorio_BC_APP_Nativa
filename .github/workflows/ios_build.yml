@@ -185,6 +185,22 @@ jobs:
                        -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
                        -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
                        -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
+
+            # La configuración de Firebase puede ser correcta y aun así una
+            # IPA firmada sin el entitlement APNs jamás recibe token. Validamos
+            # el binario final, no solo Runner.entitlements en el repositorio.
+            IPA_FILE=$(find build/ios/ipa -name '*.ipa' -print -quit)
+            VERIFY_DIR=$(mktemp -d)
+            unzip -q "$IPA_FILE" -d "$VERIFY_DIR"
+            ENTITLEMENTS_FILE="$RUNNER_TEMP/runner-entitlements.plist"
+            codesign -d --entitlements :- "$VERIFY_DIR/Payload/Runner.app" \
+              2> "$ENTITLEMENTS_FILE"
+            APNS_ENVIRONMENT=$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' "$ENTITLEMENTS_FILE")
+            echo "Signed IPA aps-environment: $APNS_ENVIRONMENT"
+            if [ "$APNS_ENVIRONMENT" != "production" ]; then
+              echo "::error::La IPA final no contiene aps-environment=production."
+              exit 1
+            fi
           else
             echo "App Store Connect API Key not provided. Skipping signed archive and export."
           fi
