@@ -30,6 +30,27 @@ final isRecoveringPasswordProvider =
     NotifierProvider<IsRecoveringPasswordNotifier, bool>(
         IsRecoveringPasswordNotifier.new);
 
+final _pushFailureReports = <String>{};
+
+Future<void> _reportPushRegistrationFailure(
+  String userId,
+  String reason,
+) async {
+  // TestFlight no expone debugPrint al usuario. Guardamos un único diagnóstico
+  // por motivo para saber si falla APNs, FCM o el upsert de Supabase.
+  final key = '$userId:$reason';
+  if (!_pushFailureReports.add(key)) return;
+  try {
+    await SupabaseService.client.from('errores_app').insert({
+      'usuario_id': userId,
+      'mensaje': '[PUSH_REGISTRATION] $reason',
+      'user_agent': Platform.operatingSystem,
+    });
+  } catch (error) {
+    debugPrint('[FCM] No se pudo guardar diagnóstico push: $error');
+  }
+}
+
 // 2. Provider para el usuario de Supabase Auth
 final authUserProvider = StreamProvider<supabase.User?>((ref) {
   return SupabaseService.client.auth.onAuthStateChange.map((state) {
@@ -109,6 +130,10 @@ Future<bool> registrarFcmToken(String userId, {String? token}) async {
       '[FCM] Token aun no disponible; se reintentara mas adelante. '
       '${PushService.lastTokenError ?? ''}',
     );
+    await _reportPushRegistrationFailure(
+      userId,
+      PushService.lastTokenError ?? 'No se obtuvo token FCM.',
+    );
     return false;
   }
 
@@ -127,6 +152,10 @@ Future<bool> registrarFcmToken(String userId, {String? token}) async {
     return true;
   } catch (error) {
     debugPrint('[FCM] Error registrando el dispositivo: $error');
+    await _reportPushRegistrationFailure(
+      userId,
+      'No se pudo guardar la suscripción: $error',
+    );
     return false;
   }
 }
