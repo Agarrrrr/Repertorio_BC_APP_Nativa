@@ -193,7 +193,7 @@ jobs:
             unzip -q "$IPA_FILE" -d "$VERIFY_DIR"
             ENTITLEMENTS_FILE="$RUNNER_TEMP/runner-entitlements.plist"
             codesign -d --entitlements :- "$VERIFY_DIR/Payload/Runner.app" \
-              2> "$ENTITLEMENTS_FILE"
+              > "$ENTITLEMENTS_FILE" 2>&1
             if ! grep -q '<key>aps-environment</key>.*<string>production</string>' "$ENTITLEMENTS_FILE"; then
               echo "::error::La IPA final no contiene aps-environment=production."
               exit 1
