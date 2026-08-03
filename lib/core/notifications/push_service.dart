@@ -90,9 +90,12 @@ class PushService {
     // 6. Configurar opciones de presentación para iOS (alert, badge, sound)
     if (Platform.isIOS) {
       await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+        // La notificación se muestra manualmente abajo con el payload de
+        // navegación. Si iOS también la presenta automáticamente, aparecen
+        // dos avisos en primer plano (Android no tiene ese comportamiento).
+        alert: false,
+        badge: false,
+        sound: false,
       );
     }
 
