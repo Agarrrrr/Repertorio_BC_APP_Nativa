@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 
 enum AppThemeMode { claro, oscuro, sepia, quiet }
 
@@ -8,14 +8,17 @@ enum AppThemeMode { claro, oscuro, sepia, quiet }
 class ThemeNotifier extends Notifier<AppThemeMode> {
   @override
   AppThemeMode build() {
-    final box = Hive.box('cache');
-    final savedMode = box.get('theme_mode', defaultValue: AppThemeMode.claro.index);
-    return AppThemeMode.values.firstWhere((e) => e.index == savedMode, orElse: () => AppThemeMode.claro);
+    final savedMode = AppCache.get<int>(
+      'theme_mode',
+      defaultValue: AppThemeMode.claro.index,
+    )!;
+    return AppThemeMode.values.firstWhere((e) => e.index == savedMode,
+        orElse: () => AppThemeMode.claro);
   }
 
   void set(AppThemeMode mode) {
     state = mode;
-    Hive.box('cache').put('theme_mode', mode.index);
+    AppCache.put('theme_mode', mode.index);
   }
 
   void toggleDayNight() {
@@ -32,7 +35,9 @@ class ThemeNotifier extends Notifier<AppThemeMode> {
 
   void setProfileNormal() {
     if (state == AppThemeMode.sepia || state == AppThemeMode.quiet) {
-      set(state == AppThemeMode.quiet ? AppThemeMode.oscuro : AppThemeMode.claro);
+      set(state == AppThemeMode.quiet
+          ? AppThemeMode.oscuro
+          : AppThemeMode.claro);
     } else {
       set(AppThemeMode.claro); // Si ya estaba, por defecto
     }
@@ -40,49 +45,56 @@ class ThemeNotifier extends Notifier<AppThemeMode> {
 
   void setProfileLectura() {
     if (state == AppThemeMode.claro || state == AppThemeMode.oscuro) {
-      set(state == AppThemeMode.oscuro ? AppThemeMode.quiet : AppThemeMode.sepia);
+      set(state == AppThemeMode.oscuro
+          ? AppThemeMode.quiet
+          : AppThemeMode.sepia);
     } else {
       set(AppThemeMode.sepia); // Si ya estaba, por defecto
     }
   }
 }
-final themeProvider = NotifierProvider<ThemeNotifier, AppThemeMode>(ThemeNotifier.new);
+
+final themeProvider =
+    NotifierProvider<ThemeNotifier, AppThemeMode>(ThemeNotifier.new);
 
 // --- ACCENT COLOR PROVIDER ---
 class AccentColorNotifier extends Notifier<Color> {
   static const defaultAccent = Color(0xFFD4AF37); // Dorado
-  
+
   @override
   Color build() {
-    final box = Hive.box('cache');
-    final savedVal = box.get('accent_color', defaultValue: defaultAccent.value);
+    final savedVal = AppCache.get<int>(
+      'accent_color',
+      defaultValue: defaultAccent.value,
+    )!;
     return Color(savedVal);
   }
 
   void set(Color color) {
     state = color;
-    Hive.box('cache').put('accent_color', color.value);
+    AppCache.put('accent_color', color.value);
   }
-
 }
-final accentColorProvider = NotifierProvider<AccentColorNotifier, Color>(AccentColorNotifier.new);
+
+final accentColorProvider =
+    NotifierProvider<AccentColorNotifier, Color>(AccentColorNotifier.new);
 
 // --- PDF NAV MODE PROVIDER ---
 // true = Carousel (Horizontal), false = Scroll (Vertical)
 class PdfNavModeNotifier extends Notifier<bool> {
   @override
   bool build() {
-    final box = Hive.box('cache');
-    return box.get('pdf_carousel_mode', defaultValue: false);
+    return AppCache.get<bool>('pdf_carousel_mode', defaultValue: false)!;
   }
 
   void set(bool isCarousel) {
     state = isCarousel;
-    Hive.box('cache').put('pdf_carousel_mode', isCarousel);
+    AppCache.put('pdf_carousel_mode', isCarousel);
   }
 }
-final pdfNavModeProvider = NotifierProvider<PdfNavModeNotifier, bool>(PdfNavModeNotifier.new);
 
+final pdfNavModeProvider =
+    NotifierProvider<PdfNavModeNotifier, bool>(PdfNavModeNotifier.new);
 
 class AppTheme {
   static ThemeData getTheme(AppThemeMode mode, Color accentColor) {

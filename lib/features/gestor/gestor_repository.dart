@@ -33,10 +33,14 @@ class GestorMetrics {
 }
 
 class GestorRepository {
-  GestorRepository({SupabaseClient? client})
-      : client = client ?? SupabaseService.client;
+  GestorRepository({SupabaseClient? client, GestorRpc? rpc, GestorAudit? audit})
+      : client = client ?? SupabaseService.client,
+        _rpc = rpc,
+        _auditOverride = audit;
 
   final SupabaseClient client;
+  final GestorRpc? _rpc;
+  final GestorAudit? _auditOverride;
   final Dio _dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 15),
@@ -45,6 +49,15 @@ class GestorRepository {
     ),
   );
   static const int _pageSize = 250;
+
+  Future<dynamic> _invokeRpc(
+    String function,
+    Map<String, dynamic> params,
+  ) {
+    final override = _rpc;
+    if (override != null) return override(function, params);
+    return client.rpc(function, params: params);
+  }
 
   Future<List<Map<String, dynamic>>> sedes() async {
     final rows = await client
@@ -303,46 +316,17 @@ class GestorRepository {
       throw const FormatException('Selecciona un PDF válido.');
     }
 
-    final isOwnedLocal = original != null &&
-        original.origen == 'local' &&
-        original.corosVinculados.contains(sedeId);
-    final payload = <String, dynamic>{
-      'nombre': cleanName,
-      'archivo': pdf,
-      'midi_archivo': quitarMidi ? null : (midi ?? original?.midiArchivo),
-      'temas': temas,
-      'coro_id': sedeId,
-      'es_privado': true,
-      'origen': 'local',
-      'idioma': 'es',
-      'cifrado_version': 1,
-      'estado_revision_global': 'pendiente',
-      'activo': true,
-    };
-
-    Map<String, dynamic> saved;
-    if (isOwnedLocal) {
-      saved = await client
-          .from('cantos')
-          .update(payload)
-          .eq('id', original.id)
-          .select()
-          .single();
-    } else {
-      if (original != null) payload['derivado_de'] = original.id;
-      saved = await client.from('cantos').insert(payload).select().single();
-      await client.from('cantos_coros').insert({
-        'canto_id': saved['id'],
-        'coro_id': sedeId,
-      });
-      if (original != null) {
-        await client
-            .from('cantos_coros')
-            .delete()
-            .eq('canto_id', original.id)
-            .eq('coro_id', sedeId);
-      }
-    }
+    final raw = await _invokeRpc('guardar_canto_local_atomico', {
+      'p_sede_id': sedeId,
+      'p_nombre': cleanName,
+      'p_archivo': pdf,
+      'p_midi_archivo': quitarMidi ? null : (midi ?? original?.midiArchivo),
+      'p_temas': temas,
+      'p_original_id': original?.id,
+    });
+    final saved = Map<String, dynamic>.from(
+      raw is List ? raw.single as Map : raw as Map,
+    );
     await _audit(original == null ? 'CREO' : 'EDITO', sedeId, {
       'canto_id': saved['id'],
       'canto_nombre': cleanName,
@@ -355,8 +339,10 @@ class GestorRepository {
 
   Future<void> agregarGlobal(Canto source, String sedeId) async {
     final current = await repertorio(sedeId);
-    if (current
-        .any((song) => song.id == source.id || song.derivadoDe == source.id)) {
+    if (current.any((song) =>
+        song.id == source.id ||
+        song.derivadoDe == source.id ||
+        song.hasSamePdf(source))) {
       throw StateError(
           'Esta partitura ya está en el repertorio de la iglesia.');
     }
@@ -419,16 +405,10 @@ class GestorRepository {
     String eventId,
     List<String> cantoIds,
   ) async {
-    await client.from('eventos_cantos').delete().eq('evento_id', eventId);
-    if (cantoIds.isEmpty) return;
-    await client.from('eventos_cantos').insert([
-      for (var index = 0; index < cantoIds.length; index++)
-        {
-          'evento_id': eventId,
-          'canto_id': cantoIds[index],
-          'orden': index,
-        },
-    ]);
+    await _invokeRpc('guardar_cantos_evento_atomico', {
+      'p_evento_id': eventId,
+      'p_canto_ids': cantoIds,
+    });
   }
 
   Future<void> _audit(
@@ -436,6 +416,11 @@ class GestorRepository {
     String sedeId,
     Map<String, dynamic> details,
   ) async {
+    final override = _auditOverride;
+    if (override != null) {
+      await override(action, sedeId, details);
+      return;
+    }
     try {
       await client.from('auditoria').insert({
         'usuario_id': client.auth.currentUser?.id,
@@ -447,3 +432,14 @@ class GestorRepository {
     }
   }
 }
+
+typedef GestorRpc = Future<dynamic> Function(
+  String function,
+  Map<String, dynamic> params,
+);
+
+typedef GestorAudit = Future<void> Function(
+  String action,
+  String sedeId,
+  Map<String, dynamic> details,
+);

@@ -10,6 +10,7 @@ import 'dart:io';
 import 'dart:math'; // For layoutPages max()
 import 'package:repertorio_bc/core/pdf/pdf_engine.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:repertorio_bc/features/visor/widgets/annotation_layer.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
@@ -93,15 +94,15 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       return;
     }
 
-    setState(() {
-      _hasMidi = true;
-    });
-
     try {
       final localMidi = await OfflineFiles.ensureMidi(canto);
       if (!mounted) return;
       await _midi.loadMidi(localMidi.path, canto.nombre);
+      ref.read(syncManagerProvider.notifier).markMidiAvailable(canto.id);
+      setState(() => _hasMidi = true);
     } catch (error) {
+      ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
+      if (mounted) setState(() => _hasMidi = false);
       debugPrint(
           '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
     }
@@ -110,6 +111,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   @override
   void dispose() {
     _midi.dispose();
+    ref.read(pdfEngineProvider.notifier).releaseTransientBytes();
     super.dispose();
   }
 
@@ -722,10 +724,19 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                               : const ColorFilter.mode(
                                                   Colors.transparent,
                                                   BlendMode.multiply)),
-                                      child: PdfViewer.file(
-                                        state.localPath!,
-                                        key: ValueKey(
-                                            '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
+                                      child: PdfViewer(
+                                        state.memoryBytes != null
+                                            ? PdfDocumentRefData(
+                                                state.memoryBytes!,
+                                                sourceName:
+                                                    'ram_${widget.cantoId}',
+                                              )
+                                            : PdfDocumentRefFile(
+                                                state.localPath!,
+                                              ),
+                                        key: ValueKey(state.memoryBytes != null
+                                            ? 'ram_${widget.cantoId}_${state.memoryBytes!.length}'
+                                            : '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
                                         controller: _pdfController,
                                         params: PdfViewerParams(
                                           enableTextSelection: false,

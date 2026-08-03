@@ -584,6 +584,15 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
                     : '${filtered.length} coincidencias',
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () => _createSong(initialName: controller.text),
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('No está: agregar partitura propia'),
+                ),
+              ),
             ],
           ),
         ),
@@ -812,6 +821,42 @@ class _GestorScreenState extends ConsumerState<GestorScreen>
     await _run(() async {
       await _repository.agregarGlobal(song, sede);
       _showMessage('${song.nombre} se agregó como copia independiente.');
+      await _reload();
+    });
+  }
+
+  Future<void> _createSong({String initialName = ''}) async {
+    final iglesia = _sedeId;
+    if (iglesia == null) return;
+    final result = await showModalBottomSheet<_SongDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _SongEditor(initialName: initialName.trim()),
+    );
+    if (result == null || result.pdf == null) return;
+    await _run(() async {
+      final pdf = await _repository.upload(
+        sedeId: iglesia,
+        type: 'pdf',
+        bytes: result.pdf!,
+      );
+      String? midi;
+      if (result.midi != null) {
+        midi = await _repository.upload(
+          sedeId: iglesia,
+          type: 'midi',
+          bytes: result.midi!,
+        );
+      }
+      await _repository.guardarLocal(
+        sedeId: iglesia,
+        nombre: result.name,
+        temas: result.topics,
+        archivo: pdf,
+        midi: midi,
+      );
+      _showMessage('Partitura propia agregada a $_sedeName.');
       await _reload();
     });
   }
@@ -1407,9 +1452,10 @@ class _SongDraft {
 }
 
 class _SongEditor extends StatefulWidget {
-  const _SongEditor({required this.song});
+  const _SongEditor({this.song, this.initialName = ''});
 
-  final Canto song;
+  final Canto? song;
+  final String initialName;
 
   @override
   State<_SongEditor> createState() => _SongEditorState();
@@ -1417,14 +1463,15 @@ class _SongEditor extends StatefulWidget {
 
 class _SongEditorState extends State<_SongEditor> {
   late final TextEditingController _name =
-      TextEditingController(text: widget.song.nombre);
+      TextEditingController(text: widget.song?.nombre ?? widget.initialName);
   late final TextEditingController _topics =
-      TextEditingController(text: widget.song.temas.join(', '));
+      TextEditingController(text: widget.song?.temas.join(', ') ?? '');
   Uint8List? _pdf;
   Uint8List? _midi;
   String? _pdfName;
   String? _midiName;
   bool _removeMidi = false;
+  String? _validationError;
 
   @override
   void dispose() {
@@ -1456,7 +1503,8 @@ class _SongEditorState extends State<_SongEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final existingMidi = widget.song.midiArchivo?.isNotEmpty == true;
+    final existingMidi = widget.song?.midiArchivo?.isNotEmpty == true;
+    final creating = widget.song == null;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         20,
@@ -1469,7 +1517,9 @@ class _SongEditorState extends State<_SongEditor> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Editar partitura de la iglesia',
+              creating
+                  ? 'Agregar partitura propia'
+                  : 'Editar partitura de la iglesia',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
@@ -1494,7 +1544,10 @@ class _SongEditorState extends State<_SongEditor> {
             const SizedBox(height: 16),
             _FileButton(
               icon: Icons.picture_as_pdf_outlined,
-              label: _pdfName ?? 'Reemplazar PDF',
+              label: _pdfName ??
+                  (creating
+                      ? 'Seleccionar PDF (obligatorio)'
+                      : 'Reemplazar PDF'),
               onTap: () => _pick(true),
             ),
             const SizedBox(height: 8),
@@ -1516,12 +1569,27 @@ class _SongEditorState extends State<_SongEditor> {
                   }
                 }),
               ),
+            if (_validationError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _validationError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () {
-                  if (_name.text.trim().isEmpty) return;
+                  if (_name.text.trim().isEmpty) {
+                    setState(() => _validationError = 'Escribe un nombre.');
+                    return;
+                  }
+                  if (creating && _pdf == null) {
+                    setState(() => _validationError =
+                        'Selecciona el PDF de la partitura.');
+                    return;
+                  }
                   Navigator.pop(
                     context,
                     _SongDraft(
@@ -1539,7 +1607,9 @@ class _SongEditorState extends State<_SongEditor> {
                   );
                 },
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Guardar en esta iglesia'),
+                label: Text(creating
+                    ? 'Agregar a esta iglesia'
+                    : 'Guardar en esta iglesia'),
               ),
             ),
           ],

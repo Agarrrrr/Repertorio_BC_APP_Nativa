@@ -1,28 +1,31 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'package:path_provider/path_provider.dart';
 
 class PdfEngineState {
   final String? cantoId;
   final bool isLoading;
   final String? localPath;
+  final Uint8List? memoryBytes;
   final String? error;
-  
+
   // Herramientas de dibujo
   final bool isDrawingMode;
   final ToolType currentTool;
   final Color currentColor;
   final double currentSize;
   final double eraserSize;
-  
+
   // Trazos por número de página (1-indexed)
   final Map<int, List<Trazo>> trazos;
-  
+
   // Historial para Deshacer/Rehacer
   final List<Map<int, List<Trazo>>> history;
   final int historyIndex;
@@ -31,6 +34,7 @@ class PdfEngineState {
     this.cantoId,
     this.isLoading = true,
     this.localPath,
+    this.memoryBytes,
     this.error,
     this.isDrawingMode = false,
     this.currentTool = ToolType.pencil,
@@ -46,6 +50,7 @@ class PdfEngineState {
     String? cantoId,
     bool? isLoading,
     String? localPath,
+    Uint8List? memoryBytes,
     String? error,
     bool? isDrawingMode,
     ToolType? currentTool,
@@ -60,6 +65,7 @@ class PdfEngineState {
       cantoId: cantoId ?? this.cantoId,
       isLoading: isLoading ?? this.isLoading,
       localPath: localPath ?? this.localPath,
+      memoryBytes: memoryBytes ?? this.memoryBytes,
       error: error,
       isDrawingMode: isDrawingMode ?? this.isDrawingMode,
       currentTool: currentTool ?? this.currentTool,
@@ -81,17 +87,21 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
 
   Future<void> init(Canto canto) async {
     if (state.cantoId == canto.id &&
-        (state.isLoading || state.localPath != null)) {
+        (state.isLoading ||
+            state.localPath != null ||
+            state.memoryBytes != null)) {
       return;
     }
-    
+
     try {
       state = PdfEngineState(cantoId: canto.id, isLoading: true);
-      final file = await OfflineFiles.ensurePdf(canto);
+      final asset = await OfflineFiles.ensurePdfForViewing(canto);
+      ref.read(syncManagerProvider.notifier).markPdfAvailable(canto.id);
 
       state = state.copyWith(
         isLoading: false,
-        localPath: file.path,
+        localPath: asset.file?.path,
+        memoryBytes: asset.bytes,
       );
     } catch (e) {
       state = PdfEngineState(
@@ -104,16 +114,30 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
   }
 
   Future<void> exportPdf(String nombreCanto) async {
-    if (state.localPath != null) {
+    if (state.localPath != null || state.memoryBytes != null) {
       // Crear una copia temporal con el nombre correcto para que al compartir aparezca con ese nombre
-      final originalFile = File(state.localPath!);
+      final originalFile =
+          state.localPath == null ? null : File(state.localPath!);
       final safeName = nombreCanto.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      final tempFile = File('${originalFile.parent.path}/$safeName.pdf');
-      await originalFile.copy(tempFile.path);
-      
-      final file = XFile(tempFile.path);
-      // ignore: deprecated_member_use
-      await Share.shareXFiles([file], text: 'Partitura: $nombreCanto');
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$safeName.pdf');
+      try {
+        if (originalFile != null) {
+          await originalFile.copy(tempFile.path);
+        } else {
+          await tempFile.writeAsBytes(state.memoryBytes!, flush: true);
+        }
+
+        final file = XFile(tempFile.path);
+        // ignore: deprecated_member_use
+        await Share.shareXFiles([file], text: 'Partitura: $nombreCanto');
+      } finally {
+        try {
+          if (await tempFile.exists()) await tempFile.delete();
+        } on FileSystemException {
+          // El sistema también limpia su carpeta temporal.
+        }
+      }
     }
   }
 
@@ -143,14 +167,14 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     if (state.historyIndex < newHistory.length - 1) {
       newHistory = newHistory.sublist(0, state.historyIndex + 1);
     }
-    
+
     // Si es el primer trazo, guardar el estado inicial vacío
     if (newHistory.isEmpty && state.trazos.isEmpty) {
       newHistory.add({});
     } else if (newHistory.isEmpty) {
       newHistory.add(state.trazos);
     }
-    
+
     newHistory.add(nuevosTrazos);
     state = state.copyWith(
       trazos: nuevosTrazos,
@@ -165,7 +189,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
       nuevosTrazos[pageNumber] = [];
     }
     nuevosTrazos[pageNumber]!.add(trazo);
-    
+
     _pushHistory(nuevosTrazos);
   }
 
@@ -199,6 +223,23 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     }
   }
 
+  /// Libera el PDF temporal usado cuando no hubo espacio para guardarlo.
+  void releaseTransientBytes() {
+    if (state.memoryBytes == null) return;
+    state = PdfEngineState(
+      cantoId: state.cantoId,
+      isLoading: false,
+      isDrawingMode: state.isDrawingMode,
+      currentTool: state.currentTool,
+      currentColor: state.currentColor,
+      currentSize: state.currentSize,
+      eraserSize: state.eraserSize,
+      trazos: state.trazos,
+      history: state.history,
+      historyIndex: state.historyIndex,
+    );
+  }
+
   Map<int, List<Trazo>> _deepCopyTrazos(Map<int, List<Trazo>> source) {
     final copy = <int, List<Trazo>>{};
     source.forEach((key, value) {
@@ -208,4 +249,5 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
   }
 }
 
-final pdfEngineProvider = NotifierProvider<PdfEngineNotifier, PdfEngineState>(PdfEngineNotifier.new);
+final pdfEngineProvider =
+    NotifierProvider<PdfEngineNotifier, PdfEngineState>(PdfEngineNotifier.new);

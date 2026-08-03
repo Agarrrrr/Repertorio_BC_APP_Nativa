@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/core/notifications/push_service.dart';
 import 'package:repertorio_bc/core/activity/activity_service.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 import 'package:repertorio_bc/models/perfil.dart';
-import 'package:hive/hive.dart';
 import 'dart:convert';
 
 // 1. Estado para saber si esta cargando
@@ -55,16 +55,16 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
   // de forma independiente al éxito de la consulta del perfil en red.
   ActivityService.register();
   registrarFcmToken(user.id);
+  final profileCacheKey = AppCache.userKey('perfil_json', user.id);
 
   try {
-    final box = Hive.box('cache');
     // Buscar el perfil por id de usuario
     final data = await SupabaseService.client
         .from('perfiles')
         .select()
         .eq('id', user.id)
         .maybeSingle()
-        .timeout(const Duration(milliseconds: 1500)); // Fast-fail offline
+        .timeout(const Duration(seconds: 8));
 
     Future.microtask(
         () => ref.read(authLoadingProvider.notifier).setState(false));
@@ -72,15 +72,27 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
     if (data == null) return null;
 
     // Guardar perfil en cache offline
-    box.put('perfil_json', jsonEncode(data));
+    await AppCache.put(profileCacheKey, jsonEncode(data));
+    await AppCache.delete('perfil_json');
 
     return Perfil.fromJson(data);
   } catch (e) {
     Future.microtask(
         () => ref.read(authLoadingProvider.notifier).setState(false));
-    // Caemos de gracia a Hive si estamos offline
-    final box = Hive.box('cache');
-    final cachedProfile = box.get('perfil_json');
+    var cachedProfile = AppCache.get<String>(profileCacheKey);
+    final legacyProfile = AppCache.get<String>('perfil_json');
+    if (cachedProfile == null && legacyProfile != null) {
+      try {
+        final legacyJson = jsonDecode(legacyProfile) as Map<String, dynamic>;
+        if (legacyJson['id']?.toString() == user.id) {
+          cachedProfile = legacyProfile;
+          await AppCache.put(profileCacheKey, legacyProfile);
+          await AppCache.delete('perfil_json');
+        }
+      } catch (_) {
+        // Una entrada heredada corrupta no debe bloquear el inicio.
+      }
+    }
     if (cachedProfile != null) {
       return Perfil.fromJson(jsonDecode(cachedProfile));
     }
@@ -88,41 +100,38 @@ final perfilProvider = FutureProvider<Perfil?>((ref) async {
   }
 });
 
-void registrarFcmToken(String userId) async {
-  final token = await PushService.getToken();
-  debugPrint('[FCM] Token obtenido: $token');
-  if (token != null) {
-    try {
-      // Detectar la plataforma real para que el backend envíe con el servicio correcto.
-      final plataforma = Platform.isIOS ? 'ios_fcm' : 'android_fcm';
-      final result =
-          await SupabaseService.client.from('suscripciones_push').upsert({
-        'usuario_id': userId,
-        'endpoint': token,
-        'plataforma': plataforma,
-        'suscripcion': {}
-      }, onConflict: 'endpoint');
-      await SupabaseService.client
-          .from('perfiles')
-          .update({'notificaciones_activas': true}).eq('id', userId);
-      debugPrint('[FCM] Token guardado en Supabase ($plataforma): $result');
-    } catch (e) {
-      debugPrint('[FCM] ERROR guardando token: $e');
-    }
-  } else {
-    try {
-      await SupabaseService.client
-          .from('suscripciones_push')
-          .delete()
-          .eq('usuario_id', userId);
-      await SupabaseService.client
-          .from('perfiles')
-          .update({'notificaciones_activas': false}).eq('id', userId);
-    } catch (error) {
-      debugPrint('[FCM] Error limpiando el estado inactivo: $error');
-    }
-    debugPrint('[FCM] Token nulo, no se guardó nada');
+Future<bool> registrarFcmToken(String userId, {String? token}) async {
+  final resolvedToken = token ?? await PushService.getToken();
+  if (resolvedToken == null || resolvedToken.isEmpty) {
+    // Un token puede tardar en estar disponible o fallar por falta de red.
+    // Nunca se deben borrar suscripciones validas por un fallo temporal.
+    debugPrint('[FCM] Token aun no disponible; se reintentara mas adelante.');
+    return false;
   }
+
+  try {
+    final plataforma = Platform.isIOS ? 'ios_fcm' : 'android_fcm';
+    await SupabaseService.client.from('suscripciones_push').upsert({
+      'usuario_id': userId,
+      'endpoint': resolvedToken,
+      'plataforma': plataforma,
+      'suscripcion': {}
+    }, onConflict: 'endpoint');
+    await SupabaseService.client
+        .from('perfiles')
+        .update({'notificaciones_activas': true}).eq('id', userId);
+    debugPrint('[FCM] Dispositivo registrado correctamente ($plataforma).');
+    return true;
+  } catch (error) {
+    debugPrint('[FCM] Error registrando el dispositivo: $error');
+    return false;
+  }
+}
+
+Future<bool> registrarFcmTokenUsuarioActual({String? token}) async {
+  final user = SupabaseService.client.auth.currentUser;
+  if (user == null) return false;
+  return registrarFcmToken(user.id, token: token);
 }
 
 // Controller para login/logout
@@ -142,6 +151,28 @@ class AuthController {
   }
 
   static Future<void> logout() async {
+    final user = SupabaseService.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final token = await PushService.getToken();
+        if (token?.isNotEmpty == true) {
+          await SupabaseService.client
+              .from('suscripciones_push')
+              .delete()
+              .eq('usuario_id', user.id)
+              .eq('endpoint', token!)
+              .timeout(const Duration(seconds: 4));
+        }
+      } catch (error) {
+        debugPrint(
+            '[Auth] No se pudo retirar el token al cerrar sesión: $error');
+      }
+      await AppCache.clearUser(user.id);
+      await AppCache.deletePrefix('cantos_json_${user.id}_');
+      await AppCache.delete('perfil_json');
+      await AppCache.delete('avisos_json');
+      await AppCache.delete('eventos_permanentes');
+    }
     await SupabaseService.client.auth.signOut();
   }
 
@@ -151,7 +182,8 @@ class AuthController {
   /// La función RPC es SECURITY DEFINER y solo puede borrar auth.uid(), por lo
   /// que el cliente nunca recibe credenciales administrativas.
   static Future<void> deleteAccount() async {
-    if (SupabaseService.client.auth.currentUser == null) {
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) {
       throw const supabase.AuthException(
         'La sesión expiró. Inicia sesión de nuevo para eliminar tu cuenta.',
       );
@@ -170,15 +202,10 @@ class AuthController {
       // ya se completó, así que la limpieza local debe continuar.
     }
 
-    final cache = Hive.box('cache');
-    await Future.wait([
-      cache.delete('perfil_json'),
-      cache.delete('avisos_json'),
-      cache.delete('eventos_permanentes'),
-    ]);
-
-    if (Hive.isBoxOpen('favoritos_box')) {
-      await Hive.box('favoritos_box').clear();
-    }
+    await AppCache.clearUser(user.id);
+    await AppCache.deletePrefix('cantos_json_${user.id}_');
+    await AppCache.delete('perfil_json');
+    await AppCache.delete('avisos_json');
+    await AppCache.delete('eventos_permanentes');
   }
 }

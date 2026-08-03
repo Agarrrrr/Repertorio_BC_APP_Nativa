@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
+import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 import 'dart:convert';
-import 'package:hive/hive.dart';
 
 // Funciones puras para procesar datos en Isolate
 List<Canto> _parseCantosJsonString(String jsonString) {
@@ -19,21 +20,99 @@ List<Canto> _parseCantosList(List<dynamic> data) {
   return lista;
 }
 
+/// Elimina copias que apuntan al mismo PDF sin comparar nombres. Cuando una
+/// copia local y una estatal comparten el asset, conserva la copia de la sede.
+List<Canto> deduplicarCantosPorPdf(
+  List<Canto> cantos, {
+  required String? sedeId,
+}) {
+  final byAsset = <String, Canto>{};
+  for (final canto in cantos) {
+    final key = canto.pdfIdentity;
+    final current = byAsset[key];
+    if (current == null ||
+        _prioridadParaSede(canto, sedeId) >
+            _prioridadParaSede(current, sedeId)) {
+      byAsset[key] = canto;
+    }
+  }
+  return byAsset.values.toList();
+}
+
+@visibleForTesting
+List<Canto> resolveCatalogResult({
+  required List<Canto> server,
+  required List<Canto> cached,
+  required bool requestSucceeded,
+}) {
+  return requestSucceeded ? server : cached;
+}
+
+int _prioridadParaSede(Canto canto, String? sedeId) {
+  final local = sedeId != null && canto.corosVinculados.contains(sedeId);
+  if (local && canto.origen == 'local') return 4;
+  if (local) return 3;
+  if (canto.corosVinculados.contains('estatal')) return 2;
+  return 1;
+}
+
+Future<List<dynamic>> _fetchCompatibleCatalog(String sedeId) async {
+  final rowsByCanto = <String, Map<String, dynamic>>{};
+  const pageSize = 250;
+  final sedes = <String>{sedeId, 'estatal'}.toList();
+
+  for (var from = 0;; from += pageSize) {
+    final page = await SupabaseService.client
+        .from('cantos_coros')
+        .select('coro_id,cantos(*,eventos_cantos(evento_id))')
+        .inFilter('coro_id', sedes)
+        .range(from, from + pageSize - 1);
+    final relations = List<Map<String, dynamic>>.from(page);
+    for (final relation in relations) {
+      final rawSong = relation['cantos'];
+      if (rawSong is! Map) continue;
+      final song = Map<String, dynamic>.from(rawSong);
+      final id = song['id']?.toString();
+      final coroId = relation['coro_id']?.toString();
+      if (id == null || coroId == null) continue;
+      final existing = rowsByCanto.putIfAbsent(id, () => song);
+      final linked = <String>{
+        ...((existing['coros_vinculados'] as List?) ?? const [])
+            .map((value) => value.toString()),
+        coroId,
+      };
+      existing['coros_vinculados'] = linked.toList();
+    }
+    if (relations.length < pageSize) break;
+  }
+  return rowsByCanto.values.toList();
+}
+
 // Provider base que descarga el catalogo de cantos desde Supabase
 class CantosNotifier extends AsyncNotifier<List<Canto>> {
   @override
   Future<List<Canto>> build() async {
-    final box = Hive.box('cache');
     final perfil = ref.watch(perfilProvider).value;
     final userId = SupabaseService.client.auth.currentUser?.id ?? 'sin_usuario';
-    final cacheKey = 'cantos_json_${userId}_${perfil?.coroId ?? 'sin_sede'}';
+    final cacheKey = AppCache.userKey(
+      'cantos_json',
+      userId,
+      scope: perfil?.coroId ?? 'sin_sede',
+    );
 
     // 1. Carga inmediata desde caché (Offline-First)
-    final cachedData = box.get(cacheKey);
+    var cachedData = AppCache.get<String>(cacheKey);
+    final legacyKey = 'cantos_json_${userId}_${perfil?.coroId ?? 'sin_sede'}';
+    if (cachedData == null) {
+      cachedData = AppCache.get<String>(legacyKey);
+      if (cachedData != null) {
+        await AppCache.put(cacheKey, cachedData);
+        await AppCache.delete(legacyKey);
+      }
+    }
     if (cachedData != null) {
       try {
-        final lista =
-            await compute(_parseCantosJsonString, cachedData as String);
+        final lista = await compute(_parseCantosJsonString, cachedData);
         state = AsyncValue.data(lista); // Emitir data al instante
       } catch (e) {
         debugPrint('Error parsing cached cantos: $e');
@@ -47,33 +126,46 @@ class CantosNotifier extends AsyncNotifier<List<Canto>> {
         final unified =
             await SupabaseService.client.rpc('mis_cantos_disponibles');
         response = unified as List<dynamic>;
+        if (response.isEmpty && perfil != null && perfil.coroId.isNotEmpty) {
+          response = await _fetchCompatibleCatalog(perfil.coroId);
+        }
       } catch (error) {
         debugPrint('Usando consulta compatible de catálogo: $error');
-        response = await SupabaseService.client
-            .from('cantos')
-            .select('*, cantos_coros(coro_id), eventos_cantos(evento_id)');
-        response = response.where((item) {
-          final relaciones = item['cantos_coros'];
-          if (relaciones is! List || perfil == null) return false;
-          return relaciones.any((relacion) {
-            final coroId = relacion['coro_id']?.toString();
-            return coroId == perfil.coroId || coroId == 'estatal';
-          });
-        }).toList();
+        if (perfil == null || perfil.coroId.isEmpty) {
+          if (state.hasValue) return state.value!;
+          return [];
+        }
+        response = await _fetchCompatibleCatalog(perfil.coroId);
       }
-
-      // Guardar el string en crudo para la proxima sesion
-      await box.put(cacheKey, jsonEncode(response));
 
       final lista = await compute(_parseCantosList, response);
 
+      // El almacenamiento puede estar lleno. El catálogo en línea sigue
+      // siendo utilizable durante toda la sesión aunque no pueda persistirse.
+      try {
+        await AppCache.put(cacheKey, jsonEncode(response));
+      } catch (error) {
+        debugPrint(
+          'No se pudo guardar el catálogo en caché; se conserva en RAM: $error',
+        );
+      }
+
+      await OfflineFiles.reconcileAuthorized(lista);
+
       // Emitir los nuevos datos
-      return lista;
+      return resolveCatalogResult(
+        server: lista,
+        cached: state.value ?? const <Canto>[],
+        requestSucceeded: true,
+      );
     } catch (e) {
       debugPrint('Error fetching cantos from DB: $e');
       // Si falla y teniamos state (del cache), devolvemos el viejo state para que no se sobreescriba con error
-      if (state.hasValue) return state.value!;
-      return [];
+      return resolveCatalogResult(
+        server: const <Canto>[],
+        cached: state.value ?? const <Canto>[],
+        requestSucceeded: false,
+      );
     }
   }
 }
@@ -181,7 +273,7 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
   final queryWords =
       queryNormalizada.isEmpty ? <String>[] : queryNormalizada.split(' ');
 
-  final filtrados = params.cantos.where((canto) {
+  var filtrados = params.cantos.where((canto) {
     // La búsqueda nunca debe saltar al repertorio de otra sede.
     final perteneceALaSede = params.perfilCoroId != null &&
         (canto.corosVinculados.contains(params.perfilCoroId) ||
@@ -246,6 +338,13 @@ List<Canto> _filterAndSortCantosEnIsolate(FilterParams params) {
 
     return true;
   }).toList();
+
+  if (queryNormalizada.isNotEmpty) {
+    filtrados = deduplicarCantosPorPdf(
+      filtrados,
+      sedeId: params.perfilCoroId,
+    );
+  }
 
   // 3. Ordenar resultados por relevancia
   if (queryNormalizada.isNotEmpty) {
@@ -343,7 +442,10 @@ final cantosOfflineStateProvider = Provider<AsyncValue<List<Canto>>>((ref) {
     return false;
   }).toList();
 
-  return AsyncValue.data(permitidos);
+  return AsyncValue.data(deduplicarCantosPorPdf(
+    permitidos,
+    sedeId: perfil.coroId,
+  ));
 });
 
 final cantosDeLaSedeProvider = Provider<List<Canto>>((ref) {

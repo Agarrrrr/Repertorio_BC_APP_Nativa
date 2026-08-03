@@ -17,6 +17,7 @@ class PushService {
       FlutterLocalNotificationsPlugin();
 
   static void Function(String)? onNotificationTap;
+  static Future<void> Function(String token)? onTokenRefresh;
   static String? pendingPayload;
   static String? lastNotifiedCantoId;
   static bool _firebaseReady = false;
@@ -75,8 +76,13 @@ class PushService {
     }
 
     // 5. Escuchar cambios de token y refrescarlo en Supabase cuando cambie
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-      debugPrint('[FCM] Token refrescado: $token');
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+      debugPrint('[FCM] Token renovado; sincronizando el dispositivo.');
+      try {
+        await onTokenRefresh?.call(token);
+      } catch (error) {
+        debugPrint('[FCM] No se pudo sincronizar el token renovado: $error');
+      }
     });
 
     // 6. Configurar opciones de presentación para iOS (alert, badge, sound)
@@ -165,7 +171,7 @@ class PushService {
             if (apnsToken != null) break;
           }
         }
-        debugPrint('[PushService] APNs Token obtenido: $apnsToken');
+        debugPrint('[PushService] APNs Token disponible: ${apnsToken != null}');
       }
       final token = await _firebaseMessaging.getToken();
       return token;
@@ -190,8 +196,13 @@ class PushService {
       );
       debugPrint(
           '[PushService] Estado de permiso: ${settings.authorizationStatus}');
-      return settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional;
+      final enabled =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      _unavailableReason = enabled
+          ? null
+          : 'Las notificaciones estan desactivadas para esta aplicacion. Activalas desde los ajustes del dispositivo.';
+      return enabled;
     }
     return false;
   }

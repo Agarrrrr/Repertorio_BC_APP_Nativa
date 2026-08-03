@@ -25,6 +25,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  bool _syncingPush = false;
 
   @override
   void dispose() {
@@ -39,22 +40,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     WidgetsBinding.instance.addObserver(this);
     ActivityService.register(force: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      PushService.requestPermission().then((enabled) {
-        if (!mounted || enabled || PushService.isAvailable) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(PushService.unavailableReason ??
-                'Este dispositivo no permite activar notificaciones.'),
-          ),
-        );
-      });
+      _syncPushRegistration(showWarning: true);
     });
+  }
+
+  Future<void> _syncPushRegistration({required bool showWarning}) async {
+    if (_syncingPush) return;
+    _syncingPush = true;
+    try {
+      final enabled = await PushService.requestPermission();
+      if (enabled) {
+        await registrarFcmTokenUsuarioActual();
+        return;
+      }
+      if (!mounted || !showWarning) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(PushService.unavailableReason ??
+              'Este dispositivo no permite activar notificaciones.'),
+        ),
+      );
+    } finally {
+      _syncingPush = false;
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ActivityService.register();
+      _syncPushRegistration(showWarning: false);
     }
   }
 
@@ -77,8 +92,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           SnackBar(
             backgroundColor: Colors.red.shade800,
             content: Text(
-              'Faltan ${next.failedFiles} archivos. '
-              'Las partituras afectadas están marcadas en rojo.',
+              '${next.failedFiles} cantos requieren atención. '
+              'Solo las partituras sin PDF disponible se marcan en rojo.',
             ),
           ),
         );

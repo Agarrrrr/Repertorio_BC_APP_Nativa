@@ -54,6 +54,7 @@ class MidiExportService {
       '${(await getApplicationSupportDirectory()).path}/midi_exports',
     );
     await workDir.create(recursive: true);
+    await _pruneExportCache(workDir);
 
     final safeTitle = _safeName(canto.nombre);
     final suffix =
@@ -173,6 +174,35 @@ class MidiExportService {
       flush: true,
     );
     return file;
+  }
+
+  static Future<void> _pruneExportCache(Directory workDir) async {
+    const maxAge = Duration(days: 30);
+    const maxBytes = 300 * 1024 * 1024;
+    final now = DateTime.now();
+    final files = <({File file, FileStat stat})>[];
+
+    try {
+      await for (final entity in workDir.list(followLinks: false)) {
+        if (entity is! File || !entity.path.endsWith('.mp3')) continue;
+        final stat = await entity.stat();
+        if (now.difference(stat.modified) >= maxAge) {
+          await entity.delete();
+        } else {
+          files.add((file: entity, stat: stat));
+        }
+      }
+
+      files.sort((a, b) => a.stat.modified.compareTo(b.stat.modified));
+      var total = files.fold<int>(0, (sum, item) => sum + item.stat.size);
+      for (final item in files) {
+        if (total <= maxBytes) break;
+        await item.file.delete();
+        total -= item.stat.size;
+      }
+    } on FileSystemException catch (error) {
+      debugPrint('[MidiExport] Limpieza de caché omitida: $error');
+    }
   }
 
   static Uint8List _midiWithSelectedTrack(

@@ -91,11 +91,13 @@ class AppDrawer extends ConsumerWidget {
               builder: (context, ref, child) {
                 final syncState = ref.watch(syncManagerProvider);
                 final hasFailures = syncState.failedFiles > 0;
-                final statusColor = hasFailures
-                    ? Colors.red
-                    : syncState.isSyncing
-                        ? theme.colorScheme.secondary
-                        : Colors.green;
+                final statusColor = syncState.storageUnavailable
+                    ? Colors.orange
+                    : hasFailures
+                        ? Colors.red
+                        : syncState.isSyncing
+                            ? theme.colorScheme.secondary
+                            : Colors.green;
 
                 return Container(
                   padding:
@@ -106,22 +108,26 @@ class AppDrawer extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            hasFailures
-                                ? Icons.error_outline_rounded
-                                : syncState.isSyncing
-                                    ? Icons.sync_rounded
-                                    : Icons.cloud_done_rounded,
+                            syncState.storageUnavailable
+                                ? Icons.storage_rounded
+                                : hasFailures
+                                    ? Icons.error_outline_rounded
+                                    : syncState.isSyncing
+                                        ? Icons.sync_rounded
+                                        : Icons.cloud_done_rounded,
                             size: 14,
                             color: statusColor,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              hasFailures
-                                  ? 'Faltan ${syncState.failedFiles} archivos'
-                                  : syncState.isSyncing
-                                      ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
-                                      : 'Repertorio asignado offline',
+                              syncState.storageUnavailable
+                                  ? 'Sin espacio: disponible con internet'
+                                  : hasFailures
+                                      ? '${syncState.failedFiles} cantos requieren atención'
+                                      : syncState.isSyncing
+                                          ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
+                                          : 'Repertorio asignado offline',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,

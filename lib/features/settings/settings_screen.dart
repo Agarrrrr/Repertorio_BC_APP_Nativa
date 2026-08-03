@@ -7,10 +7,12 @@ import 'package:repertorio_bc/features/settings/notification_card.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
-import 'package:hive/hive.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
+import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key});
@@ -27,6 +29,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   bool _loadingNotifications = true;
   bool _isInit = false;
   bool _isDeletingAccount = false;
+  bool _isRepairingFiles = false;
 
   @override
   void initState() {
@@ -47,8 +50,17 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     final perfil = ref.read(perfilProvider).value;
     if (perfil == null) return;
 
-    final box = Hive.box('cache');
-    final cached = box.get('avisos_json');
+    final cacheKey = AppCache.userKey(
+      'avisos_json',
+      SupabaseService.client.auth.currentUser?.id,
+      scope: perfil.coroId,
+    );
+    var cached = AppCache.get<String>(cacheKey);
+    cached ??= AppCache.get<String>('avisos_json');
+    if (cached != null && AppCache.get<String>(cacheKey) == null) {
+      await AppCache.put(cacheKey, cached);
+      await AppCache.delete('avisos_json');
+    }
     if (cached != null) {
       try {
         final List<dynamic> decoded = jsonDecode(cached);
@@ -67,7 +79,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           .order('creado_en', ascending: false)
           .limit(6);
 
-      box.put('avisos_json', jsonEncode(res));
+      await AppCache.put(cacheKey, jsonEncode(res));
 
       if (mounted) {
         setState(() {
@@ -150,18 +162,14 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     });
 
     if (isAuthorized) {
-      final user = SupabaseService.client.auth.currentUser;
-      if (user != null) {
-        registrarFcmToken(user.id);
-        await SupabaseService.client
-            .from('perfiles')
-            .update({'notificaciones_activas': true}).eq('id', user.id);
-      }
+      final registered = await registrarFcmTokenUsuarioActual();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Notificaciones push activadas con éxito!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(registered
+                ? '¡Notificaciones push activadas con exito!'
+                : 'El permiso esta activo. El dispositivo se registrara automaticamente cuando tenga conexion.'),
+            backgroundColor: registered ? Colors.green : Colors.orange,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -325,11 +333,41 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     }
   }
 
+  Future<void> _repairFiles() async {
+    if (_isRepairingFiles) return;
+    setState(() => _isRepairingFiles = true);
+    try {
+      ref.invalidate(cantosBaseProvider);
+      final cantos = await ref.read(cantosBaseProvider.future);
+      ref.read(syncManagerProvider.notifier).repairNow(cantos);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Revisión iniciada. Se actualizarán los archivos faltantes o dañados.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo iniciar la reparación: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRepairingFiles = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
     final accentColor = ref.watch(accentColorProvider);
     final isCarousel = ref.watch(pdfNavModeProvider);
+    final syncState = ref.watch(syncManagerProvider);
 
     // Auth Data
     final user = ref.watch(authUserProvider).value;
@@ -651,6 +689,55 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               // 2.5 HISTORIAL DE AVISOS
               _buildSectionTitle('HISTORIAL DE AVISOS (ÚLTIMOS 6)'),
               _buildNotificationHistory(accentColor),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('ARCHIVOS Y MODO SIN CONEXIÓN'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      syncState.storageUnavailable
+                          ? 'El almacenamiento está lleno. Aun así puedes abrir partituras con internet; se mantendrán temporalmente en memoria.'
+                          : 'Comprueba el catálogo y vuelve a descargar partituras o MIDI faltantes, dañados o desactualizados.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: syncState.storageUnavailable
+                            ? Colors.orange.shade700
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _isRepairingFiles || syncState.isSyncing
+                            ? null
+                            : _repairFiles,
+                        icon: _isRepairingFiles || syncState.isSyncing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.build_circle_outlined),
+                        label: Text(syncState.isSyncing
+                            ? 'Actualizando archivos...'
+                            : 'Reparar y actualizar archivos'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
 
               // 3. COLOR DE ACENTO

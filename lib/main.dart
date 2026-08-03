@@ -3,24 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/app/app.dart';
 import 'package:repertorio_bc/app/router.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  
+
   // 1. Inicializar Supabase
   await SupabaseService.init();
-  
-  // 2. Inicializar Hive (offline cache)
-  await Hive.initFlutter();
-  await Hive.openBox('cache');
+
+  // 2. Inicializar la caché. Si el disco está lleno, continúa en RAM.
+  await AppCache.init();
 
   // 3. Inicializar Notificaciones Push
+  PushService.onTokenRefresh = (token) async {
+    await registrarFcmTokenUsuarioActual(token: token);
+  };
   await PushService.init();
   PushService.onNotificationTap = (payload) {
     if (payload.startsWith('visor_')) {
@@ -32,7 +35,7 @@ void main() async {
       }
     }
   };
-  
+
   // 4. Diseño Edge-to-Edge (Barra de estado transparente)
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

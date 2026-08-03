@@ -27,6 +27,33 @@ class Canto {
   final int cifradoVersion;
   final String? derivadoDe;
 
+  /// Identidad estable del PDF. No usa el nombre del canto: para los assets
+  /// unificados toma el hash incluido en la ruta y para archivos heredados usa
+  /// la ruta normalizada sin dominio ni query string.
+  String get pdfIdentity {
+    final raw = archivo.trim();
+    if (raw.isEmpty) return 'canto:$id';
+    final normalized = raw.replaceAll('\\', '/');
+    final hash = RegExp(r'([a-fA-F0-9]{64})\.enc(?:$|[?#])')
+        .firstMatch(normalized)
+        ?.group(1)
+        ?.toLowerCase();
+    if (hash != null) return 'sha256:$hash';
+
+    final uri = Uri.tryParse(normalized);
+    final path = uri?.path.isNotEmpty == true ? uri!.path : normalized;
+    try {
+      return 'path:${Uri.decodeComponent(path).toLowerCase()}';
+    } on FormatException {
+      return 'path:${path.toLowerCase()}';
+    }
+  }
+
+  bool hasSamePdf(Canto other) {
+    if (pdfIdentity == other.pdfIdentity) return true;
+    return derivadoDe == other.id || other.derivadoDe == id;
+  }
+
   Canto({
     required this.id,
     required this.nombre,

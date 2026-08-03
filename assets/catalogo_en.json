@@ -1,0 +1,3598 @@
+[
+  {
+    "id": "usmc_644e8791fc2bf23dfa3369db",
+    "nombre": "A Banquet of Love",
+    "archivo": "644e8791fc2bf23dfa3369db_a_banquet_of_love.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "c1d92011-dd2e-4108-b2c4-ed4dc2a19625",
+    "midi_archivo": "un-banquete-de-amor-1779937830093.midi",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_cf00ff2a0a19221abc02f2c0",
+    "nombre": "A Choir of Angels",
+    "archivo": "cf00ff2a0a19221abc02f2c0_a_choir_of_angels.pdf",
+    "temas": [
+      "Petition"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e3f59631ba687d6304db",
+    "midi_archivo": "que-un-coro-de-angeles-1780176378160.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f730ea321fbb1d6b85b6",
+    "nombre": "A Firm Hope",
+    "archivo": "64b1f730ea321fbb1d6b85b6_a_firm_hope.pdf",
+    "temas": [
+      "Hope"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "65480c40-ad4a-4aaa-b901-f844bb83056b",
+    "midi_archivo": "una-firme-esperanza-1779937934891.midi",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f756ea321fbb1d6b85c6",
+    "nombre": "A Gesture of God",
+    "archivo": "64b1f756ea321fbb1d6b85c6_a_gesture_of_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "9221e1f9-6545-44a7-a42f-a08b31c0a7a5",
+    "coro_id": "local",
+    "midi_archivo": "a-gesture-of-god-1781397149246.mid"
+  },
+  {
+    "id": "usmc_64b1f773ea321fbb1d6b85d6",
+    "nombre": "A Gift From God",
+    "archivo": "64b1f773ea321fbb1d6b85d6_a_gift_from_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b58a4b21b21cae02606246",
+    "coro_id": "local",
+    "midi_archivo": "a-gift-from-god-1781397297342.mid"
+  },
+  {
+    "id": "usmc_64b1f78fea321fbb1d6b85e6",
+    "nombre": "A Greater Luminary",
+    "archivo": "64b1f78fea321fbb1d6b85e6_a_greater_luminary.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "c9563500-8202-4173-a1ce-d7a2c0a9d139",
+    "midi_archivo": "una-lumbrera-1779938616296.midi"
+  },
+  {
+    "id": "usmc_6ca9157c635e77e76e341309",
+    "nombre": "A Humble Plea",
+    "archivo": "6ca9157c635e77e76e341309_a_humble_plea.pdf",
+    "temas": [
+      "Petition"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "a15baa17-8994-46a9-bd07-9fd4d03132df",
+    "midi_archivo": "una-oracion-1779947397818.midi",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8ac7fc2bf23dfa3369f9",
+    "nombre": "Alas! And Did my Savior Bleed",
+    "archivo": "644e8ac7fc2bf23dfa3369f9_alas_and_did_my_savior_bleed.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "00838b5c-cf47-4e33-9ba0-885f94c23255",
+    "coro_id": "local",
+    "midi_archivo": "alas-and-did-my-savior-bleed-1782505859595.mid"
+  },
+  {
+    "id": "usmc_1e172c46028400c6df8ee90c",
+    "nombre": "A Life Full of Love",
+    "archivo": "1e172c46028400c6df8ee90c_a_life_full_of_love.pdf",
+    "temas": [
+      "Communion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "99c81778-26b5-4cc4-87ba-013e7e4c7f2d",
+    "midi_archivo": "una-vida-feliz-1779937805758.midi",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc0a8970ee4295057e324",
+    "nombre": "All Hail The Power [ Advanced ]",
+    "archivo": "64adc0a8970ee4295057e324_all_hail_the_power.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": null,
+    "coro_id": "local",
+    "midi_archivo": "all-hail-the-power-advanced--1781397820183.mid"
+  },
+  {
+    "id": "usmc_64b1fb3dea321fbb1d6b86fa",
+    "nombre": "All Hail The Power [ Simple ]",
+    "archivo": "64b1fb3dea321fbb1d6b86fa_all_hail_the_power.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "8cb93658-a4c4-433d-9735-c7f2dd8cf75a",
+    "midi_archivo": "al-nombre-de-jesus-load-1779143793797.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fc2fea321fbb1d6b870a",
+    "nombre": "All Sing Unanimous",
+    "archivo": "64b1fc2fea321fbb1d6b870a_all_sing_unanimous.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "24c802d9-d4e2-454c-8ccb-432176c67a86",
+    "midi_archivo": "unanimes-1779840510138.mid"
+  },
+  {
+    "id": "usmc_64adc0c5970ee4295057e334",
+    "nombre": "All Things Are Ready",
+    "archivo": "64adc0c5970ee4295057e334_all_things_are_ready.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "ccc7dcfd-adf1-4ee8-b538-57a3f8bf9788",
+    "coro_id": "local",
+    "midi_archivo": "all-things-are-ready-1781398015307.mid"
+  },
+  {
+    "id": "usmc_64b1fc48ea321fbb1d6b871a",
+    "nombre": "All ye Welcome",
+    "archivo": "64b1fc48ea321fbb1d6b871a_all_ye_welcome.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "7ec3cfd0-276e-4fcc-984a-415fdf9d2ef5",
+    "midi_archivo": "con-gran-gozo-y-placer-1779856125772.mid"
+  },
+  {
+    "id": "usmc_d011d6d7fa21010079f7758e",
+    "nombre": "A Lovely Story",
+    "archivo": "d011d6d7fa21010079f7758e_a_lovely_story.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b58a6721b21cae02606256",
+    "midi_archivo": "a-lovely-story-1781577412772.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a775d1859a2d28e3e2ca",
+    "nombre": "Always by y Our Side",
+    "archivo": "6826a775d1859a2d28e3e2ca_always_by_y_our_side.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "78667cfb-19e7-44fa-9793-8ea23cc0c206",
+    "midi_archivo": "siempre-a-su-lado-1780363218512.mid"
+  },
+  {
+    "id": "usmc_64b1fc68ea321fbb1d6b872a",
+    "nombre": "Amen, Hallelujah",
+    "archivo": "64b1fc68ea321fbb1d6b872a_amen_hallelujah.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "amen-hallelujah-1781398473090.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8af6fc2bf23dfa336a09",
+    "nombre": "An Act of Love",
+    "archivo": "644e8af6fc2bf23dfa336a09_an_act_of_love.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "22252313-294e-4041-b038-bef629c67e9f",
+    "midi_archivo": "un-acto-de-amor-1780252027782.mid"
+  },
+  {
+    "id": "usmc_e47224d71af8a3e2f32735ad",
+    "nombre": "And The Glory of The Lord",
+    "archivo": "e47224d71af8a3e2f32735ad_and_the_glory_of_the_lord.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6814a29a520c8624329efda4",
+    "nombre": "A New Life in Christ",
+    "archivo": "6814a29a520c8624329efda4_a_new_life_in_christ.pdf",
+    "temas": [
+      "Grace",
+      "Gratitude"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_6fea91728f2709d73cd3af9c",
+    "nombre": "A New Name in Glory",
+    "archivo": "6fea91728f2709d73cd3af9c_a_new_name_in_glory.pdf",
+    "temas": [
+      "Liberty / Freedom",
+      "Spiritual Joy"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "c1a5682e-f0b1-4348-9d8c-9c26433c1ac6",
+    "midi_archivo": "una-vez-perdido-1779936381464.midi",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_02e686662e99e37accd85059",
+    "nombre": "An Excellent Apostle",
+    "archivo": "02e686662e99e37accd85059_an_excellent_apostle.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_3cf762e672755b185609c022",
+    "nombre": "An Honor to Know You",
+    "archivo": "3cf762e672755b185609c022_an_honor_to_know_you.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b53ec621b21cae02605a5a",
+    "midi_archivo": "an-honor-to-know-you-1781398864935.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69334aef17c3ffd6839b7698",
+    "nombre": "Apostolic Election Advanced",
+    "archivo": "69334aef17c3ffd6839b7698_apostolic_election_advanced.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "b14bb484-19b0-43d8-89e2-818b1af3628f",
+    "midi_archivo": "eleccion-apostolica-1780098209862.mid"
+  },
+  {
+    "id": "usmc_69334aac17c3ffd6839b7685",
+    "nombre": "A Prayer of Love",
+    "archivo": "69334aac17c3ffd6839b7685_a_prayer_of_love.pdf",
+    "temas": [
+      "Petition"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_661dd5cdd6b0cc15aeab11da"
+  },
+  {
+    "id": "usmc_64adc0e1970ee4295057e344",
+    "nombre": "As Clay in Your Hands",
+    "archivo": "64adc0e1970ee4295057e344_as_clay_in_your_hands.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "c1506fb8-26b2-4e35-b172-746547213eed",
+    "midi_archivo": "barro-en-tus-manos-1779411480858.mid"
+  },
+  {
+    "id": "usmc_3fd4388785d4be01d2fb957d",
+    "nombre": "A Song of Love",
+    "archivo": "3fd4388785d4be01d2fb957d_a_song_of_love.pdf",
+    "temas": [
+      "Gratitude"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b531e221b21cae02605706",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adbfae970ee4295057e30b",
+    "nombre": "A Song of Victory",
+    "archivo": "64adbfae970ee4295057e30b_a_song_of_victory.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "5834dcd2-c5db-4f91-b85d-6a6f30ad5469",
+    "midi_archivo": "se-oye-coro-triunfal-1779936372211.midi"
+  },
+  {
+    "id": "usmc_64b1f7a8ea321fbb1d6b85f6",
+    "nombre": "Assurance of Salvation",
+    "archivo": "64b1f7a8ea321fbb1d6b85f6_assurance_of_salvation.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b54ccb21b21cae02605cdc",
+    "midi_archivo": "assurance-of-salvation-1781399071029.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6a7dfc5d9756c985e545",
+    "nombre": "At The Right Hand of God",
+    "archivo": "647b6a7dfc5d9756c985e545_at_the_right_hand_of_god.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e4f09631ba687d630532",
+    "midi_archivo": "at-the-right-hand-of-god-1781399343653.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fc82ea321fbb1d6b873a",
+    "nombre": "Awakening Chorus",
+    "archivo": "64b1fc82ea321fbb1d6b873a_awakening_chorus.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "da9ef612-0272-482c-a471-28a1cf07ef84",
+    "midi_archivo": "venid-venid-cantad-la-bella-historia-1780193680247.mid"
+  },
+  {
+    "id": "usmc_64b1fc9fea321fbb1d6b874a",
+    "nombre": "Beautiful City",
+    "archivo": "64b1fc9fea321fbb1d6b874a_beautiful_city.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "midi_archivo": "beautiful-city-1781399798631.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fcc6ea321fbb1d6b875a",
+    "nombre": "Because he Lives",
+    "archivo": "64b1fcc6ea321fbb1d6b875a_because_he_lives.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "57177b79-b262-4241-b2e1-3ae30de5a638",
+    "midi_archivo": "porque-el-vive-1780128692783.mid"
+  },
+  {
+    "id": "usmc_65592ca26269024850c23068",
+    "nombre": "Before Thine Altar",
+    "archivo": "65592ca26269024850c23068_before_thine_altar.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "c104aef6-565e-495a-a149-35f9de6d1d43",
+    "midi_archivo": "ante-tu-altar-1779410117508.mid"
+  },
+  {
+    "id": "usmc_564ac312e18b2217dbbf2115",
+    "nombre": "Behold, The Lamb of God",
+    "archivo": "564ac312e18b2217dbbf2115_behold_the_lamb_of_god.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fcdeea321fbb1d6b876a",
+    "nombre": "Blessed Assurance",
+    "archivo": "64b1fcdeea321fbb1d6b876a_blessed_assurance.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "7a300558-a128-4f6c-a493-cba98952eca1",
+    "midi_archivo": "en-jesucristo-se-halla-la-paz-1779936295994.midi"
+  },
+  {
+    "id": "usmc_67bddac08230a308debde88b",
+    "nombre": "Born in Bethlehem",
+    "archivo": "67bddac08230a308debde88b_born_in_bethlehem.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e5ce9631ba687d6305b2",
+    "midi_archivo": "born-in-bethlehem-1781400683760.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_0fe64ecca55eabc691ddb5d4",
+    "nombre": "Brilliance of Christ",
+    "archivo": "0fe64ecca55eabc691ddb5d4_brilliance_of_christ.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "de5b9295-de2a-4c6c-8da1-1978cc787f27",
+    "midi_archivo": "resplandor-de-cristo-1780179459513.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6ab0fc5d9756c985e55b",
+    "nombre": "Brilliant Light",
+    "archivo": "647b6ab0fc5d9756c985e55b_brilliant_light.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "aef84e4f-cdb1-4ab3-8dbe-895b03c8826c",
+    "coro_id": "local",
+    "midi_archivo": "brilliant-light-1781401032876.mid"
+  },
+  {
+    "id": "usmc_d9a7b427eea3912e8719432c",
+    "nombre": "By Grace of God",
+    "archivo": "d9a7b427eea3912e8719432c_by_grace_of_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b57ca521b21cae0260604f",
+    "coro_id": "local",
+    "midi_archivo": "by-grace-of-god-1781578123547.mid"
+  },
+  {
+    "id": "usmc_69b9b874308784f8777276b0",
+    "nombre": "Centennial of Love",
+    "archivo": "69b9b874308784f8777276b0_centennial_of_love.pdf",
+    "temas": [
+      "Restoration of the Church"
+    ],
+    "es_privado": false,
+    "midi_archivo": "centenario-de-amor-1780267960126.mid",
+    "vinculo_idioma": "067e4a4c-f7cf-4136-9cd3-b54378acab0d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69b9b74f308784f877727696",
+    "nombre": "Century of Light",
+    "archivo": "69b9b74f308784f877727696_century_of_light.pdf",
+    "temas": [
+      "Restoration of the Church"
+    ],
+    "es_privado": false,
+    "midi_archivo": "siglo-de-luz-1780273988172.mid",
+    "vinculo_idioma": "b2c0c357-0221-4882-8920-cda608cd29b6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6b0dfc5d9756c985e572",
+    "nombre": "Christ Arose",
+    "archivo": "647b6b0dfc5d9756c985e572_christ_arose.pdf",
+    "temas": [
+      "Glory",
+      "Passion"
+    ],
+    "es_privado": false,
+    "midi_archivo": "christ-arose-1781580461861.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc0fa970ee4295057e354",
+    "nombre": "Close to You",
+    "archivo": "64adc0fa970ee4295057e354_close_to_you.pdf",
+    "temas": [
+      "Consecration",
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "junto-a-ti-1780209067848.mid",
+    "vinculo_idioma": "c7d60ba9-eee0-4d7c-9bf1-5c307e16af7a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_34a6e0e28ec9d58c3b",
+    "nombre": "Come And Dine",
+    "archivo": "34a6e0e28ec9d58c3b_comeanddine2008.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "_idioma": "en"
+  },
+  {
+    "id": "usmc_647b6b74fc5d9756c985e594",
+    "nombre": "Come Partake of The Holy Supper",
+    "archivo": "647b6b74fc5d9756c985e594_come_partake_of_the_holy_supper.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3ded09631ba687d630344",
+    "coro_id": "local",
+    "midi_archivo": "come-partake-of-the-holy-supper-1781581310652.mid"
+  },
+  {
+    "id": "usmc_64adc127970ee4295057e368",
+    "nombre": "Come to The Feast",
+    "archivo": "64adc127970ee4295057e368_come_to_the_feast.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "come-to-the-feast-1781581500765.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6c35fc5d9756c985e5a9",
+    "nombre": "Come to The Savior",
+    "archivo": "647b6c35fc5d9756c985e5a9_come_to_the_savior.pdf",
+    "temas": [
+      "Calling of the Lord"
+    ],
+    "es_privado": false,
+    "midi_archivo": "a-jesucristo-ven-sin-tardar-1779081958894.mid",
+    "vinculo_idioma": "0a39253d-7c6d-45dc-8497-745a49654ba2",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_8fa4d7482fcd35ecc8cb3740",
+    "nombre": "Congratulations, With Love",
+    "archivo": "8fa4d7482fcd35ecc8cb3740_congratulations_with_love.pdf",
+    "temas": [
+      "Honor"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a801d1859a2d28e3e2ea",
+    "nombre": "Destined For You [ Advanced Version]",
+    "archivo": "6826a801d1859a2d28e3e2ea_destined_for_you_advanced_version.pdf",
+    "temas": [
+      "Apostolic Honor",
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "nacimos-para-ti-1780125078948.mid",
+    "vinculo_idioma": "094eff11-5a0a-4e52-bdaf-4bcf3c41112a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a854d1859a2d28e3e2fa",
+    "nombre": "Destined For You [ Simple Version]",
+    "archivo": "6826a854d1859a2d28e3e2fa_destined_for_you_simple_version.pdf",
+    "temas": [
+      "Apostolic Honor",
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "local_apk_1781321072028_992",
+    "coro_id": "local",
+    "midi_archivo": "destined-for-you-simple-version--1781581870254.mid"
+  },
+  {
+    "id": "usmc_a25a5a5c30390ab0a41344df",
+    "nombre": "Election of God",
+    "archivo": "a25a5a5c30390ab0a41344df_election_of_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b541a321b21cae02605be6",
+    "coro_id": "local",
+    "midi_archivo": "election-of-god-1781401381933.mid"
+  },
+  {
+    "id": "usmc_67bdd7668230a308debde7e0",
+    "nombre": "Eternal King",
+    "archivo": "67bdd7668230a308debde7e0_eternal_king.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_68149e56520c8624329efce1",
+    "coro_id": "local",
+    "midi_archivo": "eternal-king-1781582256446.mid"
+  },
+  {
+    "id": "usmc_64b1fd21ea321fbb1d6b877e",
+    "nombre": "Eternally Give Glory",
+    "archivo": "64b1fd21ea321fbb1d6b877e_eternally_give_glory.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "eternamente-gloria-1780004026961.mid",
+    "vinculo_idioma": "2b430b93-5399-4eb6-a966-8782feec9eac",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd81b8230a308debde7f9",
+    "nombre": "Every Step Along The Way",
+    "archivo": "67bdd81b8230a308debde7f9_every_step_along_the_way.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "cada-paso-al-caminar-1780340065312.mid",
+    "vinculo_idioma": "3b9cc835-4c09-4d18-9d6b-ed226f062d73",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_9f18f0c9775e0e5f9eb08ddd",
+    "nombre": "Face to Face With Christ",
+    "archivo": "9f18f0c9775e0e5f9eb08ddd_face_to_face_with_christ.pdf",
+    "temas": [
+      "Slept in the Lord"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd8c88230a308debde818",
+    "nombre": "Father,  Tho ' i Have Ten-thousand Teachers",
+    "archivo": "67bdd8c88230a308debde818_father_tho_i_have_ten-thousand_teachers.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "aec69b26-f4cd-4a0b-969a-981b4fd2597f",
+    "midi_archivo": "padre-1780127584928.mid"
+  },
+  {
+    "id": "usmc_64b1f7c7ea321fbb1d6b8606",
+    "nombre": "Father, You Mean so Much",
+    "archivo": "64b1f7c7ea321fbb1d6b8606_father.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "padre-1780127584928.mid",
+    "vinculo_idioma": "c7129e07-69b7-474a-ae77-acebe40d61c6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bddaf98230a308debde89b",
+    "nombre": "Forever With You",
+    "archivo": "67bddaf98230a308debde89b_forever_with_you.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "siempre-con-usted-1780273591757.mid",
+    "vinculo_idioma": "c0b21324-46e1-4239-988a-e06b09d239be",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_30237e7a5282d58c7c",
+    "nombre": "Gate to The Heavens",
+    "archivo": "30237e7a5282d58c7c_gate-of-heaven.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "puerta-del-cielo-1780174458203.mid",
+    "vinculo_idioma": "c0d42865-8dd2-4ab4-8b9a-ca5125fb4ed7",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fd89ea321fbb1d6b87b0",
+    "nombre": "Glory, Glory, Hallelujah",
+    "archivo": "64b1fd89ea321fbb1d6b87b0_glory_glory_hallelujah.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "gloria-gloria-aleluya-1780114473685.mid",
+    "vinculo_idioma": "usmc_64b5f6dd21b21cae026069a6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fd3dea321fbb1d6b878e",
+    "nombre": "Glory to God",
+    "archivo": "64b1fd3dea321fbb1d6b878e_glory_to_god.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "glory-to-god-1781401615276.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a5b1174b142ac7e3da",
+    "nombre": "Glory Unto Jesus Christ",
+    "archivo": "Glory unto Jesus Christ.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "glory-unto-jesus-christ-1782196343018.mid",
+    "coro_id": "local",
+    "vinculo_idioma": null
+  },
+  {
+    "id": "usmc_37d832ebbc612b8f9dd6ec0b",
+    "nombre": "God be With You & Amen",
+    "archivo": "37d832ebbc612b8f9dd6ec0b_god_be_with_you_amen.pdf",
+    "temas": [
+      "Farewell"
+    ],
+    "es_privado": false,
+    "midi_archivo": "jehova-te-bendiga-y-te-guarde-1780108861957.mid",
+    "vinculo_idioma": "350d447f-1aea-455a-97b4-d48162d7b0ec",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bddb308230a308debde8ab",
+    "nombre": "God Will Provide",
+    "archivo": "67bddb308230a308debde8ab_god_will_provide.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5e65921b21cae0260657e",
+    "coro_id": "local",
+    "midi_archivo": "god-will-provide-1781667649610.mid"
+  },
+  {
+    "id": "usmc_c2e84960cad7c7e95c",
+    "nombre": "Golden Days",
+    "archivo": "Golden Days.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_64b1f7ecea321fbb1d6b8616",
+    "nombre": "Great Apostle of The Lord",
+    "archivo": "64b1f7ecea321fbb1d6b8616_great_apostle_of_the_lord.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "gran-apostol-del-senor-1780106189156.mid",
+    "vinculo_idioma": "74638dfc-e0ee-401a-9446-866a1869fd9c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6c56fc5d9756c985e5be",
+    "nombre": "Great Friend of God",
+    "archivo": "647b6c56fc5d9756c985e5be_great_friend_of_god.pdf",
+    "temas": [
+      "Apostolic Intercession"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b54d1221b21cae02605d0c",
+    "coro_id": "local",
+    "midi_archivo": "great-friend-of-god-1781668135341.mid"
+  },
+  {
+    "id": "usmc_65592d3b6269024850c2307b",
+    "nombre": "Hallelujah!",
+    "archivo": "65592d3b6269024850c2307b_hallelujah.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-profecia-de-dios-1780118217120.mid",
+    "vinculo_idioma": "usmc_64b5f5e521b21cae02606906",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fe1cea321fbb1d6b87e9",
+    "nombre": "Hallelujah, Amen",
+    "archivo": "64b1fe1cea321fbb1d6b87e9_hallelujah_amen.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5f5a921b21cae026068e6",
+    "coro_id": "local",
+    "midi_archivo": "hallelujah-amen-1781582869940.mid"
+  },
+  {
+    "id": "usmc_93e4d198847928d0247157ee",
+    "nombre": "Hallelujah - Chorus",
+    "archivo": "93e4d198847928d0247157ee_hallelujah_chorus.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "aleluya-de-haendel-1779839901619.mid",
+    "vinculo_idioma": "614523b4-dab4-463e-a1e5-cc5e2dd67e38",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fdaaea321fbb1d6b87c0",
+    "nombre": "Hallelujah - Mount of Olives",
+    "archivo": "64b1fdaaea321fbb1d6b87c0_hallelujah_-_mount_of_olives.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "5056238d-05c0-4d33-b6ea-91024867cc0b",
+    "midi_archivo": "aleluya-de-beethoven-1781383877268.mid"
+  },
+  {
+    "id": "usmc_64b1fe0aea321fbb1d6b87e0",
+    "nombre": "Hallelujah Praise Jehovah",
+    "archivo": "Hallelujah_Praise_Jehovah.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tributad-honor-a-cristo-1780014528447.mid",
+    "vinculo_idioma": "b22acef2-cc6c-4ee2-82e1-6fd1657159cd",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69334b2d17c3ffd6839b76a8",
+    "nombre": "Hallelujah! There's Anointed of God",
+    "archivo": "69334b2d17c3ffd6839b76a8_hallelujah_theres_anointed_of_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_68148cca520c8624329efb6b",
+    "coro_id": "local",
+    "midi_archivo": "hallelujah-there-s-anointed-of-god-1782097509793.mid"
+  },
+  {
+    "id": "usmc_644e8b29fc2bf23dfa336a19",
+    "nombre": "Hallelujah to The Lamb of God",
+    "archivo": "644e8b29fc2bf23dfa336a19_hallelujah_to_the_lamb_of_god.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "aleluya-al-cordero-de-dios-1779162432052.mid",
+    "vinculo_idioma": "d131627b-5562-49b8-9b92-14646abebb0e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_b0bcebe7ab9baeb8c8fd353a",
+    "nombre": "Happy Birthday",
+    "archivo": "b0bcebe7ab9baeb8c8fd353a_happy_birthday.pdf",
+    "temas": [
+      "Honor"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595db49ccdb4bbe8067459b",
+    "nombre": "Hear The Sound of The Great Trumpet",
+    "archivo": "6595db49ccdb4bbe8067459b_hear_the_sound_of_the_great_trumpet.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "al-sonar-de-la-trompeta-1779144395257.mid",
+    "vinculo_idioma": "5e141f15-749d-49af-9287-d646f0ad7663",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a8a2d1859a2d28e3e30a",
+    "nombre": "He Comes From God",
+    "archivo": "6826a8a2d1859a2d28e3e30a_he_comes_from_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b58ace21b21cae02606286",
+    "coro_id": "local",
+    "midi_archivo": "he-comes-from-god-1782097406379.mid"
+  },
+  {
+    "id": "usmc_647b6c78fc5d9756c985e5d3",
+    "nombre": "Here at Thy Feet oh Lord",
+    "archivo": "647b6c78fc5d9756c985e5d3_here_at_thy_feet_oh_lord.pdf",
+    "temas": [
+      "Gratitude"
+    ],
+    "es_privado": false,
+    "midi_archivo": "senor-aqui-a-tus-plantas-1780181109592.mid",
+    "vinculo_idioma": "d7e6564b-baa1-43e1-ae9b-6076989d4925",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb1abfc2bf23dfa336b4d",
+    "nombre": "He Shall Come",
+    "archivo": "644eb1abfc2bf23dfa336b4d_he_shall_come.pdf",
+    "temas": [
+      "Advent of the Lord"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5fb0321b21cae02606b80",
+    "coro_id": "local",
+    "midi_archivo": "he-shall-come-1782097422443.mid"
+  },
+  {
+    "id": "usmc_64b1fe33ea321fbb1d6b87f9",
+    "nombre": "He Who Dwells in The Shelter",
+    "archivo": "64b1fe33ea321fbb1d6b87f9_he_who_dwells_in_the_shelter.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-que-habita-al-abrigo-de-dios-1779949908086.midi",
+    "vinculo_idioma": "b71a4caf-495e-4bf8-9614-b57ba7bc798b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f818ea321fbb1d6b8626",
+    "nombre": "Hiding in The Shadow",
+    "archivo": "64b1f818ea321fbb1d6b8626_hiding_in_the_shadow.pdf",
+    "temas": [
+      "Hope"
+    ],
+    "es_privado": false,
+    "midi_archivo": "al-amparo-de-la-roca-1780291073119.mid",
+    "vinculo_idioma": "250c4fae-0559-4ebe-81cd-78c3ad7977e1",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6c9cfc5d9756c985e5e8",
+    "nombre": "His Loving Gaze",
+    "archivo": "647b6c9cfc5d9756c985e5e8_his_loving_gaze.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5805721b21cae02606117",
+    "coro_id": "local",
+    "midi_archivo": "his-loving-gaze-1782097494446.mid"
+  },
+  {
+    "id": "usmc_64b1f842ea321fbb1d6b8636",
+    "nombre": "His Tender Voice",
+    "archivo": "64b1f842ea321fbb1d6b8636_his_tender_voice.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5804121b21cae02606104",
+    "coro_id": "local",
+    "midi_archivo": "his-tender-voice-1782098013658.mid"
+  },
+  {
+    "id": "usmc_64adc147970ee4295057e378",
+    "nombre": "Holy Celebration",
+    "archivo": "64adc147970ee4295057e378_holy_celebration.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_d72962774281d58ce6",
+    "coro_id": "local",
+    "midi_archivo": "holy-celebration-1782097467092.mid"
+  },
+  {
+    "id": "usmc_64adc16f970ee4295057e38c",
+    "nombre": "Holy Convocation",
+    "archivo": "64adc16f970ee4295057e38c_holy_convocation.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "6436a3cf-bfc7-4a88-a391-5d92ea67a343",
+    "midi_archivo": "holy-convocation-1782097476573.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_544c667d8ac3a5990f5c0725",
+    "nombre": "Home, Sweet Home",
+    "archivo": "544c667d8ac3a5990f5c0725_home_sweet_home.pdf",
+    "temas": [
+      "Farewell"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb21efc2bf23dfa336b60",
+    "nombre": "House of God",
+    "archivo": "644eb21efc2bf23dfa336b60_house_of_god.pdf",
+    "temas": [
+      "Inauguration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b52eed21b21cae02605562",
+    "coro_id": "local",
+    "midi_archivo": "house-of-god-1782097523169.mid"
+  },
+  {
+    "id": "usmc_64b1fe71ea321fbb1d6b8809",
+    "nombre": "How Great Thou Art (advanced)",
+    "archivo": "64b1fe71ea321fbb1d6b8809_how_great_thou_art_advanced.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "how-great-thou-art-advanced--1782230175911.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_1dbee110db1ce88f2f905125",
+    "nombre": "How Great Thou Art (simple)",
+    "archivo": "1dbee110db1ce88f2f905125_how_great_thou_art_simple.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "senor-mi-dios-1780181835104.mid",
+    "vinculo_idioma": "53605260-bdb5-49a3-a96f-cb4c9071d7ba",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1feb3ea321fbb1d6b8829",
+    "nombre": "How Lovely Are Thy Dwellings",
+    "archivo": "64b1feb3ea321fbb1d6b8829_how_lovely_are_thy_dwellings.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5f64821b21cae02606946",
+    "coro_id": "local",
+    "midi_archivo": "how-lovely-are-thy-dwellings-1782493818187.mid"
+  },
+  {
+    "id": "usmc_64adc195970ee4295057e39c",
+    "nombre": "I am a Soldier of Jesus",
+    "archivo": "64adc195970ee4295057e39c_i_am_a_soldier_of_jesus.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "midi_archivo": "soy-yo-soldado-de-jesus-1780014361158.mid",
+    "vinculo_idioma": "5cf41180-d177-46f2-81c3-bcb52a51ca26",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6d20fc5d9756c985e5fd",
+    "nombre": "I am Praying For You",
+    "archivo": "647b6d20fc5d9756c985e5fd_i_am_praying_for_you.pdf",
+    "temas": [
+      "Prayer"
+    ],
+    "es_privado": false,
+    "midi_archivo": "i-am-praying-for-you-1782493884870.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc1f9970ee4295057e3ac",
+    "nombre": "I am Resolved",
+    "archivo": "64adc1f9970ee4295057e3ac_i_am_resolved.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "e0c9202d-7044-4724-bdb5-3999fa2b53a2",
+    "midi_archivo": "i-am-resolved-1782493890656.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb27bfc2bf23dfa336b70",
+    "nombre": "I am so Grateful, oh Lord",
+    "archivo": "644eb27bfc2bf23dfa336b70_i_am_so_grateful_oh_lord.pdf",
+    "temas": [
+      "Gratitude"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b531c921b21cae026056f6",
+    "coro_id": "local",
+    "midi_archivo": "i-am-so-grateful-oh-lord-1782493899779.mid"
+  },
+  {
+    "id": "usmc_644eb29dfc2bf23dfa336b80",
+    "nombre": "I am Still Here",
+    "archivo": "644eb29dfc2bf23dfa336b80_i_am_still_here.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b53db721b21cae026059a4",
+    "coro_id": "local",
+    "midi_archivo": "i-am-still-here-1782494111545.mid"
+  },
+  {
+    "id": "usmc_64adc214970ee4295057e3bc",
+    "nombre": "I am Thine, o Lord",
+    "archivo": "64adc214970ee4295057e3bc_i_am_thine_o_lord.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "7b2cb254-abb8-4c1f-81a4-931877478e64",
+    "midi_archivo": "i-am-thine-o-lord-1782494013333.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6d66fc5d9756c985e616",
+    "nombre": "I Believe in You",
+    "archivo": "647b6d66fc5d9756c985e616_i_believe_in_you.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "creo-en-ti-1780080104235.mid",
+    "vinculo_idioma": "dff2110e-8c3e-4552-8a35-67cc2562d4e1",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a08da85266a36472b250ded7",
+    "nombre": "If i Did Not Speak of Your Wonders",
+    "archivo": "a08da85266a36472b250ded7_if_i_did_not_speak_of_your_wonders.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "midi_archivo": "si-callare-tus-maravillas-1779938992641.midi",
+    "vinculo_idioma": "f4d196c4-332e-4a8a-a384-3f1aeeb7d8b4",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6e72f16057b9e8d4bda5",
+    "nombre": "If i Have Been a Source of Pain",
+    "archivo": "647b6e72f16057b9e8d4bda5_if_i_have_been_a_source_of_pain.pdf",
+    "temas": [
+      "Consecration",
+      "Prayer"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "35ecfe71-7d8a-48f3-9719-660e8b163865",
+    "midi_archivo": "si-fui-motivo-de-dolor-1781239596037.mid"
+  },
+  {
+    "id": "usmc_a9645a47ef7fa65f64e640e9",
+    "nombre": "If Jesus Goes With me",
+    "archivo": "a9645a47ef7fa65f64e640e9_if_jesus_goes_with_me.pdf",
+    "temas": [
+      "Liberty / Freedom",
+      "Labor"
+    ],
+    "es_privado": false,
+    "midi_archivo": "ya-sea-en-el-valle-1779947423967.midi",
+    "vinculo_idioma": "0097cb02-48c2-4808-9376-a03407d68881",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6d9ffc5d9756c985e62f",
+    "nombre": "I Give Thanks to The Lord",
+    "archivo": "647b6d9ffc5d9756c985e62f_i_give_thanks_to_the_lord.pdf",
+    "temas": [
+      "Gratitude"
+    ],
+    "es_privado": false,
+    "midi_archivo": "doy-gracias-al-senor-1779997804145.mid",
+    "vinculo_idioma": "757e2e97-3141-45ba-888e-413a81391d5b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_7f49f7d34a7cc821b0",
+    "nombre": "I Know It's You",
+    "archivo": "I know It_s You.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": null,
+    "coro_id": "local",
+    "midi_archivo": "i-know-it-s-you-1782494019472.mid"
+  },
+  {
+    "id": "usmc_64b1fed1ea321fbb1d6b8839",
+    "nombre": "I Know Who Holds Tomorrow",
+    "archivo": "64b1fed1ea321fbb1d6b8839_i_know_who_holds_tomorrow.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5e7de21b21cae02606642",
+    "coro_id": "local",
+    "midi_archivo": "i-know-who-holds-tomorrow-1782494024337.mid"
+  },
+  {
+    "id": "usmc_64adc259970ee4295057e3cc",
+    "nombre": "I'll Always Love You",
+    "archivo": "64adc259970ee4295057e3cc_ill_always_love_you.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "midi_archivo": "siempre-te-amare-1780013804606.mid",
+    "vinculo_idioma": "8f232a19-202a-45d8-9984-168d0c6130a5",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a654f720b9ed7e925be2fd5b",
+    "nombre": "I Love to Tell The Story",
+    "archivo": "a654f720b9ed7e925be2fd5b_i_love_to_tell_the_story.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "midi_archivo": "grato-es-contar-la-historia-1780004285582.mid",
+    "vinculo_idioma": "bf10c177-d3df-487e-8909-0f516554a809",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a437a8cc545be1348c5bc3af",
+    "nombre": "I Love Your Apostle",
+    "archivo": "a437a8cc545be1348c5bc3af_i_love_your_apostle.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc281970ee4295057e3dc",
+    "nombre": "I'm a Soldier of Christ",
+    "archivo": "64adc281970ee4295057e3dc_im_a_soldier_of_christ.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "5d0dcae7-ae1d-4669-aa12-c5db23d12dfc",
+    "midi_archivo": "i-m-a-soldier-of-christ-1782494031769.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_e227d5991599add4d37802a0",
+    "nombre": "I'm Living in This Home",
+    "archivo": "e227d5991599add4d37802a0_i_m_living_in_this_home.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_b1687e59d0102cad27e6bb8a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bddb6b8230a308debde8bb",
+    "nombre": "Impossible to Lie Unto The Heart",
+    "archivo": "67bddb6b8230a308debde8bb_impossible_to_lie_unto_the_heart.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "imposible-mentirle-al-corazon-1780274934848.mid",
+    "vinculo_idioma": "76cbcf99-ee57-4707-9a19-200796c35a03",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6e9cf16057b9e8d4bdba",
+    "nombre": "Incline Thine Ear",
+    "archivo": "647b6e9cf16057b9e8d4bdba_incline_thine_ear.pdf",
+    "temas": [
+      "Consecration",
+      "Prayer"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "7aa69200-62fd-452c-a145-58b87a740212",
+    "midi_archivo": "incline-thine-ear-1782494057237.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6ebff16057b9e8d4bdcf",
+    "nombre": "Indeed You Are to me",
+    "archivo": "647b6ebff16057b9e8d4bdcf_indeed_you_are_to_me.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "31960d5d-0415-4fe2-996e-c5aec0f37ede",
+    "midi_archivo": "tu-eres-para-m--1781241017134.mid"
+  },
+  {
+    "id": "usmc_64c90d495c01cc5b98141ae2",
+    "nombre": "I Need Thee Every Hour [ Advanced ]",
+    "archivo": "64c90d495c01cc5b98141ae2_i_need_thee_every_hour.pdf",
+    "temas": [
+      "Intercession"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6dc6fc5d9756c985e644",
+    "nombre": "I Need Thee Every Hour [ Simple ]",
+    "archivo": "647b6dc6fc5d9756c985e644_i_need_thee_every_hour.pdf",
+    "temas": [
+      "Prayer"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "6c6a4681-8714-4ad5-bfb2-cc72e74b5492",
+    "coro_id": "local",
+    "midi_archivo": "te-necesito-ya-1780189336387.mid"
+  },
+  {
+    "id": "usmc_647b6ee0f16057b9e8d4bde4",
+    "nombre": "Ineffable Gift",
+    "archivo": "647b6ee0f16057b9e8d4bde4_ineffable_gift.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b53fcf21b21cae02605af0",
+    "coro_id": "local",
+    "midi_archivo": "ineffable-gift-1782507396456.mid"
+  },
+  {
+    "id": "usmc_64b1f865ea321fbb1d6b8646",
+    "nombre": "In my Pathway",
+    "archivo": "64b1f865ea321fbb1d6b8646_in_my_pathway.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "en-mi-camino-1779937883587.midi",
+    "vinculo_idioma": "ab9af3cd-efaf-45a0-96ad-74294102e409",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_be5b67cee921aa3832c62692",
+    "nombre": "In Remembrance of me",
+    "archivo": "be5b67cee921aa3832c62692_in_remembrance_of_me.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "local_apk_1781321071934_521",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90d6d5c01cc5b98141af2",
+    "nombre": "In The Garden",
+    "archivo": "64c90d6d5c01cc5b98141af2_in_the_garden.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "a-solas-al-huerto-1779084461760.mid",
+    "vinculo_idioma": "48a2b468-ed07-4e07-9ab4-09b35c294307",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6f54f16057b9e8d4bdf9",
+    "nombre": "Into The Garden",
+    "archivo": "647b6f54f16057b9e8d4bdf9_into_the_garden.pdf",
+    "temas": [
+      "Glory",
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "a8b5d622-f918-4db8-92d7-1c0288bc4a82",
+    "midi_archivo": "into-the-garden-1782508472433.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f882ea321fbb1d6b8656",
+    "nombre": "In Your Heart",
+    "archivo": "64b1f882ea321fbb1d6b8656_in_your_heart.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "en-su-corazon-1779949381444.midi",
+    "vinculo_idioma": "8779a1ff-b6d4-4a0a-a6c2-746b82a7dcf7",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_04c79188cdea334f3a8e2850",
+    "nombre": "I Praise The Omnipotent God",
+    "archivo": "04c79188cdea334f3a8e2850_i_praise_the_omnipotent_god.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5ff8d21b21cae02606cab",
+    "coro_id": "local",
+    "midi_archivo": "i-praise-the-omnipotent-god-1782494065069.mid"
+  },
+  {
+    "id": "usmc_64b1feebea321fbb1d6b8849",
+    "nombre": "I Shall Always Praise You",
+    "archivo": "I_Shall_Always_Praise_You.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "siempre-te-alabare-1779946700514.mid",
+    "vinculo_idioma": "b30542a4-e8a8-4836-8e26-4bd0c55139af",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6f80f16057b9e8d4be0e",
+    "nombre": "It is Well With my Soul",
+    "archivo": "647b6f80f16057b9e8d4be0e_it_is_well_with_my_soul.pdf",
+    "temas": [
+      "Liberty / Freedom"
+    ],
+    "es_privado": false,
+    "midi_archivo": "alcance-salvacion-1779159521983.mid",
+    "vinculo_idioma": "a919e594-df7a-46d4-a700-d8c9c4116a9c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc459970ee4295057e49c",
+    "nombre": "It's a Time of Acceptance Now",
+    "archivo": "64adc459970ee4295057e49c_its_a_time_of_acceptance_now.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5807221b21cae02606127",
+    "coro_id": "local",
+    "midi_archivo": "it-s-a-time-of-acceptance-now-1782509013943.mid"
+  },
+  {
+    "id": "usmc_6826a8f1d1859a2d28e3e31a",
+    "nombre": "It Seems Like Yesterday",
+    "archivo": "6826a8f1d1859a2d28e3e31a_it_seems_like_yesterday.pdf",
+    "temas": [
+      "Apostolic Honor",
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "265128ac-f1f4-46c9-bfad-57f3e09e07ec",
+    "midi_archivo": "it-seems-like-yesterday-1782509201972.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "48788f99-8158-4df1-b0f1-79c1dbcbce6b",
+    "nombre": "I Will Follow You",
+    "archivo": "i-will-follow-you-1784056530843.pdf",
+    "midi_archivo": null,
+    "vinculo_idioma": "usmc_64b5ea7621b21cae026066c9",
+    "temas": [
+      "Grace",
+      "Trust"
+    ],
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6e38f16057b9e8d4bd90",
+    "nombre": "I Worship God",
+    "archivo": "647b6e38f16057b9e8d4bd90_i_worship_god.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "yo-adoro-un-dios-omnipotente-1780247359978.mid",
+    "vinculo_idioma": "f27c3aae-e84c-4ed8-aa02-6fc690039966",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb2c8fc2bf23dfa336b90",
+    "nombre": "Jerusalem, City of God",
+    "archivo": "644eb2c8fc2bf23dfa336b90_jerusalem_city_of_god.pdf",
+    "temas": [
+      "Glory"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "d5b68d07-664b-43ec-b658-d791918ff554",
+    "midi_archivo": "jerusalem-city-of-god-1782511635811.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb2edfc2bf23dfa336ba0",
+    "nombre": "Jesus Christ, All my Soul Gives You Praises",
+    "archivo": "644eb2edfc2bf23dfa336ba0_jesus_christ_all_my_soul_gives_you_praises.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "jesucristo-mi-alma-te-alaba-1780109190562.mid",
+    "vinculo_idioma": "c1768c55-c228-4e33-92f8-200230377261",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb30cfc2bf23dfa336bb0",
+    "nombre": "Just Like The Rain in The Meadow",
+    "archivo": "644eb30cfc2bf23dfa336bb0_just_like_the_rain_in_the_meadow.pdf",
+    "temas": [
+      "Apostolic Honor"
+    ],
+    "es_privado": false,
+    "midi_archivo": "como-la-lluvia-1779992222571.mid",
+    "vinculo_idioma": "adba1d9e-19cc-4ed9-9eda-d8ef68ce019b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd9358230a308debde828",
+    "nombre": "Let' s Sing to The Lord With Gladness",
+    "archivo": "67bdd9358230a308debde828_let_s_sing_to_the_lord_with_gladness.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "cantemos-con-alegria-1779835326775.mid",
+    "vinculo_idioma": "ae4c60b9-bdb4-41f2-8f01-8a265ef11381",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90d975c01cc5b98141b02",
+    "nombre": "Let The Lower Lights be Burning",
+    "archivo": "64c90d975c01cc5b98141b02_let_the_lower_lights_be_burning.pdf",
+    "temas": [
+      "Evangelism",
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-merced-de-nuestro-padre-1779936746824.midi",
+    "vinculo_idioma": "4ef87c71-44ae-4a8f-a867-f741efba7215",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb326fc2bf23dfa336bc0",
+    "nombre": "Let us All Sing His Victory",
+    "archivo": "644eb326fc2bf23dfa336bc0_let_us_all_sing_his_victory.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "cantemos-su-victoria-1780088081877.mid",
+    "vinculo_idioma": "e96253cb-d65a-43ed-8608-94b189282089",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6fa5f16057b9e8d4be23",
+    "nombre": "Loving Angel",
+    "archivo": "647b6fa5f16057b9e8d4be23_loving_angel.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "9565cde4-0685-474b-acdc-7c326fc7c38a",
+    "midi_archivo": "loving-angel-1782517670212.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6846fc5d9756c985e4e6",
+    "nombre": "Making History",
+    "archivo": "647b6846fc5d9756c985e4e6_making_history.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "midi_archivo": "haciendo-historia-1780107443962.mid",
+    "vinculo_idioma": "24bf0ee0-1af2-4530-a71a-f3a0c42a182a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_65592e126269024850c2309b",
+    "nombre": "March on With Joy",
+    "archivo": "65592e126269024850c2309b_march_on_with_joy.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "marcha-con-gozo-1780120454003.mid",
+    "vinculo_idioma": "85122b4f-32ef-4cfc-a5f5-07e577f689ed",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6980fc5d9756c985e504",
+    "nombre": "May he be Happy",
+    "archivo": "647b6980fc5d9756c985e504_may_he_be_happy.pdf",
+    "temas": [
+      "Petition"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e3d39631ba687d6304cb",
+    "coro_id": "local",
+    "midi_archivo": "may-he-be-happy-1782518246433.mid"
+  },
+  {
+    "id": "usmc_647b699cfc5d9756c985e511",
+    "nombre": "More Beauteous Than The Sun",
+    "archivo": "647b699cfc5d9756c985e511_more_beauteous_than_the_sun.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "es-mas-hermoso-que-el-sol-1780003629005.mid",
+    "vinculo_idioma": "a68d43c5-d66f-4a89-a015-2664bbb131e5",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6a3dfc5d9756c985e528",
+    "nombre": "My Father in Faith",
+    "archivo": "647b6a3dfc5d9756c985e528_my_father_in_faith.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "mi-padre-en-la-fe-1780507765584.mid",
+    "vinculo_idioma": "09f1ea92-becc-4f5f-a629-3bc08713ede6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595dbe3ccdb4bbe806745bb",
+    "nombre": "My Gentle Lord",
+    "archivo": "6595dbe3ccdb4bbe806745bb_my_gentle_lord.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "my-gentle-lord-1782518540161.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6a65fc5d9756c985e535",
+    "nombre": "My Gratitude",
+    "archivo": "647b6a65fc5d9756c985e535_my_gratitude.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "mi-gratitud-1780122603509.mid",
+    "vinculo_idioma": "859b07d0-b46d-4473-8141-75c6c419acbc",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb34bfc2bf23dfa336bd0",
+    "nombre": "My Hope",
+    "archivo": "644eb34bfc2bf23dfa336bd0_my_hope.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5e79f21b21cae02606622",
+    "coro_id": "local",
+    "midi_archivo": "my-hope-1782518863081.mid"
+  },
+  {
+    "id": "usmc_6826a95bd1859a2d28e3e32e",
+    "nombre": "My Prayer",
+    "archivo": "6826a95bd1859a2d28e3e32e_my_prayer.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "mi-oracion-1780123336181.mid",
+    "vinculo_idioma": "8fe15f52-d7d1-4f38-907a-546fd77fe143",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_66a3a94633d672363fe34c88",
+    "nombre": "My Savior Lives And Reigns",
+    "archivo": "66a3a94633d672363fe34c88_my_savior_lives_and_reigns.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e5ec9631ba687d6305c2",
+    "coro_id": "local",
+    "midi_archivo": "my-savior-lives-and-reigns-1782519141525.mid"
+  },
+  {
+    "id": "usmc_647b6aa2fc5d9756c985e555",
+    "nombre": "Nailed to The Cross",
+    "archivo": "647b6aa2fc5d9756c985e555_nailed_to_the_cross.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "9e96503c-d7bb-4772-b523-ff95a9b45a4f",
+    "midi_archivo": "nailed-to-the-cross-1782519305573.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b6b43fc5d9756c985e57f",
+    "nombre": "Nard of Justice And Glory",
+    "archivo": "647b6b43fc5d9756c985e57f_nard_of_justice_and_glory.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "nardo-justicia-y-gloria-1780208248058.mid",
+    "vinculo_idioma": "a4f49fef-8b5a-4d3a-9833-fbc240acedc8",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_4f78e6d8154bec5385afcc8f",
+    "nombre": "Nearer, my God, to Thee",
+    "archivo": "4f78e6d8154bec5385afcc8f_nearer_my_god_to_thee.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "midi_archivo": "cerca-de-ti-senor-1779855354997.mid",
+    "vinculo_idioma": "88de32f5-9bf9-4088-b406-a01dabe52ea1",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_0433f46952c5d58cc7",
+    "nombre": "Not For All Souls",
+    "archivo": "0433f46952c5d58cc7_not-for-all-souls.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5645f21b21cae02605fb2",
+    "coro_id": "local",
+    "midi_archivo": "no-es-de-todos-1784232231252.mid"
+  },
+  {
+    "id": "usmc_644e8b54fc2bf23dfa336a29",
+    "nombre": "Not Half Has Ever Been Told",
+    "archivo": "644e8b54fc2bf23dfa336a29_not_half_has_ever_been_told.pdf",
+    "temas": [
+      "Glory"
+    ],
+    "es_privado": false,
+    "midi_archivo": "del-celeste-pais-1779995129948.mid",
+    "vinculo_idioma": "5341d8b7-155b-496c-994f-45e0ccaa4804",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b7359793a334d51fb6c7f",
+    "nombre": "Oh Blessed is he Who Comes",
+    "archivo": "647b7359793a334d51fb6c7f_oh_blessed_is_he_who_comes.pdf",
+    "temas": [
+      "Apostolic Honor"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b52f7421b21cae02605582",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b7382793a334d51fb6c8c",
+    "nombre": "Oh Blessed Lord",
+    "archivo": "647b7382793a334d51fb6c8c_oh_blessed_lord.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "midi_archivo": "bendito-dios-1779832253324.mid",
+    "vinculo_idioma": "4ee9d00a-a44c-4352-a4e5-55f1967b9a15",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90db55c01cc5b98141b12",
+    "nombre": "Oh Come, Let us Sing",
+    "archivo": "64c90db55c01cc5b98141b12_oh_come_let_us_sing.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5fa6521b21cae02606b4d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b739f793a334d51fb6c99",
+    "nombre": "Oh Creator",
+    "archivo": "647b739f793a334d51fb6c99_oh_creator.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "oh-creador-1779943595456.midi",
+    "vinculo_idioma": "e5c49f75-0efb-4e99-b43c-a8c314937921",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b73c4793a334d51fb6ca6",
+    "nombre": "Oh For That Life",
+    "archivo": "647b73c4793a334d51fb6ca6_oh_for_that_life.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "mensaje-de-salvacion-1780011286792.mid",
+    "vinculo_idioma": "5e095fe4-6272-4456-b32a-b6f91b86bfbc",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f8cfea321fbb1d6b866c",
+    "nombre": "Oh Happy Day",
+    "archivo": "64b1f8cfea321fbb1d6b866c_oh_happy_day.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_c55570b012eec7c926",
+    "coro_id": "local",
+    "midi_archivo": "oh-happy-day-1782838483181.mid"
+  },
+  {
+    "id": "usmc_647b73e7793a334d51fb6cb3",
+    "nombre": "Oh he Shall Reign",
+    "archivo": "647b73e7793a334d51fb6cb3_oh_he_shall_reign.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tronos-y-reinados-1780014573089.mid",
+    "vinculo_idioma": "c8a074ab-b7c4-4003-aeff-eb0854d61586",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b7404793a334d51fb6cc0",
+    "nombre": "Oh Holy Man",
+    "archivo": "647b7404793a334d51fb6cc0_oh_holy_man.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "santo-varon-1780195582790.mid",
+    "vinculo_idioma": "1af3806e-9f37-49ef-96b3-09d0d1ed2bf6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b741f793a334d51fb6ccd",
+    "nombre": "Oh How i Love You, Naason!",
+    "archivo": "647b741f793a334d51fb6ccd_oh_how_i_love_you_naason.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_edf6d283a1853ba203f6d49b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_610add3fe46bfa82c046c36d",
+    "nombre": "Oh Lord, Before Your Presence",
+    "archivo": "610add3fe46bfa82c046c36d_oh_lord_before_your_presence.pdf",
+    "temas": [
+      "Petition"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e4279631ba687d6304fb",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6814a372520c8624329efdb4",
+    "nombre": "Oh Lord, How i Love You",
+    "archivo": "6814a372520c8624329efdb4_oh_lord_how_i_love_you.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_644eb377fc2bf23dfa336be0",
+    "nombre": "Oh my Lord",
+    "archivo": "644eb377fc2bf23dfa336be0_oh_my_lord.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "oh-senor-1780127104791.mid",
+    "vinculo_idioma": "6ce642d0-9d2b-4535-9ec8-9c9354b4aa7b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd96e8230a308debde838",
+    "nombre": "Oh, my Lord, if You Would Help me",
+    "archivo": "67bdd96e8230a308debde838_oh_my_lord_if_you_would_help_me.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5e9f121b21cae02606682",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f925ea321fbb1d6b868e",
+    "nombre": "Oh Precious Faith",
+    "archivo": "64b1f925ea321fbb1d6b868e_oh_precious_faith.pdf",
+    "temas": [
+      "Consecration",
+      "Hope"
+    ],
+    "es_privado": false,
+    "midi_archivo": "preciosa-fe-1779944087186.midi",
+    "vinculo_idioma": "84475fd4-e3d5-4acf-9e12-0981b147e508",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b74ba793a334d51fb6cda",
+    "nombre": "Oh Redeemer",
+    "archivo": "647b74ba793a334d51fb6cda_oh_redeemer.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_647b7319793a334d51fb6c72",
+    "nombre": "O Jesus, i Have Promised",
+    "archivo": "647b7319793a334d51fb6c72_o_jesus_i_have_promised.pdf",
+    "temas": [
+      "Intercession"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "fa9744e4-6a1e-42c6-8164-2f1f0ea6719d",
+    "midi_archivo": null
+  },
+  {
+    "id": "usmc_65592e7b6269024850c230ab",
+    "nombre": "On Calvary he Gave His Life",
+    "archivo": "65592e7b6269024850c230ab_on_calvary_he_gave_his_life.pdf",
+    "temas": [
+      "Holy Supper",
+      "Hope"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e5b49631ba687d6305a2",
+    "coro_id": "local",
+    "midi_archivo": "en-g-lgota-jes-s-muri--1784232203894.mid"
+  },
+  {
+    "id": "usmc_647b74cd793a334d51fb6ce7",
+    "nombre": "One Glorious Day",
+    "archivo": "647b74cd793a334d51fb6ce7_one_glorious_day.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b580d621b21cae0260616d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69cb3dd11363ac9e6f6196ce",
+    "nombre": "One Hundred Years Have Passed by (centennial)",
+    "archivo": "69cb3dd11363ac9e6f6196ce_one_hundred_years_have_passed_by_centennial.pdf",
+    "temas": [
+      "Restoration of the Church"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_0506c1253be9c710ee",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_b3a49a032968c89f0a",
+    "nombre": "One Hundred Years of Grace",
+    "archivo": "One Hundred Years of Grace.pdf",
+    "temas": [
+      "Restoration of the Church",
+      "Centennial"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_2b8a8f8217d2c8a467",
+    "nombre": "Only You",
+    "archivo": "Only You.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_78d40b2a0c600439436eb087",
+    "nombre": "Onward Christian Soldiers",
+    "archivo": "78d40b2a0c600439436eb087_onward_christian_soldiers.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "firmes-y-adelante-1779949358546.mid",
+    "vinculo_idioma": "6bbf3754-705a-411c-b527-dd1378955921",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_465d6081f0d5fc56b27b60c2",
+    "nombre": "Onward to Battle",
+    "archivo": "465d6081f0d5fc56b27b60c2_onward_to_battle.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "5fbc5c09-dc06-47fd-be77-4dc3016ef138",
+    "coro_id": "local",
+    "midi_archivo": "onward-to-battle-1784230870710.mid"
+  },
+  {
+    "id": "usmc_647b74ee793a334d51fb6cf4",
+    "nombre": "Our Consolation",
+    "archivo": "647b74ee793a334d51fb6cf4_our_consolation.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "nuestro-consuelo-1779936894025.midi",
+    "vinculo_idioma": "7a7202de-a3ed-45b5-8c20-298d4d7da57e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_5c8f2ae6958af089abdc57aa",
+    "nombre": "Our Former Life is Buried",
+    "archivo": "5c8f2ae6958af089abdc57aa_our_former_life_is_buried.pdf",
+    "temas": [
+      "Baptism"
+    ],
+    "es_privado": false,
+    "midi_archivo": "todos-fuimos-sepultados-1780191839853.mid",
+    "vinculo_idioma": "2525ebba-5f6e-49e6-aa8f-683d149d1154",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_65592ed86269024850c230bb",
+    "nombre": "Out of The Depths",
+    "archivo": "65592ed86269024850c230bb_out_of_the_depths.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "midi_archivo": "de-lo-profundo-1779937510559.mid",
+    "vinculo_idioma": "b297e978-d77d-41ec-a1c4-0dba55198215",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90dcf5c01cc5b98141b22",
+    "nombre": "Praise ye The Lord of Hosts",
+    "archivo": "64c90dcf5c01cc5b98141b22_praise_ye_the_lord_of_hosts.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "canten-a-cristo-rey-1779838784844.mid",
+    "vinculo_idioma": "f3d5fa56-01b0-4608-8db4-2852e16effb0",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90df65c01cc5b98141b32",
+    "nombre": "Psalm 115",
+    "archivo": "64c90df65c01cc5b98141b32_psalm_115.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "salmo-115-1780179998331.mid",
+    "vinculo_idioma": "3979bd7e-6f9c-460d-9137-9e5d232da45b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90e0a5c01cc5b98141b42",
+    "nombre": "Psalm 150",
+    "archivo": "64c90e0a5c01cc5b98141b42_psalm_150.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "salmo-150-1779912523535.mid",
+    "vinculo_idioma": "fc46cd52-34ec-456b-a977-6f51294fe228",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_36b6c58c5058c8c573",
+    "nombre": "Redeem my Soul",
+    "archivo": "Redeem My Soul.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_647b7517793a334d51fb6d01",
+    "nombre": "Revelations 14:6",
+    "archivo": "647b7517793a334d51fb6d01_revelations_146.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "14712c55-86e8-4253-b312-bec87b6bb802",
+    "midi_archivo": "apocalipsis-14-6-1780196463843.mid"
+  },
+  {
+    "id": "usmc_64c90e235c01cc5b98141b52",
+    "nombre": "Ring The Bells of Heaven",
+    "archivo": "64c90e235c01cc5b98141b52_ring_the_bells_of_heaven.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "suenen-dulces-himnos-1780129635441.mid",
+    "vinculo_idioma": "b7cf893d-48e9-4253-8d36-e1d7ef59fee9",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b752c793a334d51fb6d0e",
+    "nombre": "Sacred Ministry",
+    "archivo": "647b752c793a334d51fb6d0e_sacred_ministry.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "ministerio-sagrado-1780124175674.mid",
+    "vinculo_idioma": "a244c98a-1b9c-4d3b-a467-1b4837afa241",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8b74fc2bf23dfa336a39",
+    "nombre": "Sacrifice Full of Love",
+    "archivo": "644e8b74fc2bf23dfa336a39_sacrifice_full_of_love.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "midi_archivo": "holocausto-de-amor-1779948587439.midi",
+    "vinculo_idioma": "0b313abc-ee86-44fd-b49a-233dfff1672b",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b75b0793a334d51fb6d1b",
+    "nombre": "Show Pity, Lord",
+    "archivo": "647b75b0793a334d51fb6d1b_show_pity_lord.pdf",
+    "temas": [
+      "Intercession"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "77685449-9ec0-4c43-b408-834e546dce9b",
+    "coro_id": "local",
+    "midi_archivo": "show-pity-lord-1783360546081.mid"
+  },
+  {
+    "id": "usmc_647b75cb793a334d51fb6d28",
+    "nombre": "Sing Beautiful to God",
+    "archivo": "647b75cb793a334d51fb6d28_sing_beautiful_to_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_647b75e3793a334d51fb6d35",
+    "nombre": "Sing Praise, Hallelujah",
+    "archivo": "647b75e3793a334d51fb6d35_sing_praise_hallelujah.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b53d4721b21cae02605954",
+    "coro_id": "local",
+    "midi_archivo": "sing-praise-hallelujah-1783360612604.mid"
+  },
+  {
+    "id": "usmc_530fcdc77e9485963aa4a085",
+    "nombre": "Soldiers of Immanuel",
+    "archivo": "530fcdc77e9485963aa4a085_soldiers_of_immanuel.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "nuestro-capitan-1779937899359.midi",
+    "vinculo_idioma": "22c7ac76-0089-45dd-933a-e366742f5e9a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_eccb676ffed6c7dd376971c7",
+    "nombre": "Special Banquet",
+    "archivo": "special-banquet-1783480732794.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "special-banquet-1783480655029.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f965ea321fbb1d6b869e",
+    "nombre": "Spiritual Gala",
+    "archivo": "64b1f965ea321fbb1d6b869e_spiritual_gala.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "d16ce5cd-1e4a-4e40-b906-a71b990a94d5",
+    "midi_archivo": null
+  },
+  {
+    "id": "usmc_67bddbbc8230a308debde8d1",
+    "nombre": "Such Brilliant Light",
+    "archivo": "67bddbbc8230a308debde8d1_such_brilliant_light.pdf",
+    "temas": [
+      "Grace",
+      "Love of God"
+    ],
+    "es_privado": false,
+    "midi_archivo": "llama-de-luz-1780119346422.mid",
+    "vinculo_idioma": "9322bfb3-0be3-4729-b3c2-75da81c4fedb",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1f9e6ea321fbb1d6b86b2",
+    "nombre": "Sunset",
+    "archivo": "64b1f9e6ea321fbb1d6b86b2_sunset.pdf",
+    "temas": [
+      "Advent of the Lord"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5fb7921b21cae02606bb3",
+    "coro_id": "local",
+    "midi_archivo": "sunset-1783360596278.mid"
+  },
+  {
+    "id": "usmc_64c90e465c01cc5b98141b62",
+    "nombre": "Surely This is House of The Lord",
+    "archivo": "64c90e465c01cc5b98141b62_surely_this_is_house_of_the_lord.pdf",
+    "temas": [
+      "Inauguration",
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_467d7ae0f63d49ebbbec1e3a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fa1aea321fbb1d6b86c6",
+    "nombre": "Sweet Hour of Prayer",
+    "archivo": "64b1fa1aea321fbb1d6b86c6_sweet_hour_of_prayer.pdf",
+    "temas": [
+      "Prayer"
+    ],
+    "es_privado": false,
+    "midi_archivo": "dulce-oracion-1780093364480.mid",
+    "vinculo_idioma": "fecb78b8-9515-46a1-b650-544f45864410",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8b98fc2bf23dfa336a55",
+    "nombre": "Take my Life And Let it be",
+    "archivo": "644e8b98fc2bf23dfa336a55_take_my_life_and_let_it_be.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "midi_archivo": "que-mi-vida-entera-este-1779937528292.midi",
+    "vinculo_idioma": "086f35b1-046f-4d5c-a14b-5ee61a42e9ce",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595dd07ccdb4bbe806745eb",
+    "nombre": "Tell Him",
+    "archivo": "6595dd07ccdb4bbe806745eb_tell_him.pdf",
+    "temas": [
+      "Petition",
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "cd46288f-95a6-4870-81e9-a72534208e3c",
+    "midi_archivo": "dile-1780269896012.mid"
+  },
+  {
+    "id": "usmc_644eb39afc2bf23dfa336bf0",
+    "nombre": "Thanks be to God",
+    "archivo": "644eb39afc2bf23dfa336bf0_thanks_be_to_god.pdf",
+    "temas": [
+      "Gratitude"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "fde0c46d-be46-42d8-9bf2-00328c5834c5",
+    "midi_archivo": "gracias-a-dios-1780104973730.mid"
+  },
+  {
+    "id": "usmc_97be3ba022331805eea09398",
+    "nombre": "The Angel's Companion",
+    "archivo": "97be3ba022331805eea09398_the_angel_s_companion.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_86bb3c326139c692d9e36893",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6f5113c8a2ad9128d9675f9f",
+    "nombre": "The Apostle of The Consolation",
+    "archivo": "6f5113c8a2ad9128d9675f9f_the_apostle_of_the_consolation.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-apostol-de-la-consolacion-1779999698236.mid",
+    "vinculo_idioma": "5ff5adb2-f528-4dd6-9bf2-fede530379da",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc29c970ee4295057e3ec",
+    "nombre": "The Apostolic Era",
+    "archivo": "64adc29c970ee4295057e3ec_the_apostolic_era.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "2688f2a4-a136-49d4-9806-502626426e24",
+    "midi_archivo": "the-apostolic-era-1783360851068.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_d0b861cdf9aebeedc4140438",
+    "nombre": "The Battle Cry of The Church",
+    "archivo": "d0b861cdf9aebeedc4140438_the_battle_cry_of_the_church.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-lema-de-la-iglesia-1780095869035.mid",
+    "vinculo_idioma": "6e6e6267-44c8-40c9-b303-2f85317a6b8a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_d719d9ba7cada64a234631ee",
+    "nombre": "The Breath Inside of me",
+    "archivo": "d719d9ba7cada64a234631ee_the_breath_inside_of_me.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-aliento-de-mi-ser-1779949560635.midi",
+    "vinculo_idioma": "67bdd051-b9b1-45da-b9e1-ca0ff60bb2b7",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_4dec8554ea79fc7b5efe044c",
+    "nombre": "The Calling",
+    "archivo": "4dec8554ea79fc7b5efe044c_the_calling.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b540f321b21cae02605b90",
+    "coro_id": "local",
+    "midi_archivo": "the-calling-1783360858082.mid"
+  },
+  {
+    "id": "usmc_69334ba517c3ffd6839b76b8",
+    "nombre": "The Calling of God",
+    "archivo": "69334ba517c3ffd6839b76b8_the_calling_of_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_73fff6e582e4c767a6",
+    "coro_id": "local",
+    "midi_archivo": "el-tercer-angel-1779256281063.mid"
+  },
+  {
+    "id": "usmc_68b9c361c43c95818020b203",
+    "nombre": "The Church of The Living God",
+    "archivo": "68b9c361c43c95818020b203_the_church_of_the_living_god.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "the-church-of-the-living-god-1783360865995.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1fa69ea321fbb1d6b86da",
+    "nombre": "The City of God",
+    "archivo": "64b1fa69ea321fbb1d6b86da_the_city_of_god.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "aff08b35-68ec-4970-9aca-45ecf4a6a181",
+    "midi_archivo": "the-city-of-god-1783361188186.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_21e0458d8100c7d20e3d6d97",
+    "nombre": "The Consolation of my Soul",
+    "archivo": "21e0458d8100c7d20e3d6d97_the_consolation_of_my_soul.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_9824d412e53cc7624f",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_8dcaa72beaadde20dd17b928",
+    "nombre": "The Fragrance of The Election",
+    "archivo": "8dcaa72beaadde20dd17b928_the_fragrance_of_the_election.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_b6de0b570ef21bde2d345f3c",
+    "coro_id": "local",
+    "midi_archivo": "the-fragrance-of-the-election-1783361212841.mid"
+  },
+  {
+    "id": "usmc_6814a3b8520c8624329efdc4",
+    "nombre": "The Garden of Prayer",
+    "archivo": "6814a3b8520c8624329efdc4_the_garden_of_prayer.pdf",
+    "temas": [
+      "Election",
+      "Petition"
+    ],
+    "es_privado": false,
+    "midi_archivo": "the-garden-of-prayer-1783361217577.mid",
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_fa6b88f3589cd35b8644495c",
+    "nombre": "The Glorious Communion",
+    "archivo": "fa6b88f3589cd35b8644495c_the_glorious_communion.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_92758f89cb26359242491a55",
+    "nombre": "The Glorious Feast",
+    "archivo": "92758f89cb26359242491a55_the_glorious_feast.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e04f9631ba687d6303c8",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_89a16af0a9cfb63cab38ad49",
+    "nombre": "The Great Apostle",
+    "archivo": "89a16af0a9cfb63cab38ad49_the_great_apostle.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_e2ab0fde58e9387eccd4fd5e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8bb4fc2bf23dfa336a6b",
+    "nombre": "The Greatest of Feasts",
+    "archivo": "644e8bb4fc2bf23dfa336a6b_the_greatest_of_feasts.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-fiesta-mas-grande-1779948032932.midi",
+    "vinculo_idioma": "f13df9d1-ff59-45db-bbb2-6690ddd0f992",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_33d0841cf0a77285d51657b2",
+    "nombre": "The Great Jerusalem",
+    "archivo": "33d0841cf0a77285d51657b2_the_great_jerusalem.pdf",
+    "temas": [
+      "Glory"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-gran-jerusalen-1780510370233.mid",
+    "vinculo_idioma": "d79ab4a4-8839-406f-9617-14ab46ea63d8",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_caf436a80759ce7a19568e1e",
+    "nombre": "The Holy City",
+    "archivo": "caf436a80759ce7a19568e1e_the_holy_city.pdf",
+    "temas": [
+      "Glory"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_f6008d4ed486d58cb4",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb3b9fc2bf23dfa336c00",
+    "nombre": "The Holy Supper of The Lord",
+    "archivo": "644eb3b9fc2bf23dfa336c00_the_holy_supper_of_the_lord.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e0329631ba687d6303b8",
+    "coro_id": "local",
+    "midi_archivo": "the-holy-supper-of-the-lord-1783361203146.mid"
+  },
+  {
+    "id": "usmc_d565040a6757369cf1216697",
+    "nombre": "The Home Over There",
+    "archivo": "d565040a6757369cf1216697_the_home_over_there.pdf",
+    "temas": [
+      "Slept in the Lord"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "051192b3-64bb-477f-8cc1-76aa8733052b",
+    "midi_archivo": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90e5b5c01cc5b98141b72",
+    "nombre": "The Host Return",
+    "archivo": "64c90e5b5c01cc5b98141b72_the_host_return.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "local_apk_1781321072064_363",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595dd40ccdb4bbe806745fb",
+    "nombre": "Their Flags",
+    "archivo": "6595dd40ccdb4bbe806745fb_their_flags.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "midi_archivo": "sus-banderas-1780188613301.mid",
+    "vinculo_idioma": "ca188ed8-b8e6-41fa-8560-09af7af38308",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc2c7970ee4295057e3fc",
+    "nombre": "The King is Coming",
+    "archivo": "64adc2c7970ee4295057e3fc_the_king_is_coming.pdf",
+    "temas": [
+      "Advent of the Lord"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_af6ad90414c5d2f2cc457b0f",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_e92f6dbcfbb3daf62807426e",
+    "nombre": "The Light of an Apostle",
+    "archivo": "e92f6dbcfbb3daf62807426e_the_light_of_an_apostle.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-luz-de-un-apostol-1780008930368.mid",
+    "vinculo_idioma": "ec542b1f-c043-4175-b119-025f3cac0aef",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_c2e3e1a20f65eaa5073fd2ef",
+    "nombre": "The Light of Hope",
+    "archivo": "c2e3e1a20f65eaa5073fd2ef_the_light_of_hope.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "la-luz-de-un-apostol-1780008930368.mid",
+    "vinculo_idioma": "ec542b1f-c043-4175-b119-025f3cac0aef",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8d49fc2bf23dfa336ab4",
+    "nombre": "The Light of my Life",
+    "archivo": "644e8d49fc2bf23dfa336ab4_the_light_of_my_life.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-luz-de-la-vida-1780353397646.mid",
+    "vinculo_idioma": "44ed7815-f32d-4907-bdec-96b42766c249",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69cb3e521363ac9e6f6196de",
+    "nombre": "The Light Shone Once Again",
+    "archivo": "69cb3e521363ac9e6f6196de_the_light_shone_once_again_centennial.pdf",
+    "temas": [
+      "Restoration of the Church",
+      "Centennial"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_e655ee5a1868c84374",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_3e5703ec51f3ea0f53025802",
+    "nombre": "The Lion of Judah",
+    "archivo": "3e5703ec51f3ea0f53025802_the_lion_of_judah.pdf",
+    "temas": [
+      "Advent of the Lord"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b5faed21b21cae02606b70",
+    "coro_id": "local",
+    "midi_archivo": "the-lion-of-judah-1783361258180.mid"
+  },
+  {
+    "id": "usmc_e0f79a1b7081cc0e28f619ed",
+    "nombre": "The Lord Bless You And Keep You",
+    "archivo": "e0f79a1b7081cc0e28f619ed_the_lord_bless_you_and_keep_you.pdf",
+    "temas": [
+      "Farewell"
+    ],
+    "es_privado": false,
+    "midi_archivo": "jehova-te-bendiga-y-te-guarde-1780108861957.mid",
+    "vinculo_idioma": "350d447f-1aea-455a-97b4-d48162d7b0ec",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90e795c01cc5b98141b82",
+    "nombre": "The Lord Jehova is King",
+    "archivo": "64c90e795c01cc5b98141b82_the_lord_jehova_is_king.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "jehova-el-senor-es-rey-1779948963283.mid",
+    "vinculo_idioma": "72b10bf5-4066-4b49-aa65-69aaf7c07279",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_1eeff361c535071a9ea26e82",
+    "nombre": "The Love of The Lord is Everlasting",
+    "archivo": "1eeff361c535071a9ea26e82_the_love_of_the_lord_is_everlasting.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-amor-del-senor-es-infinito-1780094714932.mid",
+    "vinculo_idioma": "44a69fa7-fc89-4584-9c09-d532148ec555",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_401e137cfaab117860eabee4",
+    "nombre": "The Manifestation",
+    "archivo": "401e137cfaab117860eabee4_the_manifestation.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5613521b21cae02605e69",
+    "coro_id": "local",
+    "midi_archivo": "la-manifestaci-n-1781486374398.mid"
+  },
+  {
+    "id": "usmc_64adc2ea970ee4295057e40c",
+    "nombre": "The Mantle of The Election",
+    "archivo": "64adc2ea970ee4295057e40c_the_mantle_of_the_election.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-manto-de-la-eleccion-1779935754380.midi",
+    "vinculo_idioma": "9b61f394-6d4b-48f9-b7d9-21f16be1bcbe",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc308970ee4295057e41c",
+    "nombre": "The Mantle of The Election Has Touched us",
+    "archivo": "64adc308970ee4295057e41c_the_mantle_of_the_election_has_touched_us.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_64c90e965c01cc5b98141b92",
+    "nombre": "The Name of The High Lord",
+    "archivo": "64c90e965c01cc5b98141b92_the_name_of_the_high_lord.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-nombre-del-senor-1780208689319.mid",
+    "vinculo_idioma": "a4905981-01fd-46f4-b96d-207a27d6abc6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_148b30ad1f4556dd815fb42c",
+    "nombre": "The New Israel",
+    "archivo": "148b30ad1f4556dd815fb42c_the_new_israel.pdf",
+    "temas": [
+      "Battle"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-nuevo-israel-1780097199421.mid",
+    "vinculo_idioma": "0062a118-d069-4468-a502-ba385e8d6c12",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_306fed2bac676d67b2e0e0bd",
+    "nombre": "The One I've Chosen",
+    "archivo": "306fed2bac676d67b2e0e0bd_the_one_i_ve_chosen.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5637321b21cae02605f1c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64b1faa3ea321fbb1d6b86ea",
+    "nombre": "The Pact of God",
+    "archivo": "64b1faa3ea321fbb1d6b86ea_the_pact_of_god.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3df2e9631ba687d630364",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_48a8f26670c74b69f5763cdd",
+    "nombre": "The Perfect Work",
+    "archivo": "48a8f26670c74b69f5763cdd_the_perfect_work.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "la-obra-perfecta-1780009457104.mid",
+    "vinculo_idioma": "0f7fa6d0-7745-45e6-9b5b-6e0064be667f",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_b185da9f877a73854cf7e62d",
+    "nombre": "The Prayer of a Just Man",
+    "archivo": "b185da9f877a73854cf7e62d_the_prayer_of_a_just_man.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "por-la-oracion-del-justo-1779936838323.midi",
+    "vinculo_idioma": "29163286-461b-4a34-a0fa-4e58641fa22d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_e0008f54b892c098b19049d8",
+    "nombre": "The Prayer of The Apostle",
+    "archivo": "e0008f54b892c098b19049d8_the_prayer_of_the_apostle.pdf",
+    "temas": [
+      "Apostolic Intercession"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "midi_archivo": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc329970ee4295057e42c",
+    "nombre": "The Reason of my Existence",
+    "archivo": "64adc329970ee4295057e42c_the_reason_of_my_existence.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "e485ddef-4ea0-43f7-97d5-2d70475a69e0",
+    "midi_archivo": null
+  },
+  {
+    "id": "usmc_39881439a51875350df4fb85",
+    "nombre": "The Reason to Live",
+    "archivo": "39881439a51875350df4fb85_the_reason_to_live.pdf",
+    "temas": [
+      "Slept in the Lord"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b593aa21b21cae026063ae",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c90f7f5c01cc5b98141ba2",
+    "nombre": "The Redeemed Nations",
+    "archivo": "64c90f7f5c01cc5b98141ba2_the_redeemed_nations.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5ec6221b21cae02606712",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c910095c01cc5b98141bb7",
+    "nombre": "The Redeemer",
+    "archivo": "64c910095c01cc5b98141bb7_the_redeemer.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_c0eddd6c01371e2bd4327c0c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc378970ee4295057e44c",
+    "nombre": "There is a Blessing in my Soul",
+    "archivo": "64adc378970ee4295057e44c_there_is_a_blessing_in_my_soul.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "en-mi-alma-hay-una-bendicion-1780099564179.mid",
+    "vinculo_idioma": "fc0eb7d0-f074-4a1f-bd3b-a82a713b7d6c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc3c4970ee4295057e46c",
+    "nombre": "There is an Apostle",
+    "archivo": "64adc3c4970ee4295057e46c_there_is_an_apostle.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b54d4f21b21cae02605d3c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_65592fa76269024850c230db",
+    "nombre": "There is no Better Friend ",
+    "archivo": "65592fa76269024850c230db_there_is_no_better_friend.pdf",
+    "temas": [
+      "Trust",
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "51057ef0-9aa8-436c-9467-6580a67a0e29",
+    "midi_archivo": "no-hay-amigo-mejor-1779935161707.midi"
+  },
+  {
+    "id": "usmc_6595dec3ccdb4bbe8067461b",
+    "nombre": "There is Peace Within my Soul",
+    "archivo": "6595dec3ccdb4bbe8067461b_there_is_peace_within_my_soul.pdf",
+    "temas": [
+      "Apostolic Intercession",
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-oracion-del-justo-1780116903237.mid",
+    "vinculo_idioma": "965d82e3-28aa-442f-91ed-9a80402ec14f",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd9be8230a308debde848",
+    "nombre": "There's no Friend so Kind And Loving",
+    "archivo": "67bdd9be8230a308debde848_there_s_no_friend_so_kind_and_loving.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "no-hay-amigo-mas-hermoso-1779943548411.midi",
+    "vinculo_idioma": "25ed9638-616e-4f26-98ab-80e054787948",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc35b970ee4295057e43c",
+    "nombre": "The Revelation",
+    "archivo": "64adc35b970ee4295057e43c_the_revelation.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-revelacion-1780010230897.mid",
+    "vinculo_idioma": "7b7e8568-4efb-4b27-b8a6-3c0943c3a3c6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc3a6970ee4295057e45c",
+    "nombre": "There Was One With Such Love",
+    "archivo": "64adc3a6970ee4295057e45c_there_was_one_with_such_love.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_7b2699da470c52aa39e8e4e5",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_51a41fb30d6c70696cf358a0",
+    "nombre": "The Sower",
+    "archivo": "51a41fb30d6c70696cf358a0_the_sower.pdf",
+    "temas": [
+      "Labor"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "bd6fc57f-65ee-4a28-81b3-ed53ca44cf9b",
+    "midi_archivo": "the-sower-1783361274682.mid",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_b0d9914c217793cd8190ca49",
+    "nombre": "The Spirit of Jesus",
+    "archivo": "b0d9914c217793cd8190ca49_the_spirit_of_jesus.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_9ba38555eec2bab818163953",
+    "coro_id": "local",
+    "midi_archivo": "el-esp-ritu-de-cristo-1783361528477.mid"
+  },
+  {
+    "id": "usmc_a405ef90e57bc8f5a9",
+    "nombre": "The Time of Restoration",
+    "archivo": "The Time of Restoration.pdf",
+    "temas": [
+      "Centennial"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_a47e8e347e0dc77841",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_30a5518d61b1cffb3b7efcf6",
+    "nombre": "The Triumphant Song",
+    "archivo": "30a5518d61b1cffb3b7efcf6_the_triumphant_song.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-canto-triunfal-1779999972289.mid",
+    "vinculo_idioma": "8e31df87-4525-44b1-b472-fc2d88259ed9",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64c910215c01cc5b98141bc7",
+    "nombre": "The Voice of Many Angels",
+    "archivo": "64c910215c01cc5b98141bc7_the_voice_of_many_angels.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-voz-de-muchos-angeles-1780009736819.mid",
+    "vinculo_idioma": "9513d44a-483e-40cb-937d-d33733b7830d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8bd5fc2bf23dfa336a7e",
+    "nombre": "The Wedding of The Lamb",
+    "archivo": "644e8bd5fc2bf23dfa336a7e_the_wedding_of_the_lamb.pdf",
+    "temas": [
+      "Advent of the Lord",
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "midi_archivo": "las-bodas-del-cordero-1780010586880.mid",
+    "vinculo_idioma": "c1449130-53d6-460f-8a22-d6f5b87ac7d1",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_e5089deb774e15f4a8693e6c",
+    "nombre": "The Wonder of it All (advanced)",
+    "archivo": "e5089deb774e15f4a8693e6c_the_wonder_of_it_all_advanced.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_51d84cae720d5680377194df",
+    "nombre": "The Wonder of it All (simple)",
+    "archivo": "51d84cae720d5680377194df_the_wonder_of_it_all_simple.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "midi_archivo": "maravilloso-es-1779947256701.mid",
+    "vinculo_idioma": "3cc7388f-828d-43b1-89a2-102cfb6026cf",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_664e6f3314dfce3dfeb7eadf",
+    "nombre": "The Work of Our Lord",
+    "archivo": "664e6f3314dfce3dfeb7eadf_the_work_of_our_lord.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "la-obra-del-senor-1780246966243.mid",
+    "vinculo_idioma": "8cc30707-4754-49f2-bf7a-e478a4cb218e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_2ebbad6c4f299dc224abfb5d",
+    "nombre": "The Year That Has Gone by",
+    "archivo": "2ebbad6c4f299dc224abfb5d_the_year_that_has_gone_by.pdf",
+    "temas": [
+      "Intercession"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "el-ano-que-se-va-1779999120668.mid",
+    "vinculo_idioma": "1e7b0ea5-4702-4923-993b-574df65ea50d",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a1d5dbabaaced58cf2",
+    "nombre": "Things Are Better",
+    "archivo": "a1d5dbabaaced58cf2_things-are-better.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false
+  },
+  {
+    "id": "usmc_6d2152a3c298ebb820bc3f8c",
+    "nombre": "This is Done in Your Remembrance",
+    "archivo": "this-is-done-in-your-remembrance-1782435615231.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b3df9a9631ba687d630384",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a79fd1859a2d28e3e2da",
+    "nombre": "'til we Reach Eternity",
+    "archivo": "6826a79fd1859a2d28e3e2da_til_we_reach_eternity.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "hasta-la-eternidad-1780271705524.mid",
+    "vinculo_idioma": "bc64c4b6-3cd4-41ab-b791-c19dc952bbec",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc411970ee4295057e47c",
+    "nombre": "Times of Grace",
+    "archivo": "64adc411970ee4295057e47c_times_of_grace.pdf",
+    "temas": [
+      "Election",
+      "Grace"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tiempos-de-gracia-1780189850335.mid",
+    "vinculo_idioma": "70743e6c-cfd5-4a7a-9dd5-6260889cd986",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_a84abd5ccf5f5a513e3f0912",
+    "nombre": "Tis Marvelous And Wonderful",
+    "archivo": "a84abd5ccf5f5a513e3f0912_tis_marvelous_and_wonderful.pdf",
+    "temas": [
+      "Love of God"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "local_apk_1781321071987_593",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595df20ccdb4bbe8067462b",
+    "nombre": "Tis The Church of The Lor",
+    "archivo": "6595df20ccdb4bbe8067462b_tis_the_church_of_the_lor.pdf",
+    "temas": [
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "31c9da63-d6c9-4b36-a605-fe0a7e9dd42c",
+    "midi_archivo": null
+  },
+  {
+    "id": "usmc_6514c55b7dacd58cf5",
+    "nombre": "Today we Are Celebrating",
+    "archivo": "6514c55b7dacd58cf5_today-we-are-celebrating.pdf",
+    "temas": [
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "d16ce5cd-1e4a-4e40-b906-a71b990a94d5",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595df63ccdb4bbe8067463b",
+    "nombre": "To God be The Glory",
+    "archivo": "6595df63ccdb4bbe8067463b_to_god_be_the_glory.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "alabad-al-gran-rey-1779158237657.mid",
+    "vinculo_idioma": "c643fda7-eb1f-48f2-9cdd-8a6d4f3977c2",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595dfb4ccdb4bbe8067464b",
+    "nombre": "To The Divine Savior",
+    "archivo": "6595dfb4ccdb4bbe8067464b_to_the_divine_savior.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "al-divino-salvador-1779125506300.mid",
+    "vinculo_idioma": "1437b4a7-9c2a-4e57-a2d2-529801ffe316",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb16ffc2bf23dfa336b3d",
+    "nombre": "To The Immolated Lamb",
+    "archivo": "644eb16ffc2bf23dfa336b3d_to_the_immolated_lamb.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e50a9631ba687d630542",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644eb417fc2bf23dfa336c20",
+    "nombre": "Unbreakable Bond",
+    "archivo": "644eb417fc2bf23dfa336c20_unbreakable_bond.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b561bf21b21cae02605ea9",
+    "coro_id": "local",
+    "midi_archivo": "lazos-inquebrantables-1784232221575.mid"
+  },
+  {
+    "id": "usmc_64adc433970ee4295057e48c",
+    "nombre": "Underneath His Wings of Love",
+    "archivo": "64adc433970ee4295057e48c_underneath_his_wings_of_love.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "en-las-alas-de-su-amor-1780099085000.mid",
+    "vinculo_idioma": "78f257ac-a3f0-4b3e-be8a-015aa26b7a59",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69cb3ee61363ac9e6f6196ee",
+    "nombre": "Victory is Gained Through Jesus",
+    "archivo": "69cb3ee61363ac9e6f6196ee_victory_is_gained_through_jesus.pdf",
+    "temas": [
+      "Restoration of the Church"
+    ],
+    "es_privado": false,
+    "midi_archivo": "la-victoria-es-de-cristo-1780118830402.mid",
+    "vinculo_idioma": "804dc5c3-24f7-443d-9ce2-ff85590956ca",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595e00cccdb4bbe80674661",
+    "nombre": "Wake The Song of Jubilee",
+    "archivo": "6595e00cccdb4bbe80674661_wake_the_song_of_jubilee.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "toda-voz-1780191684910.mid",
+    "vinculo_idioma": "01a5d722-24a6-4d09-9aa2-72518bbe81ed",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6826a9b6d1859a2d28e3e33e",
+    "nombre": "We Are Letters",
+    "archivo": "6826a9b6d1859a2d28e3e33e_we_are_letters.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "somos-cartas-leidas-1780184768147.mid",
+    "vinculo_idioma": "31f007e0-bfad-4d73-ada2-b85c943f66d9",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595e114ccdb4bbe80674687",
+    "nombre": "Welcome",
+    "archivo": "6595e114ccdb4bbe80674687_welcome.pdf",
+    "temas": [
+      "Holy Supper",
+      "Welcoming"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_3b5eca0dd582146fef55a60a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_bb4547fc3d9d17c264bfaf3b",
+    "nombre": "We Praise For His Election",
+    "archivo": "bb4547fc3d9d17c264bfaf3b_we_praise_for_his_election.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b57cd421b21cae02606062",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595e041ccdb4bbe80674674",
+    "nombre": "We Praise Thee",
+    "archivo": "6595e041ccdb4bbe80674674_we_praise_thee.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "te-loamos-1780189138616.mid",
+    "vinculo_idioma": "7e8c3a8f-7418-44eb-b4ea-2fef92d8215a",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_26d98a4ee324a76370a09222",
+    "nombre": "What a Blessing",
+    "archivo": "26d98a4ee324a76370a09222_what_a_blessing.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "hermosa-bendicion-1780005729831.mid",
+    "vinculo_idioma": "3f1e2de2-8121-4ada-be03-eeb793e3e940",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_0ae2ad29266d64f20097d86d",
+    "nombre": "What Blessed Love",
+    "archivo": "0ae2ad29266d64f20097d86d_what_blessed_love.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b53dee21b21cae026059d4",
+    "coro_id": "local",
+    "midi_archivo": "what-blessed-love-1784230662501.mid"
+  },
+  {
+    "id": "usmc_dcc7ad68b1563e329a9883bc",
+    "nombre": "What Greater Love",
+    "archivo": "dcc7ad68b1563e329a9883bc_what_greater_love.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "que-gran-amor-1780013251922.mid",
+    "vinculo_idioma": "ab43c7ba-54fe-431a-a83c-f848789fea55",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_c7c16c52d35dd58d1a",
+    "nombre": "What Hidden Love",
+    "archivo": "c7c16c52d35dd58d1a_what-hidden-love.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "_idioma": "en",
+    "midi_archivo": "que-secreto-amor-1780175798850.mid",
+    "vinculo_idioma": "27dde0cf-ef56-4ee8-afc5-b1f206b6e2b1",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_243628a74902d58d1e",
+    "nombre": "What Sweeter Love",
+    "archivo": "243628a74902d58d1e_what-sweeter-love.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "_idioma": "en",
+    "midi_archivo": "que-dulce-es-el-amor-1779944071670.midi",
+    "vinculo_idioma": "af5700ea-6ddf-47f4-a28d-57d879ec1ec7",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69334c0c17c3ffd6839b76ce",
+    "nombre": "When i Heard His Voice",
+    "archivo": "69334c0c17c3ffd6839b76ce_when_i_heard_his_voice.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "cuando-oi-su-voz-1780082849548.mid",
+    "vinculo_idioma": "c929dbb0-d4c2-4cc6-bbbf-cc97f1c5a6f4",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_70c2d1799e86d5553bf0b93c",
+    "nombre": "When The Roll is Called up Yonder",
+    "archivo": "70c2d1799e86d5553bf0b93c_when_the_roll_is_called_up_yonder.pdf",
+    "temas": [
+      "Farewell"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b5937421b21cae0260638e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6595e1eaccdb4bbe80674697",
+    "nombre": "When They Ring The Golden Bells",
+    "archivo": "6595e1eaccdb4bbe80674697_when_they_ring_the_golden_bells.pdf",
+    "temas": [
+      "Hope",
+      "Slept in the Lord"
+    ],
+    "es_privado": false,
+    "midi_archivo": "al-sonar-de-la-trompeta-1779144395257.mid",
+    "vinculo_idioma": "5e141f15-749d-49af-9287-d646f0ad7663",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6447028129d832900f01a000",
+    "nombre": "Who Could Ever Love?",
+    "archivo": "6447028129d832900f01a000_who_could_ever_love.pdf",
+    "temas": [
+      "Grace",
+      "Holy Supper"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e1f39631ba687d630428",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bddc598230a308debde8ea",
+    "nombre": "Who Taught me How to Love?",
+    "archivo": "67bddc598230a308debde8ea_who_taught_me_how_to_love.pdf",
+    "temas": [
+      "Grace",
+      "Love of God"
+    ],
+    "es_privado": false,
+    "midi_archivo": "quien-me-enseno-a-querer-1780177801491.mid",
+    "vinculo_idioma": "4575cef3-4da6-47b0-b7b3-1bf2fe835df0",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_eb3a9e119b56d58d22",
+    "nombre": "With Christ, The Lord",
+    "archivo": "eb3a9e119b56d58d22_with-christ-the-lord.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "con-mis-manos-hacia-el-cielo-1780077201181.mid",
+    "vinculo_idioma": "usmc_64b52d9221b21cae026054db",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdd9fb8230a308debde858",
+    "nombre": "With my Hands Raised Unto Heaven",
+    "archivo": "67bdd9fb8230a308debde858_with_my_hands_raised_unto_heaven.pdf",
+    "temas": [
+      "Consecration"
+    ],
+    "es_privado": false,
+    "midi_archivo": "con-mis-manos-hacia-el-cielo-1780077201181.mid",
+    "vinculo_idioma": "575e10ee-2d28-41bc-a5d2-9cbabca5b7f9",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b7608793a334d51fb6d42",
+    "nombre": "With Reverence",
+    "archivo": "647b7608793a334d51fb6d42_with_reverence.pdf",
+    "temas": [
+      "Intercession"
+    ],
+    "es_privado": false,
+    "midi_archivo": "con-reverencia-1779856882529.mid",
+    "vinculo_idioma": "85bfc681-084b-4543-958f-39071eb67c7e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_644e8e5efc2bf23dfa336acd",
+    "nombre": "With You, i am Filled With Joy",
+    "archivo": "644e8e5efc2bf23dfa336acd_with_you_i_am_filled_with_joy.pdf",
+    "temas": [
+      "Grace"
+    ],
+    "es_privado": false,
+    "midi_archivo": "contigo-estoy-tan-feliz-1779934145488.midi",
+    "vinculo_idioma": "523e9057-cc83-42e5-8f86-ed93c7cdf695",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_647b7722c56f31bc7174d909",
+    "nombre": "Wonderful Words of Life",
+    "archivo": "647b7722c56f31bc7174d909_wonderful_words_of_life.pdf",
+    "temas": [
+      "Invitation"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_c0ca6a9102c0b6e450a1af8e",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_0f3d5ac3cc9de1d2c7cdfe91",
+    "nombre": "Wondrous Things",
+    "archivo": "0f3d5ac3cc9de1d2c7cdfe91_wondrous_things.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": null,
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bdda4e8230a308debde868",
+    "nombre": "You Are God",
+    "archivo": "67bdda4e8230a308debde868_you_are_god.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tu-eres-dios-1779938940263.midi",
+    "vinculo_idioma": "49f2000a-0697-471f-9d33-62b9d30afd59",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_64adc475970ee4295057e4ac",
+    "nombre": "You Are in my Heart",
+    "archivo": "64adc475970ee4295057e4ac_you_are_in_my_heart.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "midi_archivo": "estas-en-mi-corazon-1779936816132.midi",
+    "vinculo_idioma": "e3d9b389-7a5f-4f30-ad58-e76981dae9b6",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_75fb9ff216dbab494c2a5948",
+    "nombre": "You Are Like The Cedars of Lebanon",
+    "archivo": "75fb9ff216dbab494c2a5948_you_are_like_the_cedars_of_lebanon.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_1470a971394cd58c70",
+    "coro_id": "local",
+    "midi_archivo": "eres-como-cedros-1783361539405.mid"
+  },
+  {
+    "id": "usmc_67bdda8b8230a308debde878",
+    "nombre": "You Are my Hope And Refuge",
+    "archivo": "67bdda8b8230a308debde878_you_are_my_hope_and_refuge.pdf",
+    "temas": [
+      "Trust"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tu-eres-mi-esperanza-1779936147742.midi",
+    "vinculo_idioma": "379a569c-c84f-4a6e-9e45-fdaa318bd3a9",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_41cd9799df94b220eff5d06d",
+    "nombre": "You Are The Angel",
+    "archivo": "41cd9799df94b220eff5d06d_you_are_the_angel.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "vinculo_idioma": "usmc_64b54bb221b21cae02605c4c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_130ce0ae7f8a6182b674327d",
+    "nombre": "You Are The Creator",
+    "archivo": "130ce0ae7f8a6182b674327d_you_are_the_creator.pdf",
+    "temas": [
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "midi_archivo": "tu-eres-creador-1779938917435.midi",
+    "vinculo_idioma": "1f887ffd-d23d-4141-9fb2-3c3c0787a321",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_6559306b6269024850c230fe",
+    "nombre": "You Gave up Your Life",
+    "archivo": "6559306b6269024850c230fe_you_gave_up_your_life.pdf",
+    "temas": [
+      "Passion"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b3e7099631ba687d63063c",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_67bddca18230a308debde8fa",
+    "nombre": "You, my Lord, Remain Eternal",
+    "archivo": "67bddca18230a308debde8fa_you_my_lord_remain_eternal.pdf",
+    "temas": [
+      "Calling of the Lord",
+      "Praise & Worship"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_64b5383221b21cae026058ee",
+    "coro_id": "local",
+    "midi_archivo": "se-or-tu-eres-el-mismo-1784232244254.mid"
+  },
+  {
+    "id": "usmc_8f87310c7629c32b7e8a1b15",
+    "nombre": "Your Election",
+    "archivo": "8f87310c7629c32b7e8a1b15_your_election.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "escaneado": true,
+    "midi_archivo": "por-tu-eleccion-1779944104590.midi",
+    "vinculo_idioma": "137211bf-4fcb-48cc-beb8-999e7f555edc",
+    "coro_id": "local"
+  },
+  {
+    "id": "usmc_69334c7817c3ffd6839b76e1",
+    "nombre": "You're The Perfect Example",
+    "archivo": "69334c7817c3ffd6839b76e1_youre_the_perfect_example.pdf",
+    "temas": [
+      "Election"
+    ],
+    "es_privado": false,
+    "vinculo_idioma": "usmc_68149f7f520c8624329efd31",
+    "coro_id": "local",
+    "midi_archivo": "eres-el-fiel-ejemplo-a-seguir-1784232214037.mid"
+  },
+  {
+    "id": "usmc_644e8e86fc2bf23dfa336add",
+    "nombre": "Your People Rejoice",
+    "archivo": "644e8e86fc2bf23dfa336add_your_people_rejoice.pdf",
+    "temas": [
+      "Apostolic Honor"
+    ],
+    "es_privado": false,
+    "midi_archivo": "el-pueblo-feliz-1779949452985.midi",
+    "vinculo_idioma": "add2c20d-883f-40c3-87b8-1f1ef1874a50",
+    "coro_id": "local"
+  }
+]

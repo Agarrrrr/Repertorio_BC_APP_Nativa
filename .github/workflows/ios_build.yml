@@ -41,6 +41,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Analyze Flutter sources
+        run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
