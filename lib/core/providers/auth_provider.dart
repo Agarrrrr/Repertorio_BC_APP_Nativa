@@ -105,7 +105,10 @@ Future<bool> registrarFcmToken(String userId, {String? token}) async {
   if (resolvedToken == null || resolvedToken.isEmpty) {
     // Un token puede tardar en estar disponible o fallar por falta de red.
     // Nunca se deben borrar suscripciones validas por un fallo temporal.
-    debugPrint('[FCM] Token aun no disponible; se reintentara mas adelante.');
+    debugPrint(
+      '[FCM] Token aun no disponible; se reintentara mas adelante. '
+      '${PushService.lastTokenError ?? ''}',
+    );
     return false;
   }
 

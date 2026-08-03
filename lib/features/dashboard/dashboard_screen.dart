@@ -26,6 +26,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   bool _syncingPush = false;
+  bool _pushRetryScheduled = false;
 
   @override
   void dispose() {
@@ -50,7 +51,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     try {
       final enabled = await PushService.requestPermission();
       if (enabled) {
-        await registrarFcmTokenUsuarioActual();
+        final registered = await registrarFcmTokenUsuarioActual();
+        if (!registered) _schedulePushRegistrationRetry();
         return;
       }
       if (!mounted || !showWarning) return;
@@ -65,10 +67,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     }
   }
 
+  void _schedulePushRegistrationRetry() {
+    if (_pushRetryScheduled) return;
+    _pushRetryScheduled = true;
+    Future<void>(() async {
+      for (final delay in const [
+        Duration(seconds: 5),
+        Duration(seconds: 15),
+        Duration(seconds: 45),
+      ]) {
+        await Future<void>.delayed(delay);
+        if (!mounted) return;
+        if (await registrarFcmTokenUsuarioActual()) return;
+      }
+      _pushRetryScheduled = false;
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ActivityService.register();
+      ref.invalidate(cantosBaseProvider);
       _syncPushRegistration(showWarning: false);
     }
   }

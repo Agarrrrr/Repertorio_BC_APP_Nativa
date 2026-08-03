@@ -22,9 +22,11 @@ class PushService {
   static String? lastNotifiedCantoId;
   static bool _firebaseReady = false;
   static String? _unavailableReason;
+  static String? _lastTokenError;
 
   static bool get isAvailable => _firebaseReady;
   static String? get unavailableReason => _unavailableReason;
+  static String? get lastTokenError => _lastTokenError;
 
   static Future<void> init() async {
     // 1. Inicializar Firebase (requiere GoogleService-Info.plist en iOS y google-services.json en Android)
@@ -158,7 +160,10 @@ class PushService {
   }
 
   static Future<String?> getToken() async {
-    if (!_firebaseReady) return null;
+    if (!_firebaseReady) {
+      _lastTokenError = 'Firebase no se pudo inicializar.';
+      return null;
+    }
     try {
       if (Platform.isIOS) {
         // En iOS, se requiere asegurar que APNs Token esté recibido antes de pedir el FCM Token.
@@ -172,10 +177,21 @@ class PushService {
           }
         }
         debugPrint('[PushService] APNs Token disponible: ${apnsToken != null}');
+        if (apnsToken == null) {
+          _lastTokenError =
+              'iOS aún no entregó el token APNs; se reintentará automáticamente.';
+          return null;
+        }
       }
       final token = await _firebaseMessaging.getToken();
+      if (token == null || token.isEmpty) {
+        _lastTokenError = 'Firebase no entregó un token FCM todavía.';
+        return null;
+      }
+      _lastTokenError = null;
       return token;
     } catch (e) {
+      _lastTokenError = 'No se pudo obtener el token FCM: $e';
       debugPrint('[PushService] Error obteniendo FCM token: $e');
       return null;
     }
