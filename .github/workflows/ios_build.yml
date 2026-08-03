@@ -153,14 +153,13 @@ jobs:
               --build-number="$BUILD_NUMBER"
 
           if [ -n "$APP_STORE_CONNECT_API_KEY" ] && [ -n "$APP_STORE_CONNECT_KEY_ID" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
-            echo "Creating a distribution-signed Xcode archive..."
+            echo "Creating an automatically signed Xcode archive..."
             run_with_diagnostics "Xcode archive failed" \
               xcodebuild -workspace ios/Runner.xcworkspace \
                        -scheme Runner \
                        -sdk iphoneos \
                        -configuration Release \
                        -archivePath $RUNNER_TEMP/Runner.xcarchive \
-                       CODE_SIGN_IDENTITY="Apple Distribution" \
                        DEVELOPMENT_TEAM=3R4W228G24 \
                        -allowProvisioningUpdates \
                        -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
