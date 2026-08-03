@@ -50,7 +50,18 @@ jobs:
       - name: Install CocoaPods dependencies
         run: |
           cd ios
-          pod install
+          # GitHub puede responder 503 temporalmente cuando CocoaPods clona
+          # dependencias de Firebase. Reintentar evita fallar toda la build.
+          for attempt in 1 2 3 4; do
+            if pod install --repo-update; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::CocoaPods no pudo instalar dependencias tras 4 intentos."
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
 
       - name: Import Signing Certificate (if secrets present)
         env:
