@@ -129,7 +129,10 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     }
   }
 
-  Future<void> exportPdf(String nombreCanto) async {
+  Future<void> exportPdf(
+    String nombreCanto, {
+    Rect? sharePositionOrigin,
+  }) async {
     if (state.localPath != null || state.memoryBytes != null) {
       // Crear una copia temporal con el nombre correcto para que al compartir aparezca con ese nombre
       final originalFile =
@@ -145,10 +148,17 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         }
 
         final file = XFile(tempFile.path, mimeType: 'application/pdf');
-        await Share.shareXFiles([file], text: 'Partitura: $nombreCanto');
+        await Share.shareXFiles(
+          [file],
+          text: 'Partitura: $nombreCanto',
+          sharePositionOrigin: sharePositionOrigin,
+        );
       } catch (e) {
         debugPrint('[PdfEngine] Error al exportar/compartir PDF: $e');
+        rethrow;
       }
+    } else {
+      throw StateError('La partitura todavía no está lista para compartirse.');
     }
   }
 

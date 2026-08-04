@@ -316,12 +316,30 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     if (choice == 'pdf') {
       await Future.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
-      await ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre);
+      try {
+        await ref.read(pdfEngineProvider.notifier).exportPdf(
+              canto.nombre,
+              sharePositionOrigin: _sharePositionOrigin(),
+            );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo compartir el PDF: $error')),
+        );
+      }
     } else if (choice == 'midi') {
       await Future.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
       await _mostrarExportacionMidi(canto);
     }
+  }
+
+  Rect _sharePositionOrigin() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    }
+    return const Rect.fromLTWH(0, 0, 1, 1);
   }
 
   Future<void> _exportarUnMp3(

@@ -27,6 +27,9 @@ class MidiExportVoice {
 class MidiExportService {
   MidiExportService._();
 
+  static const MethodChannel _iosRenderer =
+      MethodChannel('repertorio_bc/midi_export');
+
   static Future<List<MidiExportVoice>> voices(Canto canto) async {
     final midi = await _sourceMidi(canto);
     final song = NativeMidiParser.parse(await midi.readAsBytes());
@@ -84,12 +87,21 @@ class MidiExportService {
     var stage = 'preparando el render';
     try {
       if (await wavFile.exists()) await wavFile.delete();
-      debugPrint('[MidiExport] Renderizando $baseName con FluidSynth');
-      await Isolate.run(() => _FluidSynthRenderer.render(
-            midiPath: renderMidi.path,
-            soundfontPath: soundfont.path,
-            outputPath: wavFile.path,
-          ));
+      if (Platform.isIOS) {
+        debugPrint('[MidiExport] Renderizando $baseName con AVAudioEngine');
+        await _iosRenderer.invokeMethod<void>('renderMidiToWav', {
+          'midiPath': renderMidi.path,
+          'soundfontPath': soundfont.path,
+          'outputPath': wavFile.path,
+        });
+      } else {
+        debugPrint('[MidiExport] Renderizando $baseName con FluidSynth');
+        await Isolate.run(() => _FluidSynthRenderer.render(
+              midiPath: renderMidi.path,
+              soundfontPath: soundfont.path,
+              outputPath: wavFile.path,
+            ));
+      }
       stage = 'codificando el MP3';
       debugPrint('[MidiExport] Codificando $baseName con LAME');
       await _encodeWavToMp3(wavFile, mp3File);
