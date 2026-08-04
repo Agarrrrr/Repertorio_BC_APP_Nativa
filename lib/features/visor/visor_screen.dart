@@ -1143,8 +1143,12 @@ class _MidiPanelState extends State<_MidiPanel> {
       isScrollControlled: true,
       builder: (modalContext) {
         final theme = Theme.of(modalContext);
-        final midiState = widget.midiState;
-        return SafeArea(
+        final localVolumes = <int, double>{
+          for (final voz in widget.midiState.voces)
+            voz.trackIndex: voz.volumen.clamp(0.0, 1.0),
+        };
+        return StatefulBuilder(
+          builder: (context, setModalState) => SafeArea(
           child: Container(
             margin: const EdgeInsets.all(12),
             constraints: BoxConstraints(
@@ -1190,7 +1194,11 @@ class _MidiPanelState extends State<_MidiPanel> {
                       TextButton.icon(
                         onPressed: () {
                           widget.onVocesReset();
-                          setState(() {});
+                          setModalState(() {
+                            for (final voz in widget.midiState.voces) {
+                              localVolumes[voz.trackIndex] = 1.0;
+                            }
+                          });
                         },
                         icon: Icon(
                           Icons.rotate_left_rounded,
@@ -1212,7 +1220,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                 Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
                 // ── Lista de Voces Deslizable ─────────────────────────────────
                 Expanded(
-                  child: midiState.voces.isEmpty
+                  child: widget.midiState.voces.isEmpty
                       ? Center(
                           child: Text(
                             'Sin voces disponibles para este canto',
@@ -1227,12 +1235,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                             horizontal: 16,
                             vertical: 12,
                           ),
-                          itemCount: midiState.voces.length,
+                          itemCount: widget.midiState.voces.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 10),
                           itemBuilder: (context, index) {
-                            final voz = midiState.voces[index];
-                            final volPct = (voz.volumen * 100).round();
+                            final voz = widget.midiState.voces[index];
+                            final volume = localVolumes[voz.trackIndex] ??
+                                voz.volumen.clamp(0.0, 1.0);
+                            final volPct = (volume * 100).round();
                             return Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -1251,13 +1261,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                                 children: [
                                   IconButton(
                                     icon: Icon(
-                                      voz.activa && voz.volumen > 0
-                                          ? (voz.volumen > 0.5
+                                      voz.activa && volume > 0
+                                          ? (volume > 0.5
                                               ? Icons.volume_up_rounded
                                               : Icons.volume_down_rounded)
                                           : Icons.volume_off_rounded,
                                       size: 20,
-                                      color: voz.activa && voz.volumen > 0
+                                      color: voz.activa && volume > 0
                                           ? widget.accentColor
                                           : Colors.grey,
                                     ),
@@ -1290,7 +1300,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
                                                   color: voz.activa &&
-                                                          voz.volumen > 0
+                                                          volume > 0
                                                       ? theme.colorScheme
                                                           .onSurface
                                                       : Colors.grey,
@@ -1303,7 +1313,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w700,
                                                 color: voz.activa &&
-                                                        voz.volumen > 0
+                                                        volume > 0
                                                     ? widget.accentColor
                                                     : Colors.grey,
                                               ),
@@ -1328,8 +1338,11 @@ class _MidiPanelState extends State<_MidiPanel> {
                                             ),
                                           ),
                                           child: Slider(
-                                            value: voz.volumen.clamp(0.0, 1.0),
+                                            value: volume,
                                             onChanged: (val) {
+                                              setModalState(() {
+                                                localVolumes[voz.trackIndex] = val;
+                                              });
                                               widget.onVozVolumeChange(
                                                 voz.trackIndex,
                                                 val,
@@ -1348,6 +1361,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                 ),
               ],
             ),
+          ),
           ),
         );
       },
@@ -1537,11 +1551,15 @@ class _MidiPanelState extends State<_MidiPanel> {
             const SizedBox(height: 10),
 
             // ── Controles principales ──────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            SizedBox(
+              height: 56,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
                 // Metrónomo toggle
-                _GoldIconBtn(
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _GoldIconBtn(
                   isActive: widget.midiState.metronomoActivo,
                   activeColor: widget.accentColor,
                   onTap: loading ? null : widget.onMetronomo,
@@ -1567,10 +1585,12 @@ class _MidiPanelState extends State<_MidiPanel> {
                       );
                     },
                   ),
+                  ),
                 ),
-                const SizedBox(width: 8),
                 // Play / Pause
-                GestureDetector(
+                Align(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
                   onTap: loading ? null : widget.onPlay,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -1602,9 +1622,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                             size: 28,
                           ),
                   ),
+                  ),
                 ),
-                const SizedBox(width: 8),
                 // Stop
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 _GoldIconBtn(
                   icon: Icons.stop_rounded,
                   isActive: false,
@@ -1623,7 +1648,11 @@ class _MidiPanelState extends State<_MidiPanel> {
                   tooltip: 'Mezclador de voces',
                   size: 22,
                 ),
+                    ],
+                  ),
+                ),
               ],
+            ),
             ),
 
             // Sección Expandible de Ajustes

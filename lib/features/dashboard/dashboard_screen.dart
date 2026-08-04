@@ -84,6 +84,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     });
   }
 
+  void _showSyncFailures(SyncState sync) {
+    final catalog = ref.read(cantosOfflineStateProvider).value ?? const [];
+    final byId = {for (final canto in catalog) canto.id: canto};
+    final failed = sync.failedCantoIds.map((id) {
+      final canto = byId[id];
+      final parts = <String>[];
+      if (sync.failedPdfCantoIds.contains(id)) parts.add('PDF');
+      if (sync.failedMidiCantoIds.contains(id)) parts.add('MIDI');
+      return '${canto?.nombre ?? id} (${parts.join(' + ')})';
+    }).toList();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Archivos que requieren atención'),
+        content: failed.isEmpty
+            ? const Text('No se pudo encontrar el detalle del catálogo.')
+            : SizedBox(
+                width: double.maxFinite,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: failed.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, index) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.cloud_off_rounded,
+                        color: Colors.red),
+                    title: Text(failed[index]),
+                  ),
+                ),
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -109,6 +149,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       if (justFinished && next.failedFiles > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            action: SnackBarAction(
+              label: 'VER',
+              textColor: Colors.white,
+              onPressed: () => _showSyncFailures(next),
+            ),
             backgroundColor: Colors.red.shade800,
             content: Text(
               '${next.failedFiles} cantos requieren atención. '
@@ -228,7 +273,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 );
                 if (!isSyncing) return const SizedBox.shrink();
                 return LinearProgressIndicator(
-                  value: progress > 0 ? progress : null,
+                  value: progress.clamp(0.0, 1.0),
                   minHeight: 2.5,
                   backgroundColor: Colors.transparent,
                   valueColor: AlwaysStoppedAnimation<Color>(

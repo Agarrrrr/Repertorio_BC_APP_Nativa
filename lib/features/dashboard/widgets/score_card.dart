@@ -34,7 +34,7 @@ class ScoreCard extends ConsumerWidget {
     );
     final hasAudio = hasDeclaredMidi && !missingMidi;
 
-    final cardBg = missingPdf
+    final cardBg = (missingPdf || missingMidi)
         ? (isDark ? const Color(0xFF35191B) : const Color(0xFFFFEBEE))
         : Theme.of(context).colorScheme.surface;
 
@@ -68,7 +68,7 @@ class ScoreCard extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 child: Ink(
                   decoration: BoxDecoration(
-                    color: missingPdf
+                    color: (missingPdf || missingMidi)
                         ? Colors.red
                         : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(17),
@@ -103,7 +103,7 @@ class ScoreCard extends ConsumerWidget {
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
-                                      color: missingPdf
+                                      color: (missingPdf || missingMidi)
                                           ? (isDark
                                               ? Colors.red.shade200
                                               : Colors.red.shade900)
@@ -115,7 +115,7 @@ class ScoreCard extends ConsumerWidget {
                                   const SizedBox(height: 3),
                                   Row(
                                     children: [
-                                      if (missingPdf) ...[
+                                      if (missingPdf || missingMidi) ...[
                                         const Icon(
                                           Icons.error_outline_rounded,
                                           size: 13,
