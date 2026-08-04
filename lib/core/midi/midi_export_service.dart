@@ -43,9 +43,9 @@ class MidiExportService {
     int? trackIndex,
     String? voiceName,
   }) async {
-    if (!Platform.isAndroid) {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       throw UnsupportedError(
-        'La exportaciﾃｳn MP3 local estﾃ｡ disponible actualmente en Android.',
+        'La exportación MP3 local está disponible en Android e iOS.',
       );
     }
 
@@ -402,7 +402,9 @@ class _FluidSynthRenderer {
     required String soundfontPath,
     required String outputPath,
   }) {
-    final lib = DynamicLibrary.open('libfluidsynth.so');
+    final lib = Platform.isIOS
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open('libfluidsynth.so');
     final newSettings =
         lib.lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>(
             'new_fluid_settings');

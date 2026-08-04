@@ -251,34 +251,36 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     );
     if (selection == null || !mounted) return;
 
-    final destination = await showModalBottomSheet<_MidiExportDestination>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.save_alt_rounded),
-              title: const Text('Guardar en el dispositivo'),
-              subtitle: const Text('Elegir nombre y ubicación'),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                _MidiExportDestination.save,
+    final destination = Platform.isIOS
+        ? _MidiExportDestination.share
+        : await showModalBottomSheet<_MidiExportDestination>(
+            context: context,
+            builder: (sheetContext) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.save_alt_rounded),
+                    title: const Text('Guardar en el dispositivo'),
+                    subtitle: const Text('Elegir nombre y ubicación'),
+                    onTap: () => Navigator.pop(
+                      sheetContext,
+                      _MidiExportDestination.save,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.ios_share_rounded),
+                    title: const Text('Compartir'),
+                    subtitle: const Text('Enviar mediante otra aplicación'),
+                    onTap: () => Navigator.pop(
+                      sheetContext,
+                      _MidiExportDestination.share,
+                    ),
+                  ),
+                ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.ios_share_rounded),
-              title: const Text('Compartir'),
-              subtitle: const Text('Enviar mediante otra aplicación'),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                _MidiExportDestination.share,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+          );
     if (destination == null || !mounted) return;
 
     if (selection.kind == _MidiExportKind.allVoices) {
@@ -312,8 +314,12 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     );
     if (!mounted) return;
     if (choice == 'pdf') {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
       await ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre);
     } else if (choice == 'midi') {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
       await _mostrarExportacionMidi(canto);
     }
   }
@@ -371,6 +377,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           );
         }
       } else {
+        await Future.delayed(const Duration(milliseconds: 250));
         await Share.shareXFiles(
           [XFile(mp3.path, mimeType: 'audio/mpeg')],
           text: voice == null
@@ -467,6 +474,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           );
         }
       } else {
+        await Future.delayed(const Duration(milliseconds: 250));
         await Share.shareXFiles(
           [
             for (final file in files) XFile(file.path, mimeType: 'audio/mpeg'),
@@ -690,14 +698,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (_hasMidi)
-                              _TopBarBtn(
-                                icon: Icons.piano_rounded,
-                                isActive: _showMidi,
-                                activeColor: accentColor,
-                                onTap: _toggleMidi,
-                                tooltip: 'Reproductor MIDI',
-                              ),
                             if (isDirector && perfil.coroId.isNotEmpty)
                               _TopBarBtn(
                                 icon: Icons.cell_tower_rounded,
@@ -705,6 +705,14 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 onTap: () =>
                                     _enviarSenalVivo(canto, perfil.coroId),
                                 tooltip: 'Transmitir en VIVO al coro',
+                              ),
+                            if (_hasMidi)
+                              _TopBarBtn(
+                                icon: Icons.piano_rounded,
+                                isActive: _showMidi,
+                                activeColor: accentColor,
+                                onTap: _toggleMidi,
+                                tooltip: 'Reproductor MIDI',
                               ),
                             _TopBarBtn(
                               icon: Icons.share_rounded,

@@ -144,15 +144,10 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
           await tempFile.writeAsBytes(state.memoryBytes!, flush: true);
         }
 
-        final file = XFile(tempFile.path);
-        // ignore: deprecated_member_use
+        final file = XFile(tempFile.path, mimeType: 'application/pdf');
         await Share.shareXFiles([file], text: 'Partitura: $nombreCanto');
-      } finally {
-        try {
-          if (await tempFile.exists()) await tempFile.delete();
-        } on FileSystemException {
-          // El sistema también limpia su carpeta temporal.
-        }
+      } catch (e) {
+        debugPrint('[PdfEngine] Error al exportar/compartir PDF: $e');
       }
     }
   }
