@@ -288,6 +288,36 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     }
   }
 
+  Future<void> _mostrarCompartir(Canto canto) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded),
+              title: const Text('Compartir PDF'),
+              onTap: () => Navigator.pop(sheetContext, 'pdf'),
+            ),
+            if (_hasMidi)
+              ListTile(
+                leading: const Icon(Icons.audio_file_rounded),
+                title: const Text('Compartir audio MIDI'),
+                onTap: () => Navigator.pop(sheetContext, 'midi'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'pdf') {
+      await ref.read(pdfEngineProvider.notifier).exportPdf(canto.nombre);
+    } else if (choice == 'midi') {
+      await _mostrarExportacionMidi(canto);
+    }
+  }
+
   Future<void> _exportarUnMp3(
     Canto canto,
     MidiExportVoice? voice,
@@ -666,13 +696,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 onTap: _toggleMidi,
                                 tooltip: 'Reproductor MIDI',
                               ),
-                            if (_hasMidi && Platform.isAndroid)
-                              _TopBarBtn(
-                                icon: Icons.audio_file_rounded,
-                                isActive: false,
-                                onTap: () => _mostrarExportacionMidi(canto),
-                                tooltip: 'Exportar MIDI a MP3',
-                              ),
                             if (isDirector && perfil.coroId.isNotEmpty)
                               _TopBarBtn(
                                 icon: Icons.cell_tower_rounded,
@@ -681,15 +704,12 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     _enviarSenalVivo(canto, perfil.coroId),
                                 tooltip: 'Transmitir en VIVO al coro',
                               ),
-                            if (!Platform.isIOS)
-                              _TopBarBtn(
-                                icon: Icons.ios_share_rounded,
-                                isActive: false,
-                                onTap: () => ref
-                                    .read(pdfEngineProvider.notifier)
-                                    .exportPdf(canto.nombre),
-                                tooltip: 'Exportar PDF',
-                              ),
+                            _TopBarBtn(
+                              icon: Icons.share_rounded,
+                              isActive: false,
+                              onTap: () => _mostrarCompartir(canto),
+                              tooltip: 'Compartir',
+                            ),
                             _TopBarBtn(
                               icon: _showTools
                                   ? Icons.edit_off_rounded

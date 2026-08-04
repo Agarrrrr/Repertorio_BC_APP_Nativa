@@ -420,7 +420,8 @@ class MidiEngine {
 
     final channel = _trackChannels[trackIndex];
     if (channel != null && _sfId != null && _midiPro.isInitialized) {
-      final ccValue = (clamped * 127).round().clamp(0, 127);
+      final effectiveGain = clamped * clamped;
+      final ccValue = (effectiveGain * 127).round().clamp(0, 127);
       unawaited(_midiPro.controlChange(
         sfId: _sfId!,
         channel: channel,

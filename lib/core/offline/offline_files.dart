@@ -38,18 +38,46 @@ class OfflineFiles {
   static String resolvePdfUrl(Canto canto) {
     if (canto.archivo.startsWith('http')) return canto.archivo;
     if (_isUnifiedObjectKey(canto.archivo)) {
-      return '${SupabaseService.storageUrl}/v1/files/${canto.id}/pdf';
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf';
     }
-    return '${SupabaseService.storageUrl}/partituras/${canto.archivo}';
+    return '${SupabaseService.storageUrl}/partituras/${Uri.encodeComponent(canto.archivo)}';
   }
 
   static String resolveMidiUrl(Canto canto) {
     final midi = canto.midiArchivo!;
     if (midi.startsWith('http')) return midi;
     if (_isUnifiedObjectKey(midi)) {
-      return '${SupabaseService.storageUrl}/v1/files/${canto.id}/midi';
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi';
     }
-    return '${SupabaseService.storageUrl}/midi_files/$midi';
+    return '${SupabaseService.storageUrl}/midi_files/${Uri.encodeComponent(midi)}';
+  }
+
+  static List<String> _pdfUrls(Canto canto) {
+    final primary = resolvePdfUrl(canto);
+    if (canto.archivo.startsWith('http') ||
+        _isUnifiedObjectKey(canto.archivo)) {
+      return [primary];
+    }
+    return [primary, '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf'];
+  }
+
+  static List<String> _midiUrls(Canto canto) {
+    final primary = resolveMidiUrl(canto);
+    final midi = canto.midiArchivo!;
+    if (midi.startsWith('http') || _isUnifiedObjectKey(midi)) {
+      return [primary];
+    }
+    return [primary, '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi'];
+  }
+
+  static String _assetOwnerId(Canto canto, String objectKey) {
+    // Una importación local puede conservar un asset global. En ese caso el
+    // Worker debe resolverlo con el ID global; los assets local/* usan el ID
+    // de la fila local y por tanto permanecen independientes al editarse.
+    if (objectKey.startsWith('global/') && canto.derivadoDe?.isNotEmpty == true) {
+      return canto.derivadoDe!;
+    }
+    return canto.id;
   }
 
   static bool _isUnifiedObjectKey(String value) =>
@@ -116,7 +144,7 @@ class OfflineFiles {
       return OfflinePdfAsset.file(file);
     }
 
-    final encrypted = await _downloadBytes(resolvePdfUrl(canto));
+    final encrypted = await _downloadBytesFromCandidates(_pdfUrls(canto));
     final clearBytes = await _decryptResilient(encrypted);
     if (!FileCrypto.isPdf(clearBytes)) {
       throw const FormatException('El archivo descifrado no es un PDF válido');
@@ -157,7 +185,7 @@ class OfflineFiles {
       return file;
     }
 
-    await _download(resolveMidiUrl(canto), file, FileCrypto.isMidi);
+    await _downloadFromCandidates(_midiUrls(canto), file, FileCrypto.isMidi);
     await _saveVersionBestEffort(metadataKey, canto.version);
     return file;
   }
@@ -261,6 +289,39 @@ class OfflineFiles {
       }
     }
     throw lastError ?? StateError('No se pudo descargar el archivo');
+  }
+
+  static Future<Uint8List> _downloadBytesFromCandidates(
+    List<String> urls,
+  ) async {
+    Object? lastError;
+    for (final url in urls) {
+      try {
+        return await _downloadBytes(url);
+      } on DioException catch (error) {
+        lastError = error;
+        if (error.response?.statusCode != 404) rethrow;
+      }
+    }
+    throw lastError ?? StateError('No se encontró el archivo.');
+  }
+
+  static Future<void> _downloadFromCandidates(
+    List<String> urls,
+    File target,
+    bool Function(List<int>) validator,
+  ) async {
+    Object? lastError;
+    for (final url in urls) {
+      try {
+        await _download(url, target, validator);
+        return;
+      } on DioException catch (error) {
+        lastError = error;
+        if (error.response?.statusCode != 404) rethrow;
+      }
+    }
+    throw lastError ?? StateError('No se encontró el archivo.');
   }
 
   static bool isStorageError(Object error) {
