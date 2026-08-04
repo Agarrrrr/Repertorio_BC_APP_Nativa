@@ -28,6 +28,10 @@ class ScoreCard extends ConsumerWidget {
       syncManagerProvider
           .select((s) => s.failedMidiCantoIds.contains(canto.id)),
     );
+    final isReadyPdf = ref.watch(
+      syncManagerProvider
+          .select((s) => s.readyPdfCantoIds.contains(canto.id)),
+    );
     final hasAudio = hasDeclaredMidi && !missingMidi;
 
     final cardBg = missingPdf
@@ -126,6 +130,15 @@ class ScoreCard extends ConsumerWidget {
                                             color: Colors.red,
                                           ),
                                         ),
+                                      ] else if (isReadyPdf) ...[
+                                        Icon(
+                                          Icons.offline_pin_rounded,
+                                          size: 13,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        ),
+                                        const SizedBox(width: 4),
                                       ],
                                       if (hasAudio) ...[
                                         Icon(Icons.piano_rounded,

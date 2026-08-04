@@ -103,8 +103,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     // Inicializar el RealtimeManager para que escuche cambios en BD
     ref.watch(realtimeManagerProvider);
-    // Predescarga únicamente el repertorio autorizado de la sede y Estatal.
-    ref.watch(syncManagerProvider);
+    // Escuchar el estado de sincronización para notificaciones sin forzar re-renders completos de la pantalla.
     ref.listen(syncManagerProvider, (previous, next) {
       final justFinished = previous?.isSyncing == true && !next.isSyncing;
       if (justFinished && next.failedFiles > 0) {
@@ -216,6 +215,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ],
               ),
+            ),
+
+            // Barra de progreso de descargas offline
+            Consumer(
+              builder: (context, ref, child) {
+                final isSyncing = ref.watch(
+                  syncManagerProvider.select((s) => s.isSyncing),
+                );
+                final progress = ref.watch(
+                  syncManagerProvider.select((s) => s.progress),
+                );
+                if (!isSyncing) return const SizedBox.shrink();
+                return LinearProgressIndicator(
+                  value: progress > 0 ? progress : null,
+                  minHeight: 2.5,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                );
+              },
             ),
 
             // Lista Vertical de Cantos

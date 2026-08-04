@@ -20,7 +20,20 @@ class OfflineFiles {
 
   static final Dio _dio = Dio()
     ..options.connectTimeout = const Duration(seconds: 20)
-    ..options.receiveTimeout = const Duration(minutes: 2);
+    ..options.receiveTimeout = const Duration(minutes: 2)
+    ..interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final host = options.uri.host.toLowerCase();
+          if (host.contains('r2.cloudflarestorage.com') ||
+              host.contains('amazonaws.com') ||
+              host.contains('backblazeb2.com')) {
+            options.headers.remove('Authorization');
+          }
+          return handler.next(options);
+        },
+      ),
+    );
 
   static String resolvePdfUrl(Canto canto) {
     if (canto.archivo.startsWith('http')) return canto.archivo;
@@ -104,7 +117,7 @@ class OfflineFiles {
     }
 
     final encrypted = await _downloadBytes(resolvePdfUrl(canto));
-    final clearBytes = await compute(FileCrypto.decryptIfNeeded, encrypted);
+    final clearBytes = await _decryptResilient(encrypted);
     if (!FileCrypto.isPdf(clearBytes)) {
       throw const FormatException('El archivo descifrado no es un PDF válido');
     }
@@ -149,6 +162,20 @@ class OfflineFiles {
     return file;
   }
 
+  static Future<Uint8List> _decryptResilient(Uint8List encrypted) async {
+    if (encrypted.length < 2 * 1024 * 1024) {
+      return FileCrypto.decryptIfNeeded(encrypted);
+    }
+    try {
+      return await compute(FileCrypto.decryptIfNeeded, encrypted);
+    } catch (error) {
+      debugPrint(
+        '[OfflineFiles] compute() falló ($error); usando descifrado síncrono.',
+      );
+      return FileCrypto.decryptIfNeeded(encrypted);
+    }
+  }
+
   static Future<void> _download(
     String url,
     File target,
@@ -175,11 +202,6 @@ class OfflineFiles {
         } on DioException catch (error) {
           lastError = error;
           final status = error.response?.statusCode;
-          if ((status == 401 || status == 403) && attempt == 1) {
-            try {
-              await SupabaseService.client.auth.refreshSession();
-            } catch (_) {}
-          }
           final retryable = status == null ||
               status == 401 ||
               status == 403 ||
@@ -228,11 +250,6 @@ class OfflineFiles {
       } on DioException catch (error) {
         lastError = error;
         final status = error.response?.statusCode;
-        if ((status == 401 || status == 403) && attempt == 1) {
-          try {
-            await SupabaseService.client.auth.refreshSession();
-          } catch (_) {}
-        }
         final retryable = status == null ||
             status == 401 ||
             status == 403 ||
@@ -426,7 +443,7 @@ class OfflineFiles {
     File target,
     bool Function(List<int>) validator,
   ) async {
-    final clearBytes = await compute(FileCrypto.decryptIfNeeded, source);
+    final clearBytes = await _decryptResilient(source);
     if (!validator(clearBytes)) {
       throw const FormatException('El archivo descifrado no es válido');
     }
@@ -444,14 +461,31 @@ class OfflineFiles {
     await clearTmp.writeAsBytes(clearBytes, flush: true);
     if (await backup.exists()) await backup.delete();
     final hadPrevious = await target.exists();
-    if (hadPrevious) await target.rename(backup.path);
+    if (hadPrevious) {
+      try {
+        await target.rename(backup.path);
+      } catch (_) {}
+    }
     try {
       await clearTmp.rename(target.path);
       if (await backup.exists()) await backup.delete();
-    } catch (_) {
-      if (await target.exists()) await target.delete();
-      if (await backup.exists()) await backup.rename(target.path);
-      rethrow;
+    } catch (error) {
+      debugPrint(
+        '[OfflineFiles] rename() falló ($error); aplicando escritura directa en ${target.path}',
+      );
+      try {
+        await target.writeAsBytes(clearBytes, flush: true);
+        if (await clearTmp.exists()) await clearTmp.delete();
+        if (await backup.exists()) await backup.delete();
+      } catch (writeError) {
+        if (await target.exists()) await target.delete();
+        if (await backup.exists()) {
+          try {
+            await backup.rename(target.path);
+          } catch (_) {}
+        }
+        rethrow;
+      }
     }
   }
 }

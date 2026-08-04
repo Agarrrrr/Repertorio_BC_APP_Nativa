@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
 import 'package:repertorio_bc/core/offline/sync_manager.dart';
+import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:share_plus/share_plus.dart';
@@ -91,6 +92,21 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
             state.localPath != null ||
             state.memoryBytes != null)) {
       return;
+    }
+
+    final perfil = ref.read(perfilProvider).value;
+    if (perfil != null && canto.corosVinculados.isNotEmpty) {
+      final hasAccess = canto.corosVinculados.contains(perfil.coroId) ||
+          canto.corosVinculados.contains('estatal');
+      if (!hasAccess) {
+        state = PdfEngineState(
+          cantoId: canto.id,
+          isLoading: false,
+          error:
+              'No tienes acceso a esta partitura o tu membresía ha sido modificada.',
+        );
+        return;
+      }
     }
 
     try {

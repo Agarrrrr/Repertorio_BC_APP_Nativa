@@ -80,8 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isAuthRoute ? null : '/login';
       }
 
-      // Si el usuario existe pero no tiene perfil (y no está cargando), debe completar registro Google
-      if (!perfilState.isLoading && perfil == null) {
+      // Si el usuario existe pero no tiene perfil (y no está cargando ni falló por red), debe completar registro Google
+      if (!perfilState.isLoading && !perfilState.hasError && perfil == null) {
         return state.matchedLocation == '/complete-google'
             ? null
             : '/complete-google';

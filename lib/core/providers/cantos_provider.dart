@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:repertorio_bc/models/canto.dart';
+import 'package:repertorio_bc/models/perfil.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
 import 'package:repertorio_bc/core/storage/app_cache.dart';
@@ -88,21 +89,43 @@ Future<List<dynamic>> _fetchCompatibleCatalog(String sedeId) async {
   return rowsByCanto.values.toList();
 }
 
+Perfil? getCachedPerfil(String userId) {
+  final profileCacheKey = AppCache.userKey('perfil_json', userId);
+  var cachedProfile = AppCache.get<String>(profileCacheKey);
+  final legacyProfile = AppCache.get<String>('perfil_json');
+  if (cachedProfile == null && legacyProfile != null) {
+    try {
+      final legacyJson = jsonDecode(legacyProfile) as Map<String, dynamic>;
+      if (legacyJson['id']?.toString() == userId) {
+        cachedProfile = legacyProfile;
+      }
+    } catch (_) {}
+  }
+  if (cachedProfile != null) {
+    try {
+      return Perfil.fromJson(jsonDecode(cachedProfile));
+    } catch (_) {}
+  }
+  return null;
+}
+
 // Provider base que descarga el catalogo de cantos desde Supabase
 class CantosNotifier extends AsyncNotifier<List<Canto>> {
   @override
   Future<List<Canto>> build() async {
     final perfil = ref.watch(perfilProvider).value;
     final userId = SupabaseService.client.auth.currentUser?.id ?? 'sin_usuario';
+    final cachedPerfil = getCachedPerfil(userId);
+    final coroId = perfil?.coroId ?? cachedPerfil?.coroId ?? 'sin_sede';
     final cacheKey = AppCache.userKey(
       'cantos_json',
       userId,
-      scope: perfil?.coroId ?? 'sin_sede',
+      scope: coroId,
     );
 
     // 1. Carga inmediata desde caché (Offline-First)
     var cachedData = AppCache.get<String>(cacheKey);
-    final legacyKey = 'cantos_json_${userId}_${perfil?.coroId ?? 'sin_sede'}';
+    final legacyKey = 'cantos_json_${userId}_$coroId';
     if (cachedData == null) {
       cachedData = AppCache.get<String>(legacyKey);
       if (cachedData != null) {
@@ -396,12 +419,13 @@ final cantosFiltradosProvider = FutureProvider<List<Canto>>((ref) async {
   final categoria = ref.watch(categoryFilterProvider);
   final perfilAsync = ref.watch(perfilProvider);
 
-  if (cantosAsync.value == null || perfilAsync.isLoading) {
+  if (cantosAsync.value == null) {
     return [];
   }
 
   final cantos = cantosAsync.value!;
-  final perfil = perfilAsync.value;
+  final userId = SupabaseService.client.auth.currentUser?.id ?? 'sin_usuario';
+  final perfil = perfilAsync.value ?? getCachedPerfil(userId);
 
   final params = FilterParams(
     cantos: cantos,

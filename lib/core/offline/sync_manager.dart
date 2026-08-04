@@ -12,6 +12,7 @@ class SyncState {
   final Set<String> failedCantoIds;
   final Set<String> failedPdfCantoIds;
   final Set<String> failedMidiCantoIds;
+  final Set<String> readyPdfCantoIds;
   final bool storageUnavailable;
   final String currentItemName;
 
@@ -23,6 +24,7 @@ class SyncState {
     this.failedCantoIds = const {},
     this.failedPdfCantoIds = const {},
     this.failedMidiCantoIds = const {},
+    this.readyPdfCantoIds = const {},
     this.storageUnavailable = false,
     this.currentItemName = '',
   });
@@ -35,6 +37,7 @@ class SyncState {
     Set<String>? failedCantoIds,
     Set<String>? failedPdfCantoIds,
     Set<String>? failedMidiCantoIds,
+    Set<String>? readyPdfCantoIds,
     bool? storageUnavailable,
     String? currentItemName,
   }) {
@@ -46,6 +49,7 @@ class SyncState {
       failedCantoIds: failedCantoIds ?? this.failedCantoIds,
       failedPdfCantoIds: failedPdfCantoIds ?? this.failedPdfCantoIds,
       failedMidiCantoIds: failedMidiCantoIds ?? this.failedMidiCantoIds,
+      readyPdfCantoIds: readyPdfCantoIds ?? this.readyPdfCantoIds,
       storageUnavailable: storageUnavailable ?? this.storageUnavailable,
       currentItemName: currentItemName ?? this.currentItemName,
     );
@@ -57,6 +61,7 @@ class SyncState {
 class SyncManagerNotifier extends Notifier<SyncState> {
   bool _isSyncingInternal = false;
   List<Canto>? _pendingSyncList;
+  List<String>? _activeSyncCantoIds;
   int _generation = 0;
 
   @override
@@ -74,6 +79,15 @@ class SyncManagerNotifier extends Notifier<SyncState> {
   }
 
   void _triggerSync(List<Canto> cantos) {
+    final newIds = cantos.map((c) => c.id).toList();
+
+    // Si ya estamos sincronizando exactamente los mismos cantos, NO abortar la transferencia activa
+    if (_isSyncingInternal &&
+        _activeSyncCantoIds != null &&
+        listEquals(_activeSyncCantoIds, newIds)) {
+      return;
+    }
+
     if (_isSyncingInternal) {
       _generation++;
       _pendingSyncList = cantos;
@@ -81,12 +95,16 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     }
 
     _isSyncingInternal = true;
+    _activeSyncCantoIds = newIds;
     final generation = ++_generation;
     _runSync(cantos, generation);
   }
 
   /// Revalida el catálogo y vuelve a intentar archivos faltantes o dañados.
-  void repairNow(List<Canto> cantos) => _triggerSync(cantos);
+  void repairNow(List<Canto> cantos) {
+    _activeSyncCantoIds = null;
+    _triggerSync(cantos);
+  }
 
   Future<void> _runSync(List<Canto> cantos, int generation) async {
     try {
@@ -109,11 +127,16 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     List<Canto> cantos,
     int generation,
   ) async {
+    final readyPdfIds = <String>{};
     final checkFutures = cantos.map((canto) async {
       final items = <({Canto canto, String tipo})>[];
       if (canto.archivo.isNotEmpty) {
-        final needsPdf = !await OfflineFiles.pdfIsCurrent(canto);
-        if (needsPdf) items.add((canto: canto, tipo: 'PDF'));
+        final isCurrent = await OfflineFiles.pdfIsCurrent(canto);
+        if (!isCurrent) {
+          items.add((canto: canto, tipo: 'PDF'));
+        } else {
+          readyPdfIds.add(canto.id);
+        }
       }
 
       if (canto.midiArchivo?.isNotEmpty == true) {
@@ -132,7 +155,9 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     }
 
     if (downloadQueue.isEmpty) {
-      state = const SyncState(
+      state = SyncState(
+        isSyncing: false,
+        readyPdfCantoIds: Set.unmodifiable(readyPdfIds),
         currentItemName: 'Repertorio asignado disponible offline',
       );
       return;
@@ -141,6 +166,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
     state = SyncState(
       isSyncing: true,
       totalFiles: downloadQueue.length,
+      readyPdfCantoIds: Set.unmodifiable(readyPdfIds),
     );
 
     var processed = 0;
@@ -150,11 +176,13 @@ class SyncManagerNotifier extends Notifier<SyncState> {
 
     // Una transferencia a la vez: evita saturar dispositivos y conexiones
     // lentas, y permite que cada archivo aproveche todo el ancho de banda.
+    var lastUpdate = DateTime.now();
     for (final item in downloadQueue) {
       if (generation != _generation) return;
       try {
         if (item.tipo == 'PDF') {
           await OfflineFiles.ensurePdf(item.canto);
+          readyPdfIds.add(item.canto.id);
         } else {
           await OfflineFiles.ensureMidi(item.canto);
         }
@@ -171,6 +199,8 @@ class SyncManagerNotifier extends Notifier<SyncState> {
           // conserva disponible y se reintenta en la siguiente sincronización.
           if (!await OfflineFiles.hasUsablePdf(item.canto.id)) {
             failedPdfIds.add(item.canto.id);
+          } else {
+            readyPdfIds.add(item.canto.id);
           }
         } else {
           failedMidiIds.add(item.canto.id);
@@ -181,7 +211,14 @@ class SyncManagerNotifier extends Notifier<SyncState> {
       }
 
       processed++;
-      if (generation == _generation) {
+      final now = DateTime.now();
+      final isLast = processed == downloadQueue.length;
+      final shouldUpdate = isLast ||
+          processed % 5 == 0 ||
+          now.difference(lastUpdate).inMilliseconds >= 300;
+
+      if (generation == _generation && shouldUpdate) {
+        lastUpdate = now;
         final failedIds = <String>{...failedPdfIds, ...failedMidiIds};
         state = state.copyWith(
           downloadedFiles: processed,
@@ -189,6 +226,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
           failedCantoIds: Set.unmodifiable(failedIds),
           failedPdfCantoIds: Set.unmodifiable(failedPdfIds),
           failedMidiCantoIds: Set.unmodifiable(failedMidiIds),
+          readyPdfCantoIds: Set.unmodifiable(readyPdfIds),
           storageUnavailable: storageUnavailable,
           currentItemName: item.canto.nombre,
         );
@@ -199,6 +237,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(
       isSyncing: false,
+      readyPdfCantoIds: Set.unmodifiable(readyPdfIds),
       storageUnavailable: storageUnavailable,
       currentItemName: storageUnavailable
           ? 'Sin espacio: las partituras se abrirán en línea'
@@ -229,13 +268,16 @@ class SyncManagerNotifier extends Notifier<SyncState> {
   void _clearFailure(String cantoId, {required bool pdf}) {
     final pdfIds = {...state.failedPdfCantoIds};
     final midiIds = {...state.failedMidiCantoIds};
+    final readyPdfIds = {...state.readyPdfCantoIds};
     (pdf ? pdfIds : midiIds).remove(cantoId);
+    if (pdf) readyPdfIds.add(cantoId);
     final all = <String>{...pdfIds, ...midiIds};
     state = state.copyWith(
       failedFiles: all.length,
       failedCantoIds: Set.unmodifiable(all),
       failedPdfCantoIds: Set.unmodifiable(pdfIds),
       failedMidiCantoIds: Set.unmodifiable(midiIds),
+      readyPdfCantoIds: Set.unmodifiable(readyPdfIds),
       currentItemName: all.isEmpty
           ? 'Repertorio asignado disponible offline'
           : state.currentItemName,
@@ -244,6 +286,7 @@ class SyncManagerNotifier extends Notifier<SyncState> {
 
   void _finishSync() {
     _isSyncingInternal = false;
+    _activeSyncCantoIds = null;
     if (_pendingSyncList == null) return;
 
     final nextList = _pendingSyncList!;

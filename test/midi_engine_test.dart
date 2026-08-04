@@ -3,6 +3,8 @@ import 'package:repertorio_bc/core/midi/midi_engine.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('agrupa métricas compuestas rápidas sin alterar 3/8', () {
     final sixEight = MidiMeterPattern.from(
       numerator: 6,
@@ -97,5 +99,18 @@ void main() {
     expect(medium, lessThan(loud));
     expect(loud, lessThanOrEqualTo(104));
     expect(dense, lessThan(loud));
+  });
+
+  test('setTrackVolume y resetTrackVolumes ajustan el volumen de voces', () {
+    final voz = MidiVoz(trackIndex: 0, nombre: 'Soprano', activa: true, volumen: 1.0);
+    expect(voz.volumen, 1.0);
+
+    voz.volumen = 0.5;
+    expect(voz.volumen, 0.5);
+
+    final engine = MidiEngine();
+    expect(engine.state.voces, isEmpty);
+    engine.setTrackVolume(0, 0.5);
+    engine.resetTrackVolumes();
   });
 }
