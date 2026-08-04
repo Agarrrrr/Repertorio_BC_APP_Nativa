@@ -50,7 +50,8 @@ import FirebaseMessaging
           try Self.renderMidiToWav(
             midiPath: midiPath,
             soundfontPath: soundfontPath,
-            outputPath: outputPath
+            outputPath: outputPath,
+            expectedDurationSeconds: args["expectedDurationSeconds"] as? Double ?? 0
           )
           DispatchQueue.main.async { result(nil) }
         } catch {
@@ -72,7 +73,8 @@ import FirebaseMessaging
   private static func renderMidiToWav(
     midiPath: String,
     soundfontPath: String,
-    outputPath: String
+    outputPath: String,
+    expectedDurationSeconds: Double
   ) throws {
     let midiURL = URL(fileURLWithPath: midiPath)
     let soundfontURL = URL(fileURLWithPath: soundfontPath)
@@ -123,22 +125,30 @@ import FirebaseMessaging
       pcmFormat: engine.manualRenderingFormat,
       frameCapacity: engine.manualRenderingMaximumFrameCount
     )!
-    var tailFrames: AVAudioFrameCount = 0
-    let maximumTailFrames = AVAudioFrameCount(format.sampleRate * 2)
+    // El analizador Dart calcula la misma duración que muestra el reproductor.
+    // Renderizar exactamente esos frames evita ciclos interminables cuando
+    // AVAudioSequencer no cambia `isPlaying` en modo manual offline.
+    let totalFrames = AVAudioFrameCount(max(
+      1,
+      (max(expectedDurationSeconds, 0.05) * format.sampleRate).rounded(.up)
+    ))
+    var renderedFrames: AVAudioFrameCount = 0
     var idleRenders = 0
 
-    while sequencer.isPlaying || tailFrames < maximumTailFrames {
-      let status = try engine.renderOffline(
+    while renderedFrames < totalFrames {
+      let framesToRender = min(
         engine.manualRenderingMaximumFrameCount,
+        totalFrames - renderedFrames
+      )
+      let status = try engine.renderOffline(
+        framesToRender,
         to: buffer
       )
       switch status {
       case .success:
         idleRenders = 0
         try output.write(from: buffer)
-        if !sequencer.isPlaying {
-          tailFrames += buffer.frameLength
-        }
+        renderedFrames += buffer.frameLength
       case .insufficientDataFromInputNode:
         idleRenders += 1
         if idleRenders > 32 {

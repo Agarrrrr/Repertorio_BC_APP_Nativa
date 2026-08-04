@@ -150,7 +150,6 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         final file = XFile(tempFile.path, mimeType: 'application/pdf');
         await Share.shareXFiles(
           [file],
-          text: 'Partitura: $nombreCanto',
           sharePositionOrigin: sharePositionOrigin,
         );
       } catch (e) {

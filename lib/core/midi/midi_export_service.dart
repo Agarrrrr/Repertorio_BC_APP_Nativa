@@ -82,6 +82,8 @@ class MidiExportService {
     final exportBytes = trackIndex == null
         ? originalBytes
         : _midiWithSelectedTrack(originalBytes, trackIndex);
+    final expectedDurationSeconds =
+        NativeMidiParser.parse(exportBytes).durationSeconds;
     await renderMidi.writeAsBytes(exportBytes, flush: true);
 
     var stage = 'preparando el render';
@@ -93,6 +95,7 @@ class MidiExportService {
           'midiPath': renderMidi.path,
           'soundfontPath': soundfont.path,
           'outputPath': wavFile.path,
+          'expectedDurationSeconds': expectedDurationSeconds,
         });
       } else {
         debugPrint('[MidiExport] Renderizando $baseName con FluidSynth');

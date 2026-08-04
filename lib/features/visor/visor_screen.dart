@@ -398,9 +398,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
         await Future.delayed(const Duration(milliseconds: 250));
         await Share.shareXFiles(
           [XFile(mp3.path, mimeType: 'audio/mpeg')],
-          text: voice == null
-              ? 'Ensamble: ${canto.nombre}'
-              : '${voice.name}: ${canto.nombre}',
+          sharePositionOrigin: _sharePositionOrigin(),
         );
       }
     } catch (error) {
@@ -497,7 +495,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           [
             for (final file in files) XFile(file.path, mimeType: 'audio/mpeg'),
           ],
-          text: 'Ensamble y voces: ${canto.nombre}',
+          sharePositionOrigin: _sharePositionOrigin(),
         );
       }
     } catch (error) {
