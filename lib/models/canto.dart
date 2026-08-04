@@ -70,6 +70,39 @@ class Canto {
     this.derivadoDe,
   });
 
+  Canto copyWith({
+    String? id,
+    String? nombre,
+    String? archivo,
+    List<String>? temas,
+    String? midiArchivo,
+    bool clearMidiArchivo = false,
+    List<String>? corosVinculados,
+    List<String>? eventosVinculados,
+    String? updatedAt,
+    String? origen,
+    String? idioma,
+    int? version,
+    int? cifradoVersion,
+    String? derivadoDe,
+  }) {
+    return Canto(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      archivo: archivo ?? this.archivo,
+      temas: temas ?? this.temas,
+      midiArchivo: clearMidiArchivo ? null : (midiArchivo ?? this.midiArchivo),
+      corosVinculados: corosVinculados ?? this.corosVinculados,
+      eventosVinculados: eventosVinculados ?? this.eventosVinculados,
+      updatedAt: updatedAt ?? this.updatedAt,
+      origen: origen ?? this.origen,
+      idioma: idioma ?? this.idioma,
+      version: version ?? this.version,
+      cifradoVersion: cifradoVersion ?? this.cifradoVersion,
+      derivadoDe: derivadoDe ?? this.derivadoDe,
+    );
+  }
+
   factory Canto.fromJson(Map<String, dynamic> json) {
     // Manejar la relación cantos_coros que viene de Supabase
     List<String> coros = [];

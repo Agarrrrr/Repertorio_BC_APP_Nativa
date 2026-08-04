@@ -27,9 +27,14 @@ void main() {
     );
 
     // Asset local independizado
-    final cantoLocal = canto.copyWith(
+    final cantoLocal = Canto(
+      id: canto.id,
+      nombre: canto.nombre,
       archivo: 'local/assets/pdf/propio.enc',
       midiArchivo: 'local/assets/midi/propio.enc',
+      temas: canto.temas,
+      corosVinculados: canto.corosVinculados,
+      derivadoDe: canto.derivadoDe,
     );
     expect(
       OfflineFiles.resolvePdfUrl(cantoLocal),
