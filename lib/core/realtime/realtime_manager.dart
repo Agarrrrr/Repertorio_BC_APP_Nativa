@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repertorio_bc/core/notifications/push_service.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
@@ -105,7 +106,26 @@ class RealtimeManager {
         callback: (payload) {
           final row = payload.newRecord;
           if (row['coro_id'] == coroId || row['coro_id'] == 'estatal') {
-            debugPrint('[Realtime] Nuevo aviso: ${row['mensaje']}');
+            final mensaje = row['mensaje']?.toString() ?? '';
+            final tipo = row['tipo']?.toString() ?? '';
+            final metadata = row['metadata'] as Map<String, dynamic>?;
+            final cantoId = metadata?['canto_id']?.toString();
+
+            debugPrint('[Realtime] Nuevo aviso: $mensaje');
+            ref.invalidate(cantosBaseProvider);
+
+            if (tipo == 'NUEVO_CANTO' || mensaje.toLowerCase().contains('nuevo canto')) {
+              PushService.showNotification(
+                title: '🎵 Nuevo canto en el repertorio',
+                body: mensaje,
+                payload: cantoId != null ? 'visor_$cantoId' : null,
+              );
+            } else if (tipo == 'RECORDATORIO') {
+              PushService.showNotification(
+                title: '📢 Aviso del Gestor',
+                body: mensaje,
+              );
+            }
           }
         },
       )

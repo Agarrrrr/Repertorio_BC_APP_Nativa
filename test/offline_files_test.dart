@@ -3,6 +3,8 @@ import 'package:repertorio_bc/core/offline/offline_files.dart';
 import 'package:repertorio_bc/models/canto.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('un fork local resuelve su copia sin depender del canto global', () {
     final canto = Canto(
       id: '44444444-4444-4444-8444-444444444444',

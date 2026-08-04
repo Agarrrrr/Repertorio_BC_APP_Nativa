@@ -331,6 +331,23 @@ class GestorRepository {
       'canto_id': saved['id'],
       'canto_nombre': cleanName,
     });
+
+    if (original == null) {
+      try {
+        await client.from('avisos').insert({
+          'coro_id': sedeId,
+          'tipo': 'NUEVO_CANTO',
+          'mensaje': 'Se ha añadido el canto "$cleanName" al repertorio',
+          'metadata': {
+            'canto_id': saved['id'],
+            'subtipo': 'NUEVO_CANTO_GESTOR',
+          },
+        });
+      } catch (error) {
+        // La notificación es best-effort y no cancela la creación del canto
+      }
+    }
+
     return Canto.fromJson({
       ...saved,
       'coros_vinculados': [sedeId]
@@ -346,12 +363,25 @@ class GestorRepository {
       throw StateError(
           'Esta partitura ya está en el repertorio de la iglesia.');
     }
-    await guardarLocal(
+    final saved = await guardarLocal(
       original: source,
       sedeId: sedeId,
       nombre: source.nombre,
       temas: source.temas,
     );
+    try {
+      await client.from('avisos').insert({
+        'coro_id': sedeId,
+        'tipo': 'NUEVO_CANTO',
+        'mensaje': 'Se ha añadido el canto "${source.nombre}" al repertorio',
+        'metadata': {
+          'canto_id': saved.id,
+          'subtipo': 'NUEVO_CANTO_GESTOR',
+        },
+      });
+    } catch (error) {
+      // La notificación es best-effort
+    }
   }
 
   Future<void> quitarDeSede(Canto song, String sedeId) async {

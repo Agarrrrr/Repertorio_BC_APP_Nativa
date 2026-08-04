@@ -225,4 +225,33 @@ class PushService {
     }
     return false;
   }
+
+  static Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await _localNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'repertorio_bc_channel',
+          'Avisos y Actualizaciones',
+          channelDescription:
+              'Notificaciones sobre setlists y actualizaciones',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: payload,
+    );
+  }
 }
