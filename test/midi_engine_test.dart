@@ -2,8 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:repertorio_bc/core/midi/midi_engine.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
 
+import 'package:flutter/services.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers.global'),
+      (MethodCall methodCall) async => null,
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers'),
+      (MethodCall methodCall) async => null,
+    );
+  });
 
   test('agrupa métricas compuestas rápidas sin alterar 3/8', () {
     final sixEight = MidiMeterPattern.from(

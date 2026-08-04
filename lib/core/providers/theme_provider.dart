@@ -65,14 +65,14 @@ class AccentColorNotifier extends Notifier<Color> {
   Color build() {
     final savedVal = AppCache.get<int>(
       'accent_color',
-      defaultValue: defaultAccent.value,
+      defaultValue: defaultAccent.toARGB32(),
     )!;
     return Color(savedVal);
   }
 
   void set(Color color) {
     state = color;
-    AppCache.put('accent_color', color.value);
+    AppCache.put('accent_color', color.toARGB32());
   }
 }
 

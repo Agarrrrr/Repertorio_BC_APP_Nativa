@@ -413,7 +413,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,11 +494,12 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                                                           Colors.green));
                                             }
                                           } catch (e) {
-                                            if (c.mounted)
+                                            if (c.mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(SnackBar(
                                                       content:
                                                           Text('Error: $e')));
+                                            }
                                           }
                                         }
                                       },
@@ -575,11 +576,12 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                                                           Colors.green));
                                             }
                                           } catch (e) {
-                                            if (c.mounted)
+                                            if (c.mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(SnackBar(
                                                       content:
                                                           Text('Error: $e')));
+                                            }
                                           }
                                         } else {
                                           ScaffoldMessenger.of(c).showSnackBar(
@@ -698,7 +700,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,8 +844,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Widget _buildColorDot(Color color, Color selectedColor) {
-    // `.value` mantiene compatibilidad con Flutter 3.24 usado por Actions.
-    final isSelected = color.value == selectedColor.value;
+    final isSelected = color.toARGB32() == selectedColor.toARGB32();
     return GestureDetector(
       onTap: () => ref.read(accentColorProvider.notifier).set(color),
       child: Container(
@@ -859,7 +860,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                  color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)
+                  color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)
           ],
         ),
         child: isSelected
@@ -884,10 +885,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withOpacity(0.3),
+            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -936,10 +937,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withOpacity(0.2),
+            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -1004,7 +1005,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Center(
           child: Text(
@@ -1019,7 +1020,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: ListView.separated(
         shrinkWrap: true,
@@ -1027,7 +1028,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         itemCount: _lastNotifications.length,
         separatorBuilder: (context, index) => Divider(
           height: 1,
-          color: Colors.grey.withOpacity(0.15),
+          color: Colors.grey.withValues(alpha: 0.15),
         ),
         itemBuilder: (context, index) {
           final aviso = _lastNotifications[index];
@@ -1046,8 +1047,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
             leading: CircleAvatar(
               radius: 14,
               backgroundColor: esVivo
-                  ? Colors.red.withOpacity(0.1)
-                  : accentColor.withOpacity(0.1),
+                  ? Colors.red.withValues(alpha: 0.1)
+                  : accentColor.withValues(alpha: 0.1),
               child: Icon(
                 esVivo ? Icons.live_tv_rounded : Icons.campaign_rounded,
                 size: 14,

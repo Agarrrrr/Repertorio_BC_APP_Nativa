@@ -544,7 +544,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final orientation = MediaQuery.of(context).orientation;
     if (_lastOrientation != null && _lastOrientation != orientation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // ignore: deprecated_member_use
         if (_pdfController.isReady && _pdfController.pages.isNotEmpty) {
+          // ignore: deprecated_member_use
           final firstPageWidth = _pdfController.pages.first.width;
           final viewWidth = MediaQuery.of(context).size.width;
           setState(() {
@@ -660,7 +662,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                       color: theme.scaffoldBackgroundColor,
                       border: Border(
                           bottom:
-                              BorderSide(color: Colors.grey.withOpacity(0.2))),
+                              BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
                     ),
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
@@ -881,7 +883,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -897,7 +899,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     Container(
                                         width: 1,
                                         height: 20,
-                                        color: Colors.grey.withOpacity(0.3),
+                                        color: Colors.grey.withValues(alpha: 0.3),
                                         margin: const EdgeInsets.symmetric(
                                             horizontal: 5)),
                                     _ToolBtn(
@@ -958,7 +960,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withOpacity(0.3),
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 5)),
                                       _ToolBtn(
@@ -1009,7 +1011,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -1030,7 +1032,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                           trackHeight: 2,
                                           activeTrackColor: accentColor,
                                           inactiveTrackColor:
-                                              Colors.grey.withOpacity(0.3),
+                                              Colors.grey.withValues(alpha: 0.3),
                                           thumbColor: accentColor,
                                         ),
                                         child: Slider(
@@ -1056,7 +1058,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withOpacity(0.3),
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 10)),
                                       _ColorBtn(
@@ -1177,10 +1179,10 @@ class _MidiPanelState extends State<_MidiPanel> {
             decoration: BoxDecoration(
               color: theme.scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: widget.accentColor.withOpacity(0.4)),
+              border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -1237,7 +1239,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                     ],
                   ),
                 ),
-                Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
                 // ── Lista de Voces Deslizable ─────────────────────────────────
                 Expanded(
                   child: widget.midiState.voces.isEmpty
@@ -1273,8 +1275,8 @@ class _MidiPanelState extends State<_MidiPanel> {
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: voz.activa && voz.volumen > 0
-                                      ? widget.accentColor.withOpacity(0.25)
-                                      : Colors.grey.withOpacity(0.15),
+                                      ? widget.accentColor.withValues(alpha: 0.25)
+                                      : Colors.grey.withValues(alpha: 0.15),
                                 ),
                               ),
                               child: Row(
@@ -1350,7 +1352,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                             activeTrackColor: widget.accentColor,
                                             inactiveTrackColor: widget
                                                 .accentColor
-                                                .withOpacity(0.2),
+                                                .withValues(alpha: 0.2),
                                             thumbColor: widget.accentColor,
                                             overlayShape:
                                                 const RoundSliderOverlayShape(
@@ -1396,12 +1398,12 @@ class _MidiPanelState extends State<_MidiPanel> {
     return Material(
       elevation: 12,
       borderRadius: BorderRadius.circular(20),
-      shadowColor: Colors.black.withOpacity(0.2),
+      shadowColor: Colors.black.withValues(alpha: 0.2),
       child: Container(
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: widget.accentColor.withOpacity(0.4)),
+          border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
         ),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
@@ -1458,15 +1460,15 @@ class _MidiPanelState extends State<_MidiPanel> {
                                     ? (isFirst
                                         ? Colors.redAccent
                                         : widget.accentColor)
-                                    : Colors.grey.withOpacity(0.3),
+                                    : Colors.grey.withValues(alpha: 0.3),
                                 boxShadow: isCurrent
                                     ? [
                                         BoxShadow(
                                           color: isFirst
                                               ? Colors.redAccent
-                                                  .withOpacity(0.5)
+                                                  .withValues(alpha: 0.5)
                                               : widget.accentColor
-                                                  .withOpacity(0.5),
+                                                  .withValues(alpha: 0.5),
                                           blurRadius: 4,
                                           spreadRadius: 1,
                                         )
@@ -1498,7 +1500,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                         : Icons.settings_rounded,
                     color: _showSettings
                         ? widget.accentColor
-                        : Colors.grey.withOpacity(0.8),
+                        : Colors.grey.withValues(alpha: 0.8),
                     size: 20,
                   ),
                   padding: EdgeInsets.zero,
@@ -1518,7 +1520,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                     thumbShape:
                         const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: widget.accentColor,
-                    inactiveTrackColor: widget.accentColor.withOpacity(0.2),
+                    inactiveTrackColor: widget.accentColor.withValues(alpha: 0.2),
                     thumbColor: widget.accentColor,
                     overlayShape:
                         const RoundSliderOverlayShape(overlayRadius: 14),
@@ -1599,7 +1601,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                       return MetronomeIcon(
                         color: widget.midiState.metronomoActivo
                             ? widget.accentColor
-                            : Colors.grey.withOpacity(0.6),
+                            : Colors.grey.withValues(alpha: 0.6),
                         size: 20,
                         rotationAngle: angle,
                       );
@@ -1619,13 +1621,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: loading
-                          ? Colors.grey.withOpacity(0.2)
+                          ? Colors.grey.withValues(alpha: 0.2)
                           : widget.accentColor,
                       boxShadow: loading
                           ? []
                           : [
                               BoxShadow(
-                                  color: widget.accentColor.withOpacity(0.4),
+                                  color: widget.accentColor.withValues(alpha: 0.4),
                                   blurRadius: 12)
                             ],
                     ),
@@ -1687,7 +1689,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                         Row(
                           children: [
                             Icon(Icons.speed_rounded,
-                                size: 16, color: Colors.grey.withOpacity(0.8)),
+                                size: 16, color: Colors.grey.withValues(alpha: 0.8)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: SingleChildScrollView(
@@ -1711,14 +1713,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                                           color: active
                                               ? widget.accentColor
                                               : widget.accentColor
-                                                  .withOpacity(0.08),
+                                                  .withValues(alpha: 0.08),
                                           borderRadius:
                                               BorderRadius.circular(20),
                                           border: Border.all(
                                               color: active
                                                   ? widget.accentColor
                                                   : widget.accentColor
-                                                      .withOpacity(0.3)),
+                                                      .withValues(alpha: 0.3)),
                                         ),
                                         child: Text(
                                           '${s}x',
@@ -1746,7 +1748,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                             children: [
                               Icon(Icons.people_rounded,
                                   size: 16,
-                                  color: Colors.grey.withOpacity(0.8)),
+                                  color: Colors.grey.withValues(alpha: 0.8)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -1773,7 +1775,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                               horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: widget.accentColor
-                                                .withOpacity(0.15),
+                                                .withValues(alpha: 0.15),
                                             borderRadius:
                                                 BorderRadius.circular(20),
                                             border: Border.all(
@@ -1816,14 +1818,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                                               color: voz.activa
                                                   ? widget.accentColor
                                                   : Colors.grey
-                                                      .withOpacity(0.1),
+                                                      .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
                                                 color: voz.activa
                                                     ? widget.accentColor
                                                     : Colors.grey
-                                                        .withOpacity(0.3),
+                                                        .withValues(alpha: 0.3),
                                               ),
                                             ),
                                             child: Text(
@@ -1872,7 +1874,7 @@ class _LoadingPlaceholder extends StatelessWidget {
               .animate(onPlay: (c) => c.repeat())
               .shimmer(
                   duration: 1500.ms,
-                  color: theme.colorScheme.primary.withOpacity(0.5))
+                  color: theme.colorScheme.primary.withValues(alpha: 0.5))
               .scaleXY(
                   begin: 0.95,
                   end: 1.05,
@@ -1947,7 +1949,7 @@ class _GoldIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveColor = Colors.grey.withOpacity(0.6);
+    final inactiveColor = Colors.grey.withValues(alpha: 0.6);
 
     return Tooltip(
       message: tooltip,
@@ -1957,7 +1959,7 @@ class _GoldIconBtn extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color:
-                isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
+                isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: child ??
@@ -2066,7 +2068,7 @@ class _ToolBtn extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isActive
-              ? theme.colorScheme.primary.withOpacity(0.1)
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           shape: BoxShape.circle,
         ),
@@ -2098,7 +2100,7 @@ class _ColorBtn extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: isActive
-              ? theme.colorScheme.primary.withOpacity(0.2)
+              ? theme.colorScheme.primary.withValues(alpha: 0.2)
               : Colors.transparent,
           shape: BoxShape.circle,
         ),
@@ -2112,7 +2114,7 @@ class _ColorBtn extends StatelessWidget {
             boxShadow: [
               if (isActive)
                 BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.5),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
                     blurRadius: 4),
             ],
           ),
