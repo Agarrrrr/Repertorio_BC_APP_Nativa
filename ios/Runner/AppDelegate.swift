@@ -120,7 +120,23 @@ import FirebaseMessaging
     sequencer.prepareToPlay()
     try sequencer.start()
 
-    let output = try AVAudioFile(forWriting: outputURL, settings: format.settings)
+    // flutter_lame recibe WAV RIFF PCM s16; AVAudioFormat estándar es float32
+    // y producía el error "Se esperaba audio PCM" durante la codificación.
+    let wavSettings: [String: Any] = [
+      AVFormatIDKey: kAudioFormatLinearPCM,
+      AVSampleRateKey: format.sampleRate,
+      AVNumberOfChannelsKey: 2,
+      AVLinearPCMBitDepthKey: 16,
+      AVLinearPCMIsFloatKey: false,
+      AVLinearPCMIsBigEndianKey: false,
+      AVLinearPCMIsNonInterleaved: false,
+    ]
+    let output = try AVAudioFile(
+      forWriting: outputURL,
+      settings: wavSettings,
+      commonFormat: .pcmFormatInt16,
+      interleaved: true
+    )
     let buffer = AVAudioPCMBuffer(
       pcmFormat: engine.manualRenderingFormat,
       frameCapacity: engine.manualRenderingMaximumFrameCount
