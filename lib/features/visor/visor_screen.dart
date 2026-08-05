@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pdfrx/pdfrx.dart';
@@ -730,12 +731,13 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 onTap: _toggleMidi,
                                 tooltip: 'Reproductor MIDI',
                               ),
-                            _TopBarBtn(
-                              icon: Icons.share_rounded,
-                              isActive: false,
-                              onTap: () => _mostrarCompartir(canto),
-                              tooltip: 'Compartir',
-                            ),
+                            if (kIsWeb || !Platform.isIOS)
+                              _TopBarBtn(
+                                icon: Icons.share_rounded,
+                                isActive: false,
+                                onTap: () => _mostrarCompartir(canto),
+                                tooltip: 'Compartir',
+                              ),
                             _TopBarBtn(
                               icon: _showTools
                                   ? Icons.edit_off_rounded
