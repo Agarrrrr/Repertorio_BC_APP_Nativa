@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:repertorio_bc/core/providers/theme_provider.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/features/settings/notification_card.dart';
@@ -292,15 +293,55 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     }
   }
 
+  Future<void> _launchURL(String urlString) async {
+    final Uri uri = Uri.parse(urlString);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Error abriendo URL: $e');
+    }
+  }
+
   Future<void> _openAccountAndPrivacy() async {
     final wantsToDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.manage_accounts_outlined),
-        title: const Text('Cuenta y privacidad'),
+        title: const Text('Cuenta, soporte y privacidad'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.help_outline_rounded),
+              title: const Text('Soporte y Ayuda'),
+              subtitle: const Text('Centro de soporte y contacto técnico'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.lldmcorobc.com/soporte');
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Política de privacidad'),
+              subtitle: const Text('Protección de datos personales'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.lldmcorobc.com/privacy.html');
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.gavel_outlined),
+              title: const Text('Términos de uso (EULA)'),
+              subtitle: const Text('Términos estándar de Apple'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+              },
+            ),
+            const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(
