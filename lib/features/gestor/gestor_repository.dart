@@ -94,13 +94,35 @@ class GestorRepository {
 
   Future<List<Canto>> catalogoGlobal() async {
     final rows = <Map<String, dynamic>>[];
-    for (var from = 0;; from += _pageSize) {
-      final page = await client
-          .rpc('catalogo_global_bilingue')
-          .range(from, from + _pageSize - 1);
-      final values = List<Map<String, dynamic>>.from(page);
-      rows.addAll(values);
-      if (values.length < _pageSize) break;
+    try {
+      for (var from = 0;; from += _pageSize) {
+        final page = await client
+            .rpc('catalogo_global_bilingue')
+            .range(from, from + _pageSize - 1);
+        final values = List<Map<String, dynamic>>.from(page);
+        rows.addAll(values);
+        if (values.length < _pageSize) break;
+      }
+    } on PostgrestException catch (error) {
+      // Older deployments may not yet have the RPC. Keep the online catalog
+      // usable while the database migration is being deployed.
+      if (error.code != '42883' &&
+          error.code != 'PGRST202' &&
+          !error.message.contains('404')) {
+        rethrow;
+      }
+      for (var from = 0;; from += _pageSize) {
+        final page = await client
+            .from('cantos')
+            .select('*')
+            .eq('origen', 'global')
+            .eq('activo', true)
+            .order('nombre')
+            .range(from, from + _pageSize - 1);
+        final values = List<Map<String, dynamic>>.from(page);
+        rows.addAll(values);
+        if (values.length < _pageSize) break;
+      }
     }
     return rows
         .where((row) => (row['idioma'] ?? 'es') == 'es')

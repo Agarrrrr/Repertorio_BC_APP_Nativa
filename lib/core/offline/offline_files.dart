@@ -36,6 +36,9 @@ class OfflineFiles {
     );
 
   static String resolvePdfUrl(Canto canto) {
+    if (canto.origen == 'global') {
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf';
+    }
     if (canto.archivo.startsWith('http')) return canto.archivo;
     if (_isUnifiedObjectKey(canto.archivo)) {
       return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf';
@@ -45,6 +48,9 @@ class OfflineFiles {
 
   static String resolveMidiUrl(Canto canto) {
     final midi = canto.midiArchivo!;
+    if (canto.origen == 'global') {
+      return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi';
+    }
     if (midi.startsWith('http')) return midi;
     if (_isUnifiedObjectKey(midi)) {
       return '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi';
@@ -54,7 +60,8 @@ class OfflineFiles {
 
   static List<String> _pdfUrls(Canto canto) {
     final primary = resolvePdfUrl(canto);
-    if (canto.archivo.startsWith('http') ||
+    if (canto.origen == 'global' ||
+        canto.archivo.startsWith('http') ||
         _isUnifiedObjectKey(canto.archivo)) {
       return [primary];
     }
@@ -64,7 +71,9 @@ class OfflineFiles {
   static List<String> _midiUrls(Canto canto) {
     final primary = resolveMidiUrl(canto);
     final midi = canto.midiArchivo!;
-    if (midi.startsWith('http') || _isUnifiedObjectKey(midi)) {
+    if (canto.origen == 'global' ||
+        midi.startsWith('http') ||
+        _isUnifiedObjectKey(midi)) {
       return [primary];
     }
     return [primary, '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi'];
