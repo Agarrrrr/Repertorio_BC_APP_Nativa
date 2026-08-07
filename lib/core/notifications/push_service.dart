@@ -63,7 +63,7 @@ class PushService {
       initSettings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null && details.payload!.isNotEmpty) {
-          onNotificationTap?.call(details.payload!);
+          _dispatchPayload(details.payload!);
         }
       },
     );
@@ -105,8 +105,6 @@ class PushService {
           'Recibida notificación en primer plano: ${message.notification?.title}');
 
       final notification = message.notification;
-      final cantoId = message.data['canto_id'];
-
       if (notification != null) {
         _localNotificationsPlugin.show(
           notification.hashCode,
@@ -127,9 +125,7 @@ class PushService {
               presentSound: true,
             ),
           ),
-          payload: cantoId != null && cantoId.toString().isNotEmpty
-              ? 'visor_$cantoId'
-              : null,
+          payload: _payloadForMessage(message),
         );
       }
     });
@@ -151,15 +147,8 @@ class PushService {
   }
 
   static void _handleMessageClick(RemoteMessage message) {
-    final cantoId = message.data['canto_id'];
-    if (cantoId != null && cantoId.toString().isNotEmpty) {
-      final payload = 'visor_$cantoId';
-      if (onNotificationTap != null) {
-        onNotificationTap!(payload);
-      } else {
-        pendingPayload = payload;
-      }
-    }
+    final payload = _payloadForMessage(message);
+    if (payload != null) _dispatchPayload(payload);
   }
 
   static Future<String?> getToken() async {
@@ -253,5 +242,24 @@ class PushService {
       ),
       payload: payload,
     );
+  }
+
+  /// Entrega el clic a la app cuando el router ya está disponible. Durante el
+  /// arranque, el callback todavía puede no estar registrado; en ese caso se
+  /// conserva el payload para que el redirect global lo procese después.
+  static void _dispatchPayload(String payload) {
+    final callback = onNotificationTap;
+    if (callback == null) {
+      pendingPayload = payload;
+      return;
+    }
+    callback(payload);
+  }
+
+  static String? _payloadForMessage(RemoteMessage message) {
+    final rawId = message.data['canto_id'] ?? message.data['cantoId'];
+    final cantoId = rawId?.toString().trim();
+    if (cantoId == null || cantoId.isEmpty) return null;
+    return 'visor_$cantoId';
   }
 }
