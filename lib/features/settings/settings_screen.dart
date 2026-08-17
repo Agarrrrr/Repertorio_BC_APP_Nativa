@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:repertorio_bc/core/providers/theme_provider.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/features/settings/notification_card.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
-import 'package:hive/hive.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
+import 'package:repertorio_bc/core/providers/cantos_provider.dart';
 
 class SettingsDialog extends ConsumerStatefulWidget {
   const SettingsDialog({super.key});
@@ -20,10 +24,13 @@ class SettingsDialog extends ConsumerStatefulWidget {
 
 class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   bool _hasPushPermission = false;
+  bool _pushSupported = true;
+  String? _pushUnavailableMessage;
   List<Map<String, dynamic>> _lastNotifications = [];
   bool _loadingNotifications = true;
   bool _isInit = false;
   bool _isDeletingAccount = false;
+  bool _isRepairingFiles = false;
 
   @override
   void initState() {
@@ -44,8 +51,17 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     final perfil = ref.read(perfilProvider).value;
     if (perfil == null) return;
 
-    final box = Hive.box('cache');
-    final cached = box.get('avisos_json');
+    final cacheKey = AppCache.userKey(
+      'avisos_json',
+      SupabaseService.client.auth.currentUser?.id,
+      scope: perfil.coroId,
+    );
+    var cached = AppCache.get<String>(cacheKey);
+    cached ??= AppCache.get<String>('avisos_json');
+    if (cached != null && AppCache.get<String>(cacheKey) == null) {
+      await AppCache.put(cacheKey, cached);
+      await AppCache.delete('avisos_json');
+    }
     if (cached != null) {
       try {
         final List<dynamic> decoded = jsonDecode(cached);
@@ -64,7 +80,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           .order('creado_en', ascending: false)
           .limit(6);
 
-      box.put('avisos_json', jsonEncode(res));
+      await AppCache.put(cacheKey, jsonEncode(res));
 
       if (mounted) {
         setState(() {
@@ -98,14 +114,41 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Future<void> _checkPushPermission() async {
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
-    setState(() {
-      _hasPushPermission =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
-    });
+    if (!PushService.isAvailable) {
+      if (!mounted) return;
+      setState(() {
+        _hasPushPermission = false;
+        _pushSupported = false;
+        _pushUnavailableMessage = PushService.unavailableReason ??
+            'Este dispositivo no permite activar notificaciones.';
+      });
+      return;
+    }
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      if (!mounted) return;
+      setState(() {
+        _pushSupported = true;
+        _hasPushPermission =
+            settings.authorizationStatus == AuthorizationStatus.authorized ||
+                settings.authorizationStatus == AuthorizationStatus.provisional;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pushSupported = false;
+        _pushUnavailableMessage =
+            'El servicio de notificaciones no está disponible en este dispositivo.';
+      });
+    }
   }
 
   Future<void> _requestPushPermission() async {
+    if (!PushService.isAvailable) {
+      await _checkPushPermission();
+      return;
+    }
     final settings = await FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
@@ -120,18 +163,14 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     });
 
     if (isAuthorized) {
-      final user = SupabaseService.client.auth.currentUser;
-      if (user != null) {
-        registrarFcmToken(user.id);
-        await SupabaseService.client
-            .from('perfiles')
-            .update({'notificaciones_activas': true}).eq('id', user.id);
-      }
+      final registered = await registrarFcmTokenUsuarioActual();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Notificaciones push activadas con éxito!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(registered
+                ? '¡Notificaciones push activadas con exito!'
+                : 'El permiso esta activo. El dispositivo se registrara automaticamente cuando tenga conexion.'),
+            backgroundColor: registered ? Colors.green : Colors.orange,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -254,15 +293,55 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     }
   }
 
+  Future<void> _launchURL(String urlString) async {
+    final Uri uri = Uri.parse(urlString);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Error abriendo URL: $e');
+    }
+  }
+
   Future<void> _openAccountAndPrivacy() async {
     final wantsToDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.manage_accounts_outlined),
-        title: const Text('Cuenta y privacidad'),
+        title: const Text('Cuenta, soporte y privacidad'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.help_outline_rounded),
+              title: const Text('Soporte y Ayuda'),
+              subtitle: const Text('Centro de soporte y contacto técnico'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.lldmcorobc.com/soporte');
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Política de privacidad'),
+              subtitle: const Text('Protección de datos personales'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.lldmcorobc.com/privacy.html');
+              },
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.gavel_outlined),
+              title: const Text('Términos de uso (EULA)'),
+              subtitle: const Text('Términos estándar de Apple'),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+              onTap: () {
+                _launchURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+              },
+            ),
+            const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(
@@ -295,11 +374,41 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
     }
   }
 
+  Future<void> _repairFiles() async {
+    if (_isRepairingFiles) return;
+    setState(() => _isRepairingFiles = true);
+    try {
+      ref.invalidate(cantosBaseProvider);
+      final cantos = await ref.read(cantosBaseProvider.future);
+      ref.read(syncManagerProvider.notifier).repairNow(cantos);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Revisión iniciada. Se actualizarán los archivos faltantes o dañados.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo iniciar la reparación: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRepairingFiles = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
     final accentColor = ref.watch(accentColorProvider);
     final isCarousel = ref.watch(pdfNavModeProvider);
+    final syncState = ref.watch(syncManagerProvider);
 
     // Auth Data
     final user = ref.watch(authUserProvider).value;
@@ -345,7 +454,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,11 +535,12 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                                                           Colors.green));
                                             }
                                           } catch (e) {
-                                            if (c.mounted)
+                                            if (c.mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(SnackBar(
                                                       content:
                                                           Text('Error: $e')));
+                                            }
                                           }
                                         }
                                       },
@@ -507,11 +617,12 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                                                           Colors.green));
                                             }
                                           } catch (e) {
-                                            if (c.mounted)
+                                            if (c.mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(SnackBar(
                                                       content:
                                                           Text('Error: $e')));
+                                            }
                                           }
                                         } else {
                                           ScaffoldMessenger.of(c).showSnackBar(
@@ -612,6 +723,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               _buildSectionTitle('NOTIFICACIONES'),
               NotificationCard(
                 hasPermission: _hasPushPermission,
+                isSupported: _pushSupported,
+                unavailableMessage: _pushUnavailableMessage,
                 onRequestPermission: _requestPushPermission,
               ),
               const SizedBox(height: 24),
@@ -619,6 +732,55 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               // 2.5 HISTORIAL DE AVISOS
               _buildSectionTitle('HISTORIAL DE AVISOS (ÚLTIMOS 6)'),
               _buildNotificationHistory(accentColor),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('ARCHIVOS Y MODO SIN CONEXIÓN'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      syncState.storageUnavailable
+                          ? 'El almacenamiento está lleno. Aun así puedes abrir partituras con internet; se mantendrán temporalmente en memoria.'
+                          : 'Comprueba el catálogo y vuelve a descargar partituras o MIDI faltantes, dañados o desactualizados.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: syncState.storageUnavailable
+                            ? Colors.orange.shade700
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _isRepairingFiles || syncState.isSyncing
+                            ? null
+                            : _repairFiles,
+                        icon: _isRepairingFiles || syncState.isSyncing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.build_circle_outlined),
+                        label: Text(syncState.isSyncing
+                            ? 'Actualizando archivos...'
+                            : 'Reparar y actualizar archivos'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
 
               // 3. COLOR DE ACENTO
@@ -723,8 +885,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   }
 
   Widget _buildColorDot(Color color, Color selectedColor) {
-    // `.value` mantiene compatibilidad con Flutter 3.24 usado por Actions.
-    final isSelected = color.value == selectedColor.value;
+    final isSelected = color.toARGB32() == selectedColor.toARGB32();
     return GestureDetector(
       onTap: () => ref.read(accentColorProvider.notifier).set(color),
       child: Container(
@@ -740,7 +901,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                  color: color.withOpacity(0.4), blurRadius: 8, spreadRadius: 2)
+                  color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)
           ],
         ),
         child: isSelected
@@ -765,10 +926,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withOpacity(0.3),
+            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -817,10 +978,10 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withOpacity(0.2),
+            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -885,7 +1046,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Center(
           child: Text(
@@ -900,7 +1061,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: ListView.separated(
         shrinkWrap: true,
@@ -908,7 +1069,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         itemCount: _lastNotifications.length,
         separatorBuilder: (context, index) => Divider(
           height: 1,
-          color: Colors.grey.withOpacity(0.15),
+          color: Colors.grey.withValues(alpha: 0.15),
         ),
         itemBuilder: (context, index) {
           final aviso = _lastNotifications[index];
@@ -927,8 +1088,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
             leading: CircleAvatar(
               radius: 14,
               backgroundColor: esVivo
-                  ? Colors.red.withOpacity(0.1)
-                  : accentColor.withOpacity(0.1),
+                  ? Colors.red.withValues(alpha: 0.1)
+                  : accentColor.withValues(alpha: 0.1),
               child: Icon(
                 esVivo ? Icons.live_tv_rounded : Icons.campaign_rounded,
                 size: 14,

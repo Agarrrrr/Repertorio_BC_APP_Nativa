@@ -27,6 +27,9 @@ class MidiExportVoice {
 class MidiExportService {
   MidiExportService._();
 
+  static const MethodChannel _iosRenderer =
+      MethodChannel('repertorio_bc/midi_export');
+
   static Future<List<MidiExportVoice>> voices(Canto canto) async {
     final midi = await _sourceMidi(canto);
     final song = NativeMidiParser.parse(await midi.readAsBytes());
@@ -43,9 +46,9 @@ class MidiExportService {
     int? trackIndex,
     String? voiceName,
   }) async {
-    if (!Platform.isAndroid) {
+    if (!Platform.isAndroid && !Platform.isIOS) {
       throw UnsupportedError(
-        'La exportaciﾃｳn MP3 local estﾃ｡ disponible actualmente en Android.',
+        'La exportación MP3 local está disponible en Android e iOS.',
       );
     }
 
@@ -54,6 +57,7 @@ class MidiExportService {
       '${(await getApplicationSupportDirectory()).path}/midi_exports',
     );
     await workDir.create(recursive: true);
+    await _pruneExportCache(workDir);
 
     final safeTitle = _safeName(canto.nombre);
     final suffix =
@@ -78,17 +82,29 @@ class MidiExportService {
     final exportBytes = trackIndex == null
         ? originalBytes
         : _midiWithSelectedTrack(originalBytes, trackIndex);
+    final expectedDurationSeconds =
+        NativeMidiParser.parse(exportBytes).durationSeconds;
     await renderMidi.writeAsBytes(exportBytes, flush: true);
 
     var stage = 'preparando el render';
     try {
       if (await wavFile.exists()) await wavFile.delete();
-      debugPrint('[MidiExport] Renderizando $baseName con FluidSynth');
-      await Isolate.run(() => _FluidSynthRenderer.render(
-            midiPath: renderMidi.path,
-            soundfontPath: soundfont.path,
-            outputPath: wavFile.path,
-          ));
+      if (Platform.isIOS) {
+        debugPrint('[MidiExport] Renderizando $baseName con AVAudioEngine');
+        await _iosRenderer.invokeMethod<void>('renderMidiToWav', {
+          'midiPath': renderMidi.path,
+          'soundfontPath': soundfont.path,
+          'outputPath': wavFile.path,
+          'expectedDurationSeconds': expectedDurationSeconds,
+        });
+      } else {
+        debugPrint('[MidiExport] Renderizando $baseName con FluidSynth');
+        await Isolate.run(() => _FluidSynthRenderer.render(
+              midiPath: renderMidi.path,
+              soundfontPath: soundfont.path,
+              outputPath: wavFile.path,
+            ));
+      }
       stage = 'codificando el MP3';
       debugPrint('[MidiExport] Codificando $baseName con LAME');
       await _encodeWavToMp3(wavFile, mp3File);
@@ -173,6 +189,35 @@ class MidiExportService {
       flush: true,
     );
     return file;
+  }
+
+  static Future<void> _pruneExportCache(Directory workDir) async {
+    const maxAge = Duration(days: 30);
+    const maxBytes = 300 * 1024 * 1024;
+    final now = DateTime.now();
+    final files = <({File file, FileStat stat})>[];
+
+    try {
+      await for (final entity in workDir.list(followLinks: false)) {
+        if (entity is! File || !entity.path.endsWith('.mp3')) continue;
+        final stat = await entity.stat();
+        if (now.difference(stat.modified) >= maxAge) {
+          await entity.delete();
+        } else {
+          files.add((file: entity, stat: stat));
+        }
+      }
+
+      files.sort((a, b) => a.stat.modified.compareTo(b.stat.modified));
+      var total = files.fold<int>(0, (sum, item) => sum + item.stat.size);
+      for (final item in files) {
+        if (total <= maxBytes) break;
+        await item.file.delete();
+        total -= item.stat.size;
+      }
+    } on FileSystemException catch (error) {
+      debugPrint('[MidiExport] Limpieza de caché omitida: $error');
+    }
   }
 
   static Uint8List _midiWithSelectedTrack(
@@ -372,7 +417,9 @@ class _FluidSynthRenderer {
     required String soundfontPath,
     required String outputPath,
   }) {
-    final lib = DynamicLibrary.open('libfluidsynth.so');
+    final lib = Platform.isIOS
+        ? DynamicLibrary.process()
+        : DynamicLibrary.open('libfluidsynth.so');
     final newSettings =
         lib.lookupFunction<Pointer<Void> Function(), Pointer<Void> Function()>(
             'new_fluid_settings');

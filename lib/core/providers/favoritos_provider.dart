@@ -1,17 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:repertorio_bc/core/providers/auth_provider.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
+import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 
-/// Provider ligero que persiste los IDs de los cantos favoritos en Hive.
-///
-/// Caja: `favoritos_box`, llave: `favoritos` (List<String> de IDs).
+/// Provider ligero que persiste los IDs de los cantos favoritos por usuario.
 class FavoritosNotifier extends Notifier<Set<String>> {
-  static const String boxName = 'favoritos_box';
-  static const String key = 'favoritos';
+  String get _key => AppCache.userKey(
+        'favoritos',
+        SupabaseService.client.auth.currentUser?.id,
+      );
 
   @override
   Set<String> build() {
-    final box = Hive.box(boxName);
-    final data = box.get(key);
+    ref.watch(authUserProvider);
+    final data = AppCache.get<List<dynamic>>(_key);
     if (data is List) {
       return data.map((e) => e.toString()).toSet();
     }
@@ -19,7 +21,7 @@ class FavoritosNotifier extends Notifier<Set<String>> {
   }
 
   void _persist() {
-    Hive.box(boxName).put(key, state.toList());
+    AppCache.put(_key, state.toList());
   }
 
   void toggle(String cantoId) {

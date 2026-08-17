@@ -53,7 +53,7 @@ class AppDrawer extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               decoration: BoxDecoration(
                 border: Border(
-                    bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                    bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -71,7 +71,7 @@ class AppDrawer extends ConsumerWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.secondary.withOpacity(0.1),
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -91,11 +91,13 @@ class AppDrawer extends ConsumerWidget {
               builder: (context, ref, child) {
                 final syncState = ref.watch(syncManagerProvider);
                 final hasFailures = syncState.failedFiles > 0;
-                final statusColor = hasFailures
-                    ? Colors.red
-                    : syncState.isSyncing
-                        ? theme.colorScheme.secondary
-                        : Colors.green;
+                final statusColor = syncState.storageUnavailable
+                    ? Colors.orange
+                    : hasFailures
+                        ? Colors.red
+                        : syncState.isSyncing
+                            ? theme.colorScheme.secondary
+                            : Colors.green;
 
                 return Container(
                   padding:
@@ -106,22 +108,26 @@ class AppDrawer extends ConsumerWidget {
                       Row(
                         children: [
                           Icon(
-                            hasFailures
-                                ? Icons.error_outline_rounded
-                                : syncState.isSyncing
-                                    ? Icons.sync_rounded
-                                    : Icons.cloud_done_rounded,
+                            syncState.storageUnavailable
+                                ? Icons.storage_rounded
+                                : hasFailures
+                                    ? Icons.error_outline_rounded
+                                    : syncState.isSyncing
+                                        ? Icons.sync_rounded
+                                        : Icons.cloud_done_rounded,
                             size: 14,
                             color: statusColor,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              hasFailures
-                                  ? 'Faltan ${syncState.failedFiles} archivos'
-                                  : syncState.isSyncing
-                                      ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
-                                      : 'Repertorio asignado offline',
+                              syncState.storageUnavailable
+                                  ? 'Sin espacio: disponible con internet'
+                                  : hasFailures
+                                      ? '${syncState.failedFiles} cantos requieren atención'
+                                      : syncState.isSyncing
+                                          ? 'Guardando sede + Estatal (${(syncState.progress * 100).toInt()}%)'
+                                          : 'Repertorio asignado offline',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -135,7 +141,7 @@ class AppDrawer extends ConsumerWidget {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: syncState.progress,
-                          backgroundColor: statusColor.withOpacity(0.1),
+                          backgroundColor: statusColor.withValues(alpha: 0.1),
                           valueColor: AlwaysStoppedAnimation(statusColor),
                           borderRadius: BorderRadius.circular(10),
                           minHeight: 3,
@@ -201,7 +207,7 @@ class AppDrawer extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
                 border: Border(
-                    top: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                    top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
               ),
               padding: const EdgeInsets.only(bottom: 10, top: 10),
               child: Column(
@@ -282,7 +288,7 @@ class AppDrawer extends ConsumerWidget {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                        color: theme.colorScheme.secondary.withOpacity(0.3),
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4))
                   ]
@@ -295,7 +301,7 @@ class AppDrawer extends ConsumerWidget {
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               color: isActive
                   ? Colors.white
-                  : theme.colorScheme.onSurface.withOpacity(0.7),
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -317,14 +323,14 @@ class AppDrawer extends ConsumerWidget {
         child: Row(
           children: [
             Icon(icon,
-                size: 18, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
             const SizedBox(width: 12),
             Text(
               label,
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],

@@ -13,6 +13,7 @@ import 'package:repertorio_bc/features/dashboard/widgets/app_drawer.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'package:repertorio_bc/core/notifications/push_service.dart';
+import 'package:repertorio_bc/core/activity/activity_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -21,11 +22,15 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  bool _syncingPush = false;
+  bool _pushRetryScheduled = false;
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
@@ -33,9 +38,99 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ActivityService.register(force: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      PushService.requestPermission();
+      _syncPushRegistration(showWarning: true);
     });
+  }
+
+  Future<void> _syncPushRegistration({required bool showWarning}) async {
+    if (_syncingPush) return;
+    _syncingPush = true;
+    try {
+      final enabled = await PushService.requestPermission();
+      if (enabled) {
+        final registered = await registrarFcmTokenUsuarioActual();
+        if (!registered) _schedulePushRegistrationRetry();
+        return;
+      }
+      if (!mounted || !showWarning) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(PushService.unavailableReason ??
+              'Este dispositivo no permite activar notificaciones.'),
+        ),
+      );
+    } finally {
+      _syncingPush = false;
+    }
+  }
+
+  void _schedulePushRegistrationRetry() {
+    if (_pushRetryScheduled) return;
+    _pushRetryScheduled = true;
+    Future<void>(() async {
+      for (final delay in const [
+        Duration(seconds: 5),
+        Duration(seconds: 15),
+        Duration(seconds: 45),
+      ]) {
+        await Future<void>.delayed(delay);
+        if (!mounted) return;
+        if (await registrarFcmTokenUsuarioActual()) return;
+      }
+      _pushRetryScheduled = false;
+    });
+  }
+
+  void _showSyncFailures(SyncState sync) {
+    final catalog = ref.read(cantosOfflineStateProvider).value ?? const [];
+    final byId = {for (final canto in catalog) canto.id: canto};
+    final failed = sync.failedCantoIds.map((id) {
+      final canto = byId[id];
+      final parts = <String>[];
+      if (sync.failedPdfCantoIds.contains(id)) parts.add('PDF');
+      if (sync.failedMidiCantoIds.contains(id)) parts.add('MIDI');
+      return '${canto?.nombre ?? id} (${parts.join(' + ')})';
+    }).toList();
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Archivos que requieren atención'),
+        content: failed.isEmpty
+            ? const Text('No se pudo encontrar el detalle del catálogo.')
+            : SizedBox(
+                width: double.maxFinite,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: failed.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, index) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.cloud_off_rounded,
+                        color: Colors.red),
+                    title: Text(failed[index]),
+                  ),
+                ),
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ActivityService.register();
+      ref.invalidate(cantosBaseProvider);
+      _syncPushRegistration(showWarning: false);
+    }
   }
 
   @override
@@ -48,17 +143,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Inicializar el RealtimeManager para que escuche cambios en BD
     ref.watch(realtimeManagerProvider);
-    // Predescarga únicamente el repertorio autorizado de la sede y Estatal.
-    ref.watch(syncManagerProvider);
+    // Escuchar el estado de sincronización para notificaciones sin forzar re-renders completos de la pantalla.
     ref.listen(syncManagerProvider, (previous, next) {
       final justFinished = previous?.isSyncing == true && !next.isSyncing;
       if (justFinished && next.failedFiles > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            action: SnackBarAction(
+              label: 'VER',
+              textColor: Colors.white,
+              onPressed: () => _showSyncFailures(next),
+            ),
             backgroundColor: Colors.red.shade800,
             content: Text(
-              'Faltan ${next.failedFiles} archivos. '
-              'Las partituras afectadas están marcadas en rojo.',
+              '${next.failedFiles} cantos requieren atención. '
+              'Solo las partituras sin PDF disponible se marcan en rojo.',
             ),
           ),
         );
@@ -91,7 +190,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
                 border: Border(
-                    bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                    bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
               ),
               child: Row(
                 children: [
@@ -107,11 +206,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       height: 48,
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withOpacity(0.05),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color:
-                                theme.colorScheme.onSurface.withOpacity(0.1)),
+                                theme.colorScheme.onSurface.withValues(alpha: 0.1)),
                       ),
                       child: TextField(
                         controller: _searchController,
@@ -163,6 +262,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ),
 
+            // Barra de progreso de descargas offline
+            Consumer(
+              builder: (context, ref, child) {
+                final isSyncing = ref.watch(
+                  syncManagerProvider.select((s) => s.isSyncing),
+                );
+                final progress = ref.watch(
+                  syncManagerProvider.select((s) => s.progress),
+                );
+                if (!isSyncing) return const SizedBox.shrink();
+                return LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  minHeight: 2.5,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                );
+              },
+            ),
+
             // Lista Vertical de Cantos
             Expanded(
               child: ref.watch(cantosBaseProvider).isLoading
@@ -190,7 +310,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                         Icon(Icons.library_music_rounded,
                                             size: 64,
                                             color:
-                                                Colors.grey.withOpacity(0.3)),
+                                                Colors.grey.withValues(alpha: 0.3)),
                                         const SizedBox(height: 16),
                                         Text(
                                           'Aún no hay partituras asignadas',

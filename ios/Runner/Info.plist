@@ -50,7 +50,7 @@
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>
-			<true/>
+			<false/>
 		</dict>
 		<key>UIBackgroundModes</key>
 		<array>
@@ -58,9 +58,11 @@
 			<string>remote-notification</string>
 		</array>
 		<key>LSSupportsOpeningDocumentsInPlace</key>
-		<true/>
+		<false/>
 		<key>UIFileSharingEnabled</key>
-		<true/>
+		<false/>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Repertorio LLDM BC solicita acceso únicamente cuando un director elige un PDF o MIDI para editar el repertorio de su iglesia. Solo se procesa el archivo seleccionado por el usuario.</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 	</dict>

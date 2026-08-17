@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pdfrx/pdfrx.dart';
@@ -10,6 +11,7 @@ import 'dart:io';
 import 'dart:math'; // For layoutPages max()
 import 'package:repertorio_bc/core/pdf/pdf_engine.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
+import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/models/trazo.dart';
 import 'package:repertorio_bc/features/visor/widgets/annotation_layer.dart';
 import 'package:repertorio_bc/core/providers/cantos_provider.dart';
@@ -93,15 +95,15 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       return;
     }
 
-    setState(() {
-      _hasMidi = true;
-    });
-
     try {
       final localMidi = await OfflineFiles.ensureMidi(canto);
       if (!mounted) return;
       await _midi.loadMidi(localMidi.path, canto.nombre);
+      ref.read(syncManagerProvider.notifier).markMidiAvailable(canto.id);
+      setState(() => _hasMidi = true);
     } catch (error) {
+      ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
+      if (mounted) setState(() => _hasMidi = false);
       debugPrint(
           '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
     }
@@ -110,6 +112,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   @override
   void dispose() {
     _midi.dispose();
+    ref.read(pdfEngineProvider.notifier).releaseTransientBytes();
     super.dispose();
   }
 
@@ -249,34 +252,36 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     );
     if (selection == null || !mounted) return;
 
-    final destination = await showModalBottomSheet<_MidiExportDestination>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.save_alt_rounded),
-              title: const Text('Guardar en el dispositivo'),
-              subtitle: const Text('Elegir nombre y ubicación'),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                _MidiExportDestination.save,
+    final destination = Platform.isIOS
+        ? _MidiExportDestination.share
+        : await showModalBottomSheet<_MidiExportDestination>(
+            context: context,
+            builder: (sheetContext) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.save_alt_rounded),
+                    title: const Text('Guardar en el dispositivo'),
+                    subtitle: const Text('Elegir nombre y ubicación'),
+                    onTap: () => Navigator.pop(
+                      sheetContext,
+                      _MidiExportDestination.save,
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.ios_share_rounded),
+                    title: const Text('Compartir'),
+                    subtitle: const Text('Enviar mediante otra aplicación'),
+                    onTap: () => Navigator.pop(
+                      sheetContext,
+                      _MidiExportDestination.share,
+                    ),
+                  ),
+                ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.ios_share_rounded),
-              title: const Text('Compartir'),
-              subtitle: const Text('Enviar mediante otra aplicación'),
-              onTap: () => Navigator.pop(
-                sheetContext,
-                _MidiExportDestination.share,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+          );
     if (destination == null || !mounted) return;
 
     if (selection.kind == _MidiExportKind.allVoices) {
@@ -284,6 +289,58 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     } else {
       await _exportarUnMp3(canto, selection.voice, destination);
     }
+  }
+
+  Future<void> _mostrarCompartir(Canto canto) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded),
+              title: const Text('Compartir PDF'),
+              onTap: () => Navigator.pop(sheetContext, 'pdf'),
+            ),
+            if (_hasMidi)
+              ListTile(
+                leading: const Icon(Icons.audio_file_rounded),
+                title: const Text('Compartir audio MIDI'),
+                onTap: () => Navigator.pop(sheetContext, 'midi'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'pdf') {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      try {
+        await ref.read(pdfEngineProvider.notifier).exportPdf(
+              canto.nombre,
+              sharePositionOrigin: _sharePositionOrigin(),
+            );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo compartir el PDF: $error')),
+        );
+      }
+    } else if (choice == 'midi') {
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      await _mostrarExportacionMidi(canto);
+    }
+  }
+
+  Rect _sharePositionOrigin() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    }
+    return const Rect.fromLTWH(0, 0, 1, 1);
   }
 
   Future<void> _exportarUnMp3(
@@ -339,11 +396,10 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           );
         }
       } else {
+        await Future.delayed(const Duration(milliseconds: 250));
         await Share.shareXFiles(
           [XFile(mp3.path, mimeType: 'audio/mpeg')],
-          text: voice == null
-              ? 'Ensamble: ${canto.nombre}'
-              : '${voice.name}: ${canto.nombre}',
+          sharePositionOrigin: _sharePositionOrigin(),
         );
       }
     } catch (error) {
@@ -435,11 +491,12 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           );
         }
       } else {
+        await Future.delayed(const Duration(milliseconds: 250));
         await Share.shareXFiles(
           [
             for (final file in files) XFile(file.path, mimeType: 'audio/mpeg'),
           ],
-          text: 'Ensamble y voces: ${canto.nombre}',
+          sharePositionOrigin: _sharePositionOrigin(),
         );
       }
     } catch (error) {
@@ -512,7 +569,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final orientation = MediaQuery.of(context).orientation;
     if (_lastOrientation != null && _lastOrientation != orientation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // ignore: deprecated_member_use
         if (_pdfController.isReady && _pdfController.pages.isNotEmpty) {
+          // ignore: deprecated_member_use
           final firstPageWidth = _pdfController.pages.first.width;
           final viewWidth = MediaQuery.of(context).size.width;
           setState(() {
@@ -628,7 +687,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                       color: theme.scaffoldBackgroundColor,
                       border: Border(
                           bottom:
-                              BorderSide(color: Colors.grey.withOpacity(0.2))),
+                              BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
                     ),
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
@@ -656,21 +715,6 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (_hasMidi)
-                              _TopBarBtn(
-                                icon: Icons.piano_rounded,
-                                isActive: _showMidi,
-                                activeColor: accentColor,
-                                onTap: _toggleMidi,
-                                tooltip: 'Reproductor MIDI',
-                              ),
-                            if (_hasMidi && Platform.isAndroid)
-                              _TopBarBtn(
-                                icon: Icons.audio_file_rounded,
-                                isActive: false,
-                                onTap: () => _mostrarExportacionMidi(canto),
-                                tooltip: 'Exportar MIDI a MP3',
-                              ),
                             if (isDirector && perfil.coroId.isNotEmpty)
                               _TopBarBtn(
                                 icon: Icons.cell_tower_rounded,
@@ -679,14 +723,20 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     _enviarSenalVivo(canto, perfil.coroId),
                                 tooltip: 'Transmitir en VIVO al coro',
                               ),
-                            if (!Platform.isIOS)
+                            if (_hasMidi)
                               _TopBarBtn(
-                                icon: Icons.ios_share_rounded,
+                                icon: Icons.piano_rounded,
+                                isActive: _showMidi,
+                                activeColor: accentColor,
+                                onTap: _toggleMidi,
+                                tooltip: 'Reproductor MIDI',
+                              ),
+                            if (kIsWeb || !Platform.isIOS)
+                              _TopBarBtn(
+                                icon: Icons.share_rounded,
                                 isActive: false,
-                                onTap: () => ref
-                                    .read(pdfEngineProvider.notifier)
-                                    .exportPdf(canto.nombre),
-                                tooltip: 'Exportar PDF',
+                                onTap: () => _mostrarCompartir(canto),
+                                tooltip: 'Compartir',
                               ),
                             _TopBarBtn(
                               icon: _showTools
@@ -722,10 +772,19 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                               : const ColorFilter.mode(
                                                   Colors.transparent,
                                                   BlendMode.multiply)),
-                                      child: PdfViewer.file(
-                                        state.localPath!,
-                                        key: ValueKey(
-                                            '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
+                                      child: PdfViewer(
+                                        state.memoryBytes != null
+                                            ? PdfDocumentRefData(
+                                                state.memoryBytes!,
+                                                sourceName:
+                                                    'ram_${widget.cantoId}',
+                                              )
+                                            : PdfDocumentRefFile(
+                                                state.localPath!,
+                                              ),
+                                        key: ValueKey(state.memoryBytes != null
+                                            ? 'ram_${widget.cantoId}_${state.memoryBytes!.length}'
+                                            : '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
                                         controller: _pdfController,
                                         params: PdfViewerParams(
                                           enableTextSelection: false,
@@ -821,6 +880,9 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                         v.trackIndex, shouldMute);
                                   }
                                 },
+                                onVozVolumeChange: (trackIndex, volume) =>
+                                    _midi.setTrackVolume(trackIndex, volume),
+                                onVocesReset: _midi.resetTrackVolumes,
                                 isLoaded: currentMidiState.isLoaded,
                                 isReady: currentMidiState.isReady,
                                 accentColor: accentColor,
@@ -847,7 +909,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -863,7 +925,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     Container(
                                         width: 1,
                                         height: 20,
-                                        color: Colors.grey.withOpacity(0.3),
+                                        color: Colors.grey.withValues(alpha: 0.3),
                                         margin: const EdgeInsets.symmetric(
                                             horizontal: 5)),
                                     _ToolBtn(
@@ -924,7 +986,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withOpacity(0.3),
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 5)),
                                       _ToolBtn(
@@ -975,7 +1037,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
+                                        color: Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -996,7 +1058,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                           trackHeight: 2,
                                           activeTrackColor: accentColor,
                                           inactiveTrackColor:
-                                              Colors.grey.withOpacity(0.3),
+                                              Colors.grey.withValues(alpha: 0.3),
                                           thumbColor: accentColor,
                                         ),
                                         child: Slider(
@@ -1022,7 +1084,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withOpacity(0.3),
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 10)),
                                       _ColorBtn(
@@ -1085,6 +1147,8 @@ class _MidiPanel extends StatefulWidget {
   final VoidCallback onMetronomo;
   final void Function(int, bool) onVozToggle;
   final void Function(int) onVozSolo;
+  final void Function(int, double) onVozVolumeChange;
+  final VoidCallback onVocesReset;
   final bool isLoaded;
   final bool isReady;
   final Color accentColor;
@@ -1098,6 +1162,8 @@ class _MidiPanel extends StatefulWidget {
     required this.onMetronomo,
     required this.onVozToggle,
     required this.onVozSolo,
+    required this.onVozVolumeChange,
+    required this.onVocesReset,
     required this.isLoaded,
     required this.isReady,
     required this.accentColor,
@@ -1118,6 +1184,238 @@ class _MidiPanelState extends State<_MidiPanel> {
     return '$m:$s';
   }
 
+  void _abrirMezcladorModal(BuildContext parentContext) {
+    showModalBottomSheet<void>(
+      context: parentContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (modalContext) {
+        final theme = Theme.of(modalContext);
+        final localVolumes = <int, double>{
+          for (final voz in widget.midiState.voces)
+            voz.trackIndex: voz.volumen.clamp(0.0, 1.0),
+        };
+        return StatefulBuilder(
+          builder: (context, setModalState) => SafeArea(
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(modalContext).size.height * 0.45,
+            ),
+            decoration: BoxDecoration(
+              color: theme.scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Encabezado ───────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                        tooltip: 'Regresar',
+                        onPressed: () => Navigator.pop(modalContext),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Mezclador de Voces',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          widget.onVocesReset();
+                          setModalState(() {
+                            for (final voz in widget.midiState.voces) {
+                              localVolumes[voz.trackIndex] = 1.0;
+                            }
+                          });
+                        },
+                        icon: Icon(
+                          Icons.rotate_left_rounded,
+                          size: 16,
+                          color: widget.accentColor,
+                        ),
+                        label: Text(
+                          'Restablecer',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: widget.accentColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+                // ── Lista de Voces Deslizable ─────────────────────────────────
+                Expanded(
+                  child: widget.midiState.voces.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Sin voces disponibles para este canto',
+                            style: GoogleFonts.inter(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: widget.midiState.voces.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final voz = widget.midiState.voces[index];
+                            final volume = localVolumes[voz.trackIndex] ??
+                                voz.volumen.clamp(0.0, 1.0);
+                            final volPct = (volume * 100).round();
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: voz.activa && voz.volumen > 0
+                                      ? widget.accentColor.withValues(alpha: 0.25)
+                                      : Colors.grey.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      voz.activa && volume > 0
+                                          ? (volume > 0.5
+                                              ? Icons.volume_up_rounded
+                                              : Icons.volume_down_rounded)
+                                          : Icons.volume_off_rounded,
+                                      size: 20,
+                                      color: voz.activa && volume > 0
+                                          ? widget.accentColor
+                                          : Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      widget.onVozToggle(
+                                        voz.trackIndex,
+                                        voz.activa,
+                                      );
+                                    },
+                                    tooltip: voz.activa
+                                        ? 'Silenciar ${voz.nombre}'
+                                        : 'Activar ${voz.nombre}',
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            GestureDetector(
+                                              onLongPress: () =>
+                                                  widget.onVozSolo(voz.trackIndex),
+                                              child: Text(
+                                                voz.nombre,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: voz.activa &&
+                                                          volume > 0
+                                                      ? theme.colorScheme
+                                                          .onSurface
+                                                      : Colors.grey,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '$volPct%',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: voz.activa &&
+                                                        volume > 0
+                                                    ? widget.accentColor
+                                                    : Colors.grey,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SliderTheme(
+                                          data: SliderThemeData(
+                                            trackHeight: 3,
+                                            thumbShape:
+                                                const RoundSliderThumbShape(
+                                              enabledThumbRadius: 6,
+                                            ),
+                                            activeTrackColor: widget.accentColor,
+                                            inactiveTrackColor: widget
+                                                .accentColor
+                                                .withValues(alpha: 0.2),
+                                            thumbColor: widget.accentColor,
+                                            overlayShape:
+                                                const RoundSliderOverlayShape(
+                                              overlayRadius: 12,
+                                            ),
+                                          ),
+                                          child: Slider(
+                                            value: volume,
+                                            onChanged: (val) {
+                                              setModalState(() {
+                                                localVolumes[voz.trackIndex] = val;
+                                              });
+                                              widget.onVozVolumeChange(
+                                                voz.trackIndex,
+                                                val,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1126,12 +1424,12 @@ class _MidiPanelState extends State<_MidiPanel> {
     return Material(
       elevation: 12,
       borderRadius: BorderRadius.circular(20),
-      shadowColor: Colors.black.withOpacity(0.2),
+      shadowColor: Colors.black.withValues(alpha: 0.2),
       child: Container(
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: widget.accentColor.withOpacity(0.4)),
+          border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
         ),
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
@@ -1188,15 +1486,15 @@ class _MidiPanelState extends State<_MidiPanel> {
                                     ? (isFirst
                                         ? Colors.redAccent
                                         : widget.accentColor)
-                                    : Colors.grey.withOpacity(0.3),
+                                    : Colors.grey.withValues(alpha: 0.3),
                                 boxShadow: isCurrent
                                     ? [
                                         BoxShadow(
                                           color: isFirst
                                               ? Colors.redAccent
-                                                  .withOpacity(0.5)
+                                                  .withValues(alpha: 0.5)
                                               : widget.accentColor
-                                                  .withOpacity(0.5),
+                                                  .withValues(alpha: 0.5),
                                           blurRadius: 4,
                                           spreadRadius: 1,
                                         )
@@ -1228,7 +1526,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                         : Icons.settings_rounded,
                     color: _showSettings
                         ? widget.accentColor
-                        : Colors.grey.withOpacity(0.8),
+                        : Colors.grey.withValues(alpha: 0.8),
                     size: 20,
                   ),
                   padding: EdgeInsets.zero,
@@ -1248,7 +1546,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                     thumbShape:
                         const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: widget.accentColor,
-                    inactiveTrackColor: widget.accentColor.withOpacity(0.2),
+                    inactiveTrackColor: widget.accentColor.withValues(alpha: 0.2),
                     thumbColor: widget.accentColor,
                     overlayShape:
                         const RoundSliderOverlayShape(overlayRadius: 14),
@@ -1301,11 +1599,15 @@ class _MidiPanelState extends State<_MidiPanel> {
             const SizedBox(height: 10),
 
             // ── Controles principales ──────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            SizedBox(
+              height: 56,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
                 // Metrónomo toggle
-                _GoldIconBtn(
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _GoldIconBtn(
                   isActive: widget.midiState.metronomoActivo,
                   activeColor: widget.accentColor,
                   onTap: loading ? null : widget.onMetronomo,
@@ -1325,16 +1627,18 @@ class _MidiPanelState extends State<_MidiPanel> {
                       return MetronomeIcon(
                         color: widget.midiState.metronomoActivo
                             ? widget.accentColor
-                            : Colors.grey.withOpacity(0.6),
+                            : Colors.grey.withValues(alpha: 0.6),
                         size: 20,
                         rotationAngle: angle,
                       );
                     },
                   ),
+                  ),
                 ),
-                const SizedBox(width: 8),
                 // Play / Pause
-                GestureDetector(
+                Align(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
                   onTap: loading ? null : widget.onPlay,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -1343,13 +1647,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: loading
-                          ? Colors.grey.withOpacity(0.2)
+                          ? Colors.grey.withValues(alpha: 0.2)
                           : widget.accentColor,
                       boxShadow: loading
                           ? []
                           : [
                               BoxShadow(
-                                  color: widget.accentColor.withOpacity(0.4),
+                                  color: widget.accentColor.withValues(alpha: 0.4),
                                   blurRadius: 12)
                             ],
                     ),
@@ -1366,9 +1670,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                             size: 28,
                           ),
                   ),
+                  ),
                 ),
-                const SizedBox(width: 8),
                 // Stop
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 _GoldIconBtn(
                   icon: Icons.stop_rounded,
                   isActive: false,
@@ -1377,7 +1686,21 @@ class _MidiPanelState extends State<_MidiPanel> {
                   tooltip: 'Detener',
                   size: 22,
                 ),
+                const SizedBox(width: 8),
+                // Mezclador de voces
+                _GoldIconBtn(
+                  icon: Icons.tune_rounded,
+                  isActive: false,
+                  activeColor: widget.accentColor,
+                  onTap: loading ? null : () => _abrirMezcladorModal(context),
+                  tooltip: 'Mezclador de voces',
+                  size: 22,
+                ),
+                    ],
+                  ),
+                ),
               ],
+            ),
             ),
 
             // Sección Expandible de Ajustes
@@ -1392,7 +1715,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                         Row(
                           children: [
                             Icon(Icons.speed_rounded,
-                                size: 16, color: Colors.grey.withOpacity(0.8)),
+                                size: 16, color: Colors.grey.withValues(alpha: 0.8)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: SingleChildScrollView(
@@ -1416,14 +1739,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                                           color: active
                                               ? widget.accentColor
                                               : widget.accentColor
-                                                  .withOpacity(0.08),
+                                                  .withValues(alpha: 0.08),
                                           borderRadius:
                                               BorderRadius.circular(20),
                                           border: Border.all(
                                               color: active
                                                   ? widget.accentColor
                                                   : widget.accentColor
-                                                      .withOpacity(0.3)),
+                                                      .withValues(alpha: 0.3)),
                                         ),
                                         child: Text(
                                           '${s}x',
@@ -1451,7 +1774,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                             children: [
                               Icon(Icons.people_rounded,
                                   size: 16,
-                                  color: Colors.grey.withOpacity(0.8)),
+                                  color: Colors.grey.withValues(alpha: 0.8)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -1478,7 +1801,7 @@ class _MidiPanelState extends State<_MidiPanel> {
                                               horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: widget.accentColor
-                                                .withOpacity(0.15),
+                                                .withValues(alpha: 0.15),
                                             borderRadius:
                                                 BorderRadius.circular(20),
                                             border: Border.all(
@@ -1521,14 +1844,14 @@ class _MidiPanelState extends State<_MidiPanel> {
                                               color: voz.activa
                                                   ? widget.accentColor
                                                   : Colors.grey
-                                                      .withOpacity(0.1),
+                                                      .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                               border: Border.all(
                                                 color: voz.activa
                                                     ? widget.accentColor
                                                     : Colors.grey
-                                                        .withOpacity(0.3),
+                                                        .withValues(alpha: 0.3),
                                               ),
                                             ),
                                             child: Text(
@@ -1577,7 +1900,7 @@ class _LoadingPlaceholder extends StatelessWidget {
               .animate(onPlay: (c) => c.repeat())
               .shimmer(
                   duration: 1500.ms,
-                  color: theme.colorScheme.primary.withOpacity(0.5))
+                  color: theme.colorScheme.primary.withValues(alpha: 0.5))
               .scaleXY(
                   begin: 0.95,
                   end: 1.05,
@@ -1652,7 +1975,7 @@ class _GoldIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveColor = Colors.grey.withOpacity(0.6);
+    final inactiveColor = Colors.grey.withValues(alpha: 0.6);
 
     return Tooltip(
       message: tooltip,
@@ -1662,7 +1985,7 @@ class _GoldIconBtn extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color:
-                isActive ? activeColor.withOpacity(0.15) : Colors.transparent,
+                isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: child ??
@@ -1771,7 +2094,7 @@ class _ToolBtn extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: isActive
-              ? theme.colorScheme.primary.withOpacity(0.1)
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           shape: BoxShape.circle,
         ),
@@ -1803,7 +2126,7 @@ class _ColorBtn extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: isActive
-              ? theme.colorScheme.primary.withOpacity(0.2)
+              ? theme.colorScheme.primary.withValues(alpha: 0.2)
               : Colors.transparent,
           shape: BoxShape.circle,
         ),
@@ -1817,7 +2140,7 @@ class _ColorBtn extends StatelessWidget {
             boxShadow: [
               if (isActive)
                 BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.5),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
                     blurRadius: 4),
             ],
           ),

@@ -11,21 +11,38 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class PushService {
-  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  
+  static final FirebaseMessaging _firebaseMessaging =
+      FirebaseMessaging.instance;
+  static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
   static void Function(String)? onNotificationTap;
+  static Future<void> Function(String token)? onTokenRefresh;
   static String? pendingPayload;
   static String? lastNotifiedCantoId;
+  static bool _firebaseReady = false;
+  static String? _unavailableReason;
+  static String? _lastTokenError;
+
+  static bool get isAvailable => _firebaseReady;
+  static String? get unavailableReason => _unavailableReason;
+  static String? get lastTokenError => _lastTokenError;
 
   static Future<void> init() async {
     // 1. Inicializar Firebase (requiere GoogleService-Info.plist en iOS y google-services.json en Android)
     try {
       await Firebase.initializeApp();
+      _firebaseReady = true;
+      _unavailableReason = null;
       debugPrint('Firebase inicializado correctamente');
     } catch (e) {
-      debugPrint('Firebase init falló (probablemente falta configuración iOS): $e');
-      debugPrint('Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
+      _firebaseReady = false;
+      _unavailableReason =
+          'Este dispositivo no puede activar notificaciones en este momento.';
+      debugPrint(
+          'Firebase init falló (probablemente falta configuración iOS): $e');
+      debugPrint(
+          'Push notifications deshabilitadas. Registra una app iOS en Firebase Console.');
       return; // Salir sin configurar notificaciones push
     }
 
@@ -33,24 +50,27 @@ class PushService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 3. Configurar notificaciones locales para cuando la app esté en primer plano
-    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+    const androidInit =
+        AndroidInitializationSettings('@drawable/ic_notification');
     const darwinInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-    const initSettings = InitializationSettings(android: androidInit, iOS: darwinInit, macOS: darwinInit);
+    const initSettings = InitializationSettings(
+        android: androidInit, iOS: darwinInit, macOS: darwinInit);
     await _localNotificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null && details.payload!.isNotEmpty) {
-          onNotificationTap?.call(details.payload!);
+          _dispatchPayload(details.payload!);
         }
       },
     );
 
     // 4. Chequear si la app se abrió desde una notificación (Cold Start)
-    final launchDetails = await _localNotificationsPlugin.getNotificationAppLaunchDetails();
+    final launchDetails =
+        await _localNotificationsPlugin.getNotificationAppLaunchDetails();
     if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
       if (launchDetails.notificationResponse?.payload != null) {
         pendingPayload = launchDetails.notificationResponse!.payload;
@@ -58,26 +78,33 @@ class PushService {
     }
 
     // 5. Escuchar cambios de token y refrescarlo en Supabase cuando cambie
-    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
-      debugPrint('[FCM] Token refrescado: $token');
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+      debugPrint('[FCM] Token renovado; sincronizando el dispositivo.');
+      try {
+        await onTokenRefresh?.call(token);
+      } catch (error) {
+        debugPrint('[FCM] No se pudo sincronizar el token renovado: $error');
+      }
     });
 
     // 6. Configurar opciones de presentación para iOS (alert, badge, sound)
     if (Platform.isIOS) {
       await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+        // La notificación se muestra manualmente abajo con el payload de
+        // navegación. Si iOS también la presenta automáticamente, aparecen
+        // dos avisos en primer plano (Android no tiene ese comportamiento).
+        alert: false,
+        badge: false,
+        sound: false,
       );
     }
 
     // 7. Escuchar notificaciones en primer plano
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Recibida notificación en primer plano: ${message.notification?.title}');
-      
+      debugPrint(
+          'Recibida notificación en primer plano: ${message.notification?.title}');
+
       final notification = message.notification;
-      final cantoId = message.data['canto_id'];
-      
       if (notification != null) {
         _localNotificationsPlugin.show(
           notification.hashCode,
@@ -87,7 +114,8 @@ class PushService {
             android: AndroidNotificationDetails(
               'repertorio_bc_channel', // id
               'Avisos y Actualizaciones', // title
-              channelDescription: 'Notificaciones sobre setlists y actualizaciones',
+              channelDescription:
+                  'Notificaciones sobre setlists y actualizaciones',
               importance: Importance.max,
               priority: Priority.high,
             ),
@@ -97,39 +125,37 @@ class PushService {
               presentSound: true,
             ),
           ),
-          payload: cantoId != null && cantoId.toString().isNotEmpty ? 'visor_$cantoId' : null,
+          payload: _payloadForMessage(message),
         );
       }
     });
 
-
     // 8. Escuchar clics en notificaciones cuando la app está en segundo plano (pero no cerrada)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('FCM: Notificación cliqueada en segundo plano: ${message.data}');
+      debugPrint(
+          'FCM: Notificación cliqueada en segundo plano: ${message.data}');
       _handleMessageClick(message);
     });
 
     // 9. Chequear si la app se abrió desde una notificación cerrada (Cold Start de FCM)
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint('FCM: App abierta desde notificación con cold start: ${initialMessage.data}');
+      debugPrint(
+          'FCM: App abierta desde notificación con cold start: ${initialMessage.data}');
       _handleMessageClick(initialMessage);
     }
   }
 
   static void _handleMessageClick(RemoteMessage message) {
-    final cantoId = message.data['canto_id'];
-    if (cantoId != null && cantoId.toString().isNotEmpty) {
-      final payload = 'visor_$cantoId';
-      if (onNotificationTap != null) {
-        onNotificationTap!(payload);
-      } else {
-        pendingPayload = payload;
-      }
-    }
+    final payload = _payloadForMessage(message);
+    if (payload != null) _dispatchPayload(payload);
   }
 
   static Future<String?> getToken() async {
+    if (!_firebaseReady) {
+      _lastTokenError = 'Firebase no se pudo inicializar.';
+      return null;
+    }
     try {
       if (Platform.isIOS) {
         // En iOS, se requiere asegurar que APNs Token esté recibido antes de pedir el FCM Token.
@@ -142,17 +168,33 @@ class PushService {
             if (apnsToken != null) break;
           }
         }
-        debugPrint('[PushService] APNs Token obtenido: $apnsToken');
+        debugPrint('[PushService] APNs Token disponible: ${apnsToken != null}');
+        if (apnsToken == null) {
+          _lastTokenError =
+              'iOS aún no entregó el token APNs; se reintentará automáticamente.';
+          return null;
+        }
       }
       final token = await _firebaseMessaging.getToken();
+      if (token == null || token.isEmpty) {
+        _lastTokenError = 'Firebase no entregó un token FCM todavía.';
+        return null;
+      }
+      _lastTokenError = null;
       return token;
     } catch (e) {
+      _lastTokenError = 'No se pudo obtener el token FCM: $e';
       debugPrint('[PushService] Error obteniendo FCM token: $e');
       return null;
     }
   }
 
-  static Future<void> requestPermission() async {
+  static Future<bool> requestPermission() async {
+    if (!_firebaseReady || (!Platform.isIOS && !Platform.isAndroid)) {
+      _unavailableReason =
+          'Las notificaciones no están disponibles en este dispositivo.';
+      return false;
+    }
     if (Platform.isIOS || Platform.isAndroid) {
       final settings = await _firebaseMessaging.requestPermission(
         alert: true,
@@ -160,8 +202,64 @@ class PushService {
         sound: true,
         provisional: false,
       );
-      debugPrint('[PushService] Estado de permiso: ${settings.authorizationStatus}');
+      debugPrint(
+          '[PushService] Estado de permiso: ${settings.authorizationStatus}');
+      final enabled =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      _unavailableReason = enabled
+          ? null
+          : 'Las notificaciones estan desactivadas para esta aplicacion. Activalas desde los ajustes del dispositivo.';
+      return enabled;
     }
+    return false;
   }
 
+  static Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await _localNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'repertorio_bc_channel',
+          'Avisos y Actualizaciones',
+          channelDescription:
+              'Notificaciones sobre setlists y actualizaciones',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: payload,
+    );
+  }
+
+  /// Entrega el clic a la app cuando el router ya está disponible. Durante el
+  /// arranque, el callback todavía puede no estar registrado; en ese caso se
+  /// conserva el payload para que el redirect global lo procese después.
+  static void _dispatchPayload(String payload) {
+    final callback = onNotificationTap;
+    if (callback == null) {
+      pendingPayload = payload;
+      return;
+    }
+    callback(payload);
+  }
+
+  static String? _payloadForMessage(RemoteMessage message) {
+    final rawId = message.data['canto_id'] ?? message.data['cantoId'];
+    final cantoId = rawId?.toString().trim();
+    if (cantoId == null || cantoId.isEmpty) return null;
+    return 'visor_$cantoId';
+  }
 }

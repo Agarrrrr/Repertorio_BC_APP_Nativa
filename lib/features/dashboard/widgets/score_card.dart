@@ -19,11 +19,22 @@ class ScoreCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasAudio = canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty;
-    final syncState = ref.watch(syncManagerProvider);
-    final hasMissingFile = syncState.failedCantoIds.contains(canto.id);
+    final hasDeclaredMidi =
+        canto.midiArchivo != null && canto.midiArchivo!.isNotEmpty;
+    final missingPdf = ref.watch(
+      syncManagerProvider.select((s) => s.failedPdfCantoIds.contains(canto.id)),
+    );
+    final missingMidi = ref.watch(
+      syncManagerProvider
+          .select((s) => s.failedMidiCantoIds.contains(canto.id)),
+    );
+    final isReadyPdf = ref.watch(
+      syncManagerProvider
+          .select((s) => s.readyPdfCantoIds.contains(canto.id)),
+    );
+    final hasAudio = hasDeclaredMidi && !missingMidi;
 
-    final cardBg = hasMissingFile
+    final cardBg = (missingPdf || missingMidi)
         ? (isDark ? const Color(0xFF35191B) : const Color(0xFFFFEBEE))
         : Theme.of(context).colorScheme.surface;
 
@@ -57,14 +68,9 @@ class ScoreCard extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 child: Ink(
                   decoration: BoxDecoration(
-                    color: hasMissingFile
+                    color: (missingPdf || missingMidi)
                         ? Colors.red
-                        : hasAudio
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withOpacity(0.6),
+                        : Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(17),
                   ),
                   child: Padding(
@@ -97,24 +103,19 @@ class ScoreCard extends ConsumerWidget {
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
-                                      color: hasMissingFile
+                                      color: (missingPdf || missingMidi)
                                           ? (isDark
                                               ? Colors.red.shade200
                                               : Colors.red.shade900)
-                                          : hasAudio
-                                              ? Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface
-                                              : Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurface
-                                                  .withOpacity(0.4),
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Row(
                                     children: [
-                                      if (hasMissingFile) ...[
+                                      if (missingPdf || missingMidi) ...[
                                         const Icon(
                                           Icons.error_outline_rounded,
                                           size: 13,
@@ -129,6 +130,15 @@ class ScoreCard extends ConsumerWidget {
                                             color: Colors.red,
                                           ),
                                         ),
+                                      ] else if (isReadyPdf) ...[
+                                        Icon(
+                                          Icons.offline_pin_rounded,
+                                          size: 13,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                        ),
+                                        const SizedBox(width: 4),
                                       ],
                                       if (hasAudio) ...[
                                         Icon(Icons.piano_rounded,
@@ -147,15 +157,10 @@ class ScoreCard extends ConsumerWidget {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: hasAudio
-                                                ? Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withOpacity(0.6)
-                                                : Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withOpacity(0.3),
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.6),
                                           ),
                                         ),
                                       ),
@@ -168,13 +173,9 @@ class ScoreCard extends ConsumerWidget {
                             // Flecha
                             Icon(
                               Icons.chevron_right_rounded,
-                              color: hasAudio
-                                  ? (isDark
-                                      ? Colors.white30
-                                      : const Color(0xFFCBD5E1))
-                                  : (isDark
-                                      ? Colors.white12
-                                      : Colors.grey.shade300),
+                              color: isDark
+                                  ? Colors.white30
+                                  : const Color(0xFFCBD5E1),
                             ),
                           ],
                         ),

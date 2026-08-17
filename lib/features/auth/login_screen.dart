@@ -10,7 +10,7 @@ import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'dart:async';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:repertorio_bc/core/storage/app_cache.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -44,9 +44,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _checkLockoutStatus() {
-    final box = Hive.box('cache');
-    _failedAttempts = box.get('login_failed_attempts', defaultValue: 0);
-    final lockoutMillis = box.get('login_lockout_until');
+    _failedAttempts =
+        AppCache.get<int>('login_failed_attempts', defaultValue: 0)!;
+    final lockoutMillis = AppCache.get<int>('login_lockout_until');
 
     if (lockoutMillis != null) {
       final lockoutTime = DateTime.fromMillisecondsSinceEpoch(lockoutMillis);
@@ -55,8 +55,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _startCountdown();
       } else {
         // Expiró el castigo
-        box.delete('login_lockout_until');
-        box.put('login_failed_attempts', 0);
+        AppCache.delete('login_lockout_until');
+        AppCache.put('login_failed_attempts', 0);
         _failedAttempts = 0;
       }
     }
@@ -74,9 +74,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _lockoutMessage = '';
           _failedAttempts = 0;
         });
-        final box = Hive.box('cache');
-        box.delete('login_lockout_until');
-        box.put('login_failed_attempts', 0);
+        AppCache.delete('login_lockout_until');
+        AppCache.put('login_failed_attempts', 0);
       } else {
         _updateLockoutMessage();
       }
@@ -124,18 +123,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         _failedAttempts++;
-        final box = Hive.box('cache');
-
         if (_failedAttempts >= 5) {
           final lockoutTime = DateTime.now().add(const Duration(minutes: 3));
           _lockoutUntil = lockoutTime;
-          box.put('login_lockout_until', lockoutTime.millisecondsSinceEpoch);
+          AppCache.put(
+            'login_lockout_until',
+            lockoutTime.millisecondsSinceEpoch,
+          );
           _startCountdown();
           setState(() {
             _errorMessage = null; // Reemplazado por el mensaje de lockout
           });
         } else {
-          box.put('login_failed_attempts', _failedAttempts);
+          AppCache.put('login_failed_attempts', _failedAttempts);
           setState(() {
             _errorMessage =
                 "Credenciales incorrectas. Te quedan ${5 - _failedAttempts} intentos.";
@@ -185,7 +185,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color:
-                    const Color(0xFFD4AF37).withOpacity(0.15), // Círculo dorado
+                    const Color(0xFFD4AF37).withValues(alpha: 0.15), // Círculo dorado
               ),
             )
                 .animate(
@@ -204,7 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: const Color(0xFF0055FF)
-                    .withOpacity(0.1), // Círculo azul vibrante
+                    .withValues(alpha: 0.1), // Círculo azul vibrante
               ),
             )
                 .animate(
@@ -229,10 +229,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 32, vertical: 48),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(24),
                         border:
-                            Border.all(color: Colors.white.withOpacity(0.2)),
+                            Border.all(color: Colors.white.withValues(alpha: 0.2)),
                       ),
                       child: AutofillGroup(
                         child: Column(
@@ -242,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Icon(
                               Icons.music_note_rounded,
                               size: 72,
-                              color: Colors.white.withOpacity(0.9),
+                              color: Colors.white.withValues(alpha: 0.9),
                             )
                                 .animate()
                                 .fade(duration: 600.ms)
@@ -278,11 +278,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.all(12),
                                 margin: const EdgeInsets.only(bottom: 24),
                                 decoration: BoxDecoration(
-                                  color: Colors.orangeAccent.withOpacity(0.2),
+                                  color: Colors.orangeAccent.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                       color:
-                                          Colors.orangeAccent.withOpacity(0.5)),
+                                          Colors.orangeAccent.withValues(alpha: 0.5)),
                                 ),
                                 child: Row(
                                   children: [
@@ -305,10 +305,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 padding: const EdgeInsets.all(12),
                                 margin: const EdgeInsets.only(bottom: 24),
                                 decoration: BoxDecoration(
-                                  color: Colors.redAccent.withOpacity(0.2),
+                                  color: Colors.redAccent.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                      color: Colors.redAccent.withOpacity(0.5)),
+                                      color: Colors.redAccent.withValues(alpha: 0.5)),
                                 ),
                                 child: Row(
                                   children: [
@@ -411,7 +411,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     : [
                                         BoxShadow(
                                           color: const Color(0xFFD4AF37)
-                                              .withOpacity(
+                                              .withValues(alpha: 
                                                   0.3), // Sombra dorada
                                           blurRadius: 12,
                                           offset: const Offset(0, 6),
@@ -472,7 +472,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withValues(alpha: 0.1),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     )
@@ -569,9 +569,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: TextField(
         controller: controller,

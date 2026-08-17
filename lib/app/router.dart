@@ -80,11 +80,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isAuthRoute ? null : '/login';
       }
 
-      // Si el usuario existe pero no tiene perfil (y no está cargando), debe completar registro Google
-      if (!perfilState.isLoading && perfil == null) {
+      // Si el usuario existe pero no tiene perfil (y no está cargando ni falló por red), debe completar registro Google
+      if (!perfilState.isLoading && !perfilState.hasError && perfil == null) {
         return state.matchedLocation == '/complete-google'
             ? null
             : '/complete-google';
+      }
+
+      // Un cold start puede guardar el clic mientras todavía se muestra el
+      // splash. En ese momento no debemos devolver primero a '/' porque
+      // GoRouter puede no volver a ejecutar este redirect inmediatamente y el
+      // enlace pendiente se queda sin consumir.
+      if (perfil != null && PushService.pendingPayload != null) {
+        final payload = PushService.pendingPayload!;
+        PushService.pendingPayload = null;
+        if (payload.startsWith('visor_')) {
+          final id = payload.replaceFirst('visor_', '').trim();
+          if (id.isNotEmpty) return '/visor/$id';
+        }
       }
 
       if (isAuthRoute || isSplashRoute) {
@@ -95,16 +108,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return pending;
         }
         return '/';
-      }
-
-      // 1. Verificar si hay un payload pendiente por cold-start
-      if (PushService.pendingPayload != null) {
-        final p = PushService.pendingPayload!;
-        PushService.pendingPayload = null; // Limpiar para no crear bucles
-        if (p.startsWith('visor_')) {
-          final id = p.replaceFirst('visor_', '');
-          return '/visor/$id';
-        }
       }
 
       // Proteger rutas del gestor por rol

@@ -2,9 +2,7 @@ name: Build & Deploy iOS App to App Store Connect
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, codex/unified-repertoire ]
   workflow_dispatch:
 
 jobs:
@@ -43,10 +41,27 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Analyze Flutter sources
+        run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
-          pod install
+          # GitHub puede responder 503 temporalmente cuando CocoaPods clona
+          # dependencias de Firebase. Reintentar evita fallar toda la build.
+          for attempt in 1 2 3 4; do
+            if pod install --repo-update; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "::error::CocoaPods no pudo instalar dependencias tras 4 intentos."
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
 
       - name: Import Signing Certificate (if secrets present)
         env:
@@ -73,9 +88,14 @@ jobs:
             security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcodebuild
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" $KEYCHAIN_PATH
             security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
+            if ! security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -E "Apple Distribution|iPhone Distribution"; then
+              echo "::error::The imported P12 does not contain an Apple Distribution signing identity."
+              exit 1
+            fi
             echo "Keychain initialized successfully."
           else
-            echo "No signing certificates provided in Secrets. Proceeding with unsigned build."
+            echo "::error::APPLE_P12_BASE64 or BUILD_CERTIFICATE_BASE64 is required. Automatic certificate creation is disabled to avoid exhausting the Apple account limit."
+            exit 1
           fi
 
       - name: Setup App Store Connect API Key
@@ -164,6 +184,21 @@ jobs:
                        -authenticationKeyPath ~/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
                        -authenticationKeyID $APP_STORE_CONNECT_KEY_ID \
                        -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
+
+            # La configuración de Firebase puede ser correcta y aun así una
+            # IPA firmada sin el entitlement APNs jamás recibe token. Validamos
+            # el binario final, no solo Runner.entitlements en el repositorio.
+            IPA_FILE=$(find build/ios/ipa -name '*.ipa' -print -quit)
+            VERIFY_DIR=$(mktemp -d)
+            unzip -q "$IPA_FILE" -d "$VERIFY_DIR"
+            ENTITLEMENTS_FILE="$RUNNER_TEMP/runner-entitlements.plist"
+            codesign -d --entitlements :- "$VERIFY_DIR/Payload/Runner.app" \
+              > "$ENTITLEMENTS_FILE" 2>&1
+            if ! grep -q '<key>aps-environment</key>.*<string>production</string>' "$ENTITLEMENTS_FILE"; then
+              echo "::error::La IPA final no contiene aps-environment=production."
+              exit 1
+            fi
+            echo "Signed IPA aps-environment: production"
           else
             echo "App Store Connect API Key not provided. Skipping signed archive and export."
           fi

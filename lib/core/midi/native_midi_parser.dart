@@ -620,39 +620,97 @@ class NativeMidiParser {
     );
   }
 
-  /// Conserva los nombres del MIDI únicamente cuando todas las pistas tienen
-  /// una etiqueta útil y no hay varios pianos que vuelvan ambigua la función
-  /// coral. Los escaneos de cuatro y cinco pentagramas se interpretan por el
-  /// orden convencional de la partitura.
+  /// Normaliza los nombres de las pistas a la estructura coral (SATB, Solista, etc.)
+  /// ignorando etiquetas de instrumentos (Violines, Pianos, Flautas, Pistas genéricas)
+  /// y ordenando las pistas por su altura tonal promedio (pitch) de más aguda a más grave.
   static List<MidiTrackInfo> normalizeVoiceNames(
     List<MidiTrackInfo> tracks,
   ) {
-    if (tracks.length != 4 && tracks.length != 5) {
-      return List<MidiTrackInfo>.unmodifiable(tracks);
-    }
+    if (tracks.isEmpty) return List<MidiTrackInfo>.unmodifiable(tracks);
+
+    // Regex para validar si el nombre de la pista YA es un nombre coral explícito
+    final choralRegex = RegExp(
+      r'\b(soprano|sop|alto|altus|contralto|mezzo|mezzosoprano|tenor|bajo|bass|bassus|baritono|baritone|solista|solo|cantus)\b',
+      caseSensitive: false,
+    );
+
+    // Regex para identificar términos de instrumentos o pistas genéricas que debemos ignorar
+    final instrumentRegex = RegExp(
+      r'\b(piano|violin|viola|cello|violonchelo|cuerdas|strings|flauta|flute|oboe|trompeta|trumpet|organ|organo|synth|sintetizador|vientos|brass|pista|track|instrument|instrumento)\b',
+      caseSensitive: false,
+    );
 
     final normalizedNames =
-        tracks.map((track) => track.name.trim().toLowerCase()).toList();
-    final allNamed = normalizedNames.every(
-      (name) =>
-          name.isNotEmpty && !RegExp(r'^(pista|track)\s*\d*$').hasMatch(name),
-    );
-    final pianoCount =
-        normalizedNames.where((name) => name.contains('piano')).length;
+        tracks.map((track) => track.name.trim()).toList();
 
-    if (allNamed && pianoCount <= 1) {
+    // Verificamos si TODAS las pistas tienen nombres corales válidos y NO tienen nombres de instrumentos
+    final allChoralNamed = normalizedNames.every(
+      (name) =>
+          name.isNotEmpty &&
+          choralRegex.hasMatch(name) &&
+          !instrumentRegex.hasMatch(name),
+    );
+
+    // Si ya tienen nombres corales bien definidos (SATB, etc.), los conservamos respetando su formato
+    if (allChoralNamed) {
       return List<MidiTrackInfo>.unmodifiable(tracks);
     }
 
-    final labels = tracks.length == 5
-        ? const ['Solo', 'Soprano', 'Alto', 'Tenor', 'Bajo']
-        : const ['Soprano', 'Alto', 'Tenor', 'Bajo'];
+    // De lo contrario, la partitura proviene de software con nombres de instrumentos.
+    // Ignoramos los nombres de instrumentos y clasificamos las pistas por altura tonal promedio (pitch).
+    final sortedTracks = List<MidiTrackInfo>.from(tracks)
+      ..sort((a, b) {
+        final aPitch = a.notes.isEmpty
+            ? 0.0
+            : a.notes.fold<double>(0.0, (s, n) => s + n.note) / a.notes.length;
+        final bPitch = b.notes.isEmpty
+            ? 0.0
+            : b.notes.fold<double>(0.0, (s, n) => s + n.note) / b.notes.length;
+        return bPitch.compareTo(aPitch); // Descendente: Aguda -> Grave
+      });
+
+    // Definimos las etiquetas corales estándar para N pistas
+    final List<String> labels;
+    final count = sortedTracks.length;
+    if (count == 1) {
+      labels = const ['Melodía'];
+    } else if (count == 2) {
+      labels = const ['Soprano / Alto', 'Tenor / Bajo'];
+    } else if (count == 3) {
+      labels = const ['Soprano', 'Alto', 'Tenor / Bajo'];
+    } else if (count == 4) {
+      labels = const ['Soprano', 'Alto', 'Tenor', 'Bajo'];
+    } else if (count == 5) {
+      labels = const ['Solo', 'Soprano', 'Alto', 'Tenor', 'Bajo'];
+    } else if (count == 6) {
+      labels = const ['Solo', 'Soprano 1', 'Soprano 2', 'Alto', 'Tenor', 'Bajo'];
+    } else if (count == 8) {
+      labels = const [
+        'Soprano 1',
+        'Soprano 2',
+        'Alto 1',
+        'Alto 2',
+        'Tenor 1',
+        'Tenor 2',
+        'Bajo 1',
+        'Bajo 2'
+      ];
+    } else {
+      labels = List.generate(count, (i) => 'Voz ${i + 1}');
+    }
+
+    // Reasignamos los nombres corales respetando el orden original de las pistas
+    final trackToLabel = <int, String>{};
+    for (var i = 0; i < sortedTracks.length; i++) {
+      trackToLabel[sortedTracks[i].index] = labels[i];
+    }
+
     return List<MidiTrackInfo>.unmodifiable([
-      for (var index = 0; index < tracks.length; index++)
+      for (final track in tracks)
         MidiTrackInfo(
-          index: tracks[index].index,
-          name: labels[index],
-          notes: tracks[index].notes,
+          index: track.index,
+          name: trackToLabel[track.index] ?? 'Voz ${track.index + 1}',
+          notes: track.notes,
         ),
     ]);
   }

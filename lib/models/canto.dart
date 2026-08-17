@@ -27,6 +27,33 @@ class Canto {
   final int cifradoVersion;
   final String? derivadoDe;
 
+  /// Identidad estable del PDF. No usa el nombre del canto: para los assets
+  /// unificados toma el hash incluido en la ruta y para archivos heredados usa
+  /// la ruta normalizada sin dominio ni query string.
+  String get pdfIdentity {
+    final raw = archivo.trim();
+    if (raw.isEmpty) return 'canto:$id';
+    final normalized = raw.replaceAll('\\', '/');
+    final hash = RegExp(r'([a-fA-F0-9]{64})\.enc(?:$|[?#])')
+        .firstMatch(normalized)
+        ?.group(1)
+        ?.toLowerCase();
+    if (hash != null) return 'sha256:$hash';
+
+    final uri = Uri.tryParse(normalized);
+    final path = uri?.path.isNotEmpty == true ? uri!.path : normalized;
+    try {
+      return 'path:${Uri.decodeComponent(path).toLowerCase()}';
+    } on FormatException {
+      return 'path:${path.toLowerCase()}';
+    }
+  }
+
+  bool hasSamePdf(Canto other) {
+    if (pdfIdentity == other.pdfIdentity) return true;
+    return derivadoDe == other.id || other.derivadoDe == id;
+  }
+
   Canto({
     required this.id,
     required this.nombre,
@@ -42,6 +69,39 @@ class Canto {
     this.cifradoVersion = 1,
     this.derivadoDe,
   });
+
+  Canto copyWith({
+    String? id,
+    String? nombre,
+    String? archivo,
+    List<String>? temas,
+    String? midiArchivo,
+    bool clearMidiArchivo = false,
+    List<String>? corosVinculados,
+    List<String>? eventosVinculados,
+    String? updatedAt,
+    String? origen,
+    String? idioma,
+    int? version,
+    int? cifradoVersion,
+    String? derivadoDe,
+  }) {
+    return Canto(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      archivo: archivo ?? this.archivo,
+      temas: temas ?? this.temas,
+      midiArchivo: clearMidiArchivo ? null : (midiArchivo ?? this.midiArchivo),
+      corosVinculados: corosVinculados ?? this.corosVinculados,
+      eventosVinculados: eventosVinculados ?? this.eventosVinculados,
+      updatedAt: updatedAt ?? this.updatedAt,
+      origen: origen ?? this.origen,
+      idioma: idioma ?? this.idioma,
+      version: version ?? this.version,
+      cifradoVersion: cifradoVersion ?? this.cifradoVersion,
+      derivadoDe: derivadoDe ?? this.derivadoDe,
+    );
+  }
 
   factory Canto.fromJson(Map<String, dynamic> json) {
     // Manejar la relación cantos_coros que viene de Supabase
