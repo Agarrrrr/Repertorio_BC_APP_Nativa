@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:repertorio_bc/core/pdf/pdf_engine.dart';
@@ -29,6 +31,7 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
   int _activePointers = 0;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocusNode = FocusNode();
+  bool _textCommitInProgress = false;
 
   @override
   void dispose() {
@@ -169,45 +172,134 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
         color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold)),
       textDirection: TextDirection.ltr,
     )..layout();
+    final contentWidth = painter.width + 16;
+    final contentHeight = painter.height + 12;
+    const controlPadding = 18.0;
+
     return Positioned(
-      left: position.x * widget.pageSize.width,
-      top: position.y * widget.pageSize.height - painter.height - 6,
-      width: painter.width + 16,
-      height: painter.height + 12,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _selectText(index),
-        onPanStart: (_) => _selectText(index),
-        onPanUpdate: (details) => _moveSelectedText(details.delta),
-        onPanEnd: (_) => _commitSelectedTextEdit(),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-          decoration: BoxDecoration(
-            border: Border.all(color: state.currentColor.withValues(alpha: 0.9), width: index == _selectedTextIndex ? 1.5 : 1),
-            borderRadius: BorderRadius.circular(3), color: Colors.white.withValues(alpha: 0.06)),
-          child: Stack(clipBehavior: Clip.none, children: [
-            Align(alignment: Alignment.centerLeft, child: Text(displayTrazo.texto ?? '', style: TextStyle(
-              color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold))),
-            if (index == _selectedTextIndex) ...[
-              Positioned(right: -10, top: -11, child: GestureDetector(
+      left: position.x * widget.pageSize.width - controlPadding,
+      top: position.y * widget.pageSize.height - painter.height - 6 - controlPadding,
+      width: contentWidth + controlPadding * 2,
+      height: contentHeight + controlPadding * 2,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: controlPadding,
+            top: controlPadding,
+            width: contentWidth,
+            height: contentHeight,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _selectText(index),
+              onPanStart: (_) => _selectText(index),
+              onPanUpdate: (details) => _moveSelectedText(details.delta),
+              onPanEnd: (_) => _commitSelectedTextEdit(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: state.currentColor.withValues(alpha: 0.9),
+                    width: index == _selectedTextIndex ? 1.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                  color: Colors.white.withValues(alpha: 0.06),
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    displayTrazo.texto ?? '',
+                    style: TextStyle(
+                      color: displayTrazo.color,
+                      fontSize: displayTrazo.size * 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (index == _selectedTextIndex) ...[
+            Positioned(
+              right: 0,
+              top: 0,
+              width: 36,
+              height: 36,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () => _deleteSelectedText(index),
-                child: Container(width: 20, height: 20, decoration: BoxDecoration(color: state.currentColor, shape: BoxShape.circle), child: const Icon(Icons.close, size: 14, color: Colors.white)))),
-              Positioned(right: -5, bottom: -5, child: GestureDetector(
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: state.currentColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              width: 36,
+              height: 36,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onPanStart: (_) => _selectText(index),
                 onPanUpdate: (details) => _resizeSelectedText(details.delta.dy),
                 onPanEnd: (_) => _commitSelectedTextEdit(),
-                child: Container(width: 10, height: 10, decoration: BoxDecoration(color: state.currentColor, borderRadius: BorderRadius.circular(2))))),
-            ],
-          ]),
-        ),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: state.currentColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(
+                      Icons.open_in_full,
+                      size: 13,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  void _commitTextAnnotation(PdfEngineState state) {
-    if (_textTapPosition == null || _textController.text.trim().isEmpty) {
+  Future<void> _commitTextAnnotation(
+    PdfEngineState state, {
+    TextEditingValue? editingValue,
+    bool waitForOutsideTap = false,
+  }) async {
+    if (_textCommitInProgress) return;
+    _textCommitInProgress = true;
+
+    final value = editingValue ?? _textController.value;
+    final text = value.text.trim();
+
+    // Quitar el foco antes de guardar evita que iOS confirme la composición
+    // después de que el trazo ya fue creado.
+    _textFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+    if (waitForOutsideTap) {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
+
+    if (!mounted) return;
+    if (_textTapPosition == null || text.isEmpty) {
       setState(() => _textTapPosition = null);
       _textController.clear();
+      _textCommitInProgress = false;
       return;
     }
 
@@ -220,7 +312,7 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
       tool: ToolType.text,
       color: state.currentColor,
       size: state.currentSize,
-      texto: _textController.text.trim(),
+      texto: text,
       pos: normalizedPoint,
     );
 
@@ -228,6 +320,7 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
     
     setState(() => _textTapPosition = null);
     _textController.clear();
+    _textCommitInProgress = false;
   }
 
   @override
@@ -276,7 +369,8 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                constraints: const BoxConstraints(minWidth: 150),
+                constraints: const BoxConstraints(minWidth: 150, maxWidth: 320),
+                width: math.max(150, math.min(320, widget.pageSize.width - _textTapPosition!.dx - 12)),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.8),
                   border: Border.all(color: Colors.grey, style: BorderStyle.solid),
@@ -295,8 +389,14 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   ),
-                  onSubmitted: (_) => _commitTextAnnotation(state),
-                  onTapOutside: (_) => _commitTextAnnotation(state),
+                  onSubmitted: (value) => _commitTextAnnotation(
+                    state,
+                    editingValue: _textController.value.copyWith(text: value),
+                  ),
+                  onTapOutside: (_) => _commitTextAnnotation(
+                    state,
+                    waitForOutsideTap: true,
+                  ),
                 ),
               ),
             ),
