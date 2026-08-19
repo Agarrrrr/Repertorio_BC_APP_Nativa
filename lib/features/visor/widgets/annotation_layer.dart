@@ -183,8 +183,8 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
           decoration: BoxDecoration(
-            border: Border.all(color: state.currentColor.withOpacity(0.9), width: index == _selectedTextIndex ? 1.5 : 1),
-            borderRadius: BorderRadius.circular(3), color: Colors.white.withOpacity(0.06)),
+            border: Border.all(color: state.currentColor.withValues(alpha: 0.9), width: index == _selectedTextIndex ? 1.5 : 1),
+            borderRadius: BorderRadius.circular(3), color: Colors.white.withValues(alpha: 0.06)),
           child: Stack(clipBehavior: Clip.none, children: [
             Align(alignment: Alignment.centerLeft, child: Text(displayTrazo.texto ?? '', style: TextStyle(
               color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold))),
@@ -262,11 +262,11 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
               ),
             ),
           ),
+        ),
         if (state.isDrawingMode && state.currentTool == ToolType.text)
           for (var i = 0; i < savedTrazos.length; i++)
             if (savedTrazos[i].tool == ToolType.text && savedTrazos[i].texto != null && savedTrazos[i].pos != null)
               _buildTextSelectionBox(i, savedTrazos[i], state),
-        ),
 
         // Widget flotante para texto nativo (Sin modales!)
         if (_textTapPosition != null)
@@ -375,8 +375,8 @@ class _AnnotationPainter extends CustomPainter {
     }
 
     if (eraserPreviewPosition != null) {
-      final previewPaint = Paint()..color = Colors.black.withOpacity(0.22);
-      final outlinePaint = Paint()..color = Colors.black.withOpacity(0.72)..style = PaintingStyle.stroke..strokeWidth = 1.2;
+      final previewPaint = Paint()..color = Colors.black.withValues(alpha: 0.22);
+      final outlinePaint = Paint()..color = Colors.black.withValues(alpha: 0.72)..style = PaintingStyle.stroke..strokeWidth = 1.2;
       canvas.drawCircle(eraserPreviewPosition!, eraserPreviewSize / 2, previewPaint);
       canvas.drawCircle(eraserPreviewPosition!, eraserPreviewSize / 2, outlinePaint);
     }
