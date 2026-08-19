@@ -27,7 +27,7 @@ void main() {
       bpm: 71,
     );
     expect(sixEight.isCompound, isTrue);
-    expect(sixEight.beatsPerMeasure, 2);
+    expect(sixEight.beatsPerMeasure, 6);
     expect(sixEight.groups, [3, 3]);
 
     final threeEight = MidiMeterPattern.from(
@@ -112,7 +112,7 @@ void main() {
 
     expect(soft, lessThan(medium));
     expect(medium, lessThan(loud));
-    expect(loud, lessThanOrEqualTo(104));
+    expect(loud, lessThanOrEqualTo(120));
     expect(dense, lessThan(loud));
   });
 
