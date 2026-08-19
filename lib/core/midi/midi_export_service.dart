@@ -28,7 +28,7 @@ class MidiExportService {
   MidiExportService._();
 
   static const MethodChannel _iosRenderer =
-      MethodChannel('repertorio_bc/midi_export');
+      MethodChannel('com.lldm.coro/midi_render');
 
   static Future<List<MidiExportVoice>> voices(Canto canto) async {
     final midi = await _sourceMidi(canto);

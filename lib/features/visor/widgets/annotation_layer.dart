@@ -22,6 +22,10 @@ class AnnotationLayer extends ConsumerStatefulWidget {
 class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
   Trazo? _currentTrazo;
   Offset? _textTapPosition;
+  Offset? _eraserPreviewPosition;
+  int? _selectedTextIndex;
+  PointNormalized? _selectedTextPosition;
+  double? _selectedTextSize;
   int _activePointers = 0;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFocusNode = FocusNode();
@@ -63,6 +67,9 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
         size: state.currentTool == ToolType.eraser ? state.eraserSize : state.currentSize,
         points: [normalizedPoint],
       );
+      if (state.currentTool == ToolType.eraser) {
+        _eraserPreviewPosition = event.localPosition;
+      }
     });
   }
 
@@ -77,6 +84,9 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
 
     setState(() {
       _currentTrazo!.points.add(normalizedPoint);
+      if (state.currentTool == ToolType.eraser) {
+        _eraserPreviewPosition = event.localPosition;
+      }
     });
   }
 
@@ -89,13 +99,109 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
     ref.read(pdfEngineProvider.notifier).addTrazo(widget.pageNumber, _currentTrazo!);
     setState(() {
       _currentTrazo = null;
+      _eraserPreviewPosition = null;
     });
   }
   
   void _handlePointerCancel(PointerCancelEvent event, PdfEngineState state) {
     _activePointers--;
     if (_activePointers < 0) _activePointers = 0;
-    setState(() => _currentTrazo = null);
+    setState(() {
+      _currentTrazo = null;
+      _eraserPreviewPosition = null;
+    });
+  }
+
+  void _selectText(int index) {
+    final text = (ref.read(pdfEngineProvider).trazos[widget.pageNumber] ?? [])[index];
+    if (text.pos == null) return;
+    setState(() {
+      _selectedTextIndex = index;
+      _selectedTextPosition = PointNormalized(text.pos!.x, text.pos!.y);
+      _selectedTextSize = text.size;
+    });
+  }
+
+  void _moveSelectedText(Offset delta) {
+    final selected = _selectedTextPosition;
+    if (selected == null) return;
+    setState(() {
+      _selectedTextPosition = PointNormalized(
+        (selected.x + delta.dx / widget.pageSize.width).clamp(0.0, 1.0),
+        (selected.y + delta.dy / widget.pageSize.height).clamp(0.0, 1.0),
+      );
+    });
+  }
+
+  void _resizeSelectedText(double deltaY) {
+    setState(() {
+      _selectedTextSize = ((_selectedTextSize ?? 3.0) + deltaY / 10).clamp(1.0, 15.0).toDouble();
+    });
+  }
+
+  void _commitSelectedTextEdit() {
+    final index = _selectedTextIndex;
+    final position = _selectedTextPosition;
+    final size = _selectedTextSize;
+    if (index == null || position == null || size == null) return;
+    final trazos = ref.read(pdfEngineProvider).trazos[widget.pageNumber];
+    if (trazos == null || index >= trazos.length) return;
+    ref.read(pdfEngineProvider.notifier).updateTrazo(
+      widget.pageNumber, index, trazos[index].copyWith(pos: position, size: size));
+  }
+
+  void _deleteSelectedText(int index) {
+    ref.read(pdfEngineProvider.notifier).deleteTrazo(widget.pageNumber, index);
+    setState(() {
+      _selectedTextIndex = null;
+      _selectedTextPosition = null;
+      _selectedTextSize = null;
+    });
+  }
+
+  Widget _buildTextSelectionBox(int index, Trazo trazo, PdfEngineState state) {
+    final position = index == _selectedTextIndex && _selectedTextPosition != null
+        ? _selectedTextPosition! : trazo.pos!;
+    final displayTrazo = index == _selectedTextIndex && _selectedTextSize != null
+        ? trazo.copyWith(size: _selectedTextSize) : trazo;
+    final painter = TextPainter(
+      text: TextSpan(text: displayTrazo.texto ?? '', style: TextStyle(
+        color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return Positioned(
+      left: position.x * widget.pageSize.width,
+      top: position.y * widget.pageSize.height - painter.height - 6,
+      width: painter.width + 16,
+      height: painter.height + 12,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _selectText(index),
+        onPanStart: (_) => _selectText(index),
+        onPanUpdate: (details) => _moveSelectedText(details.delta),
+        onPanEnd: (_) => _commitSelectedTextEdit(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          decoration: BoxDecoration(
+            border: Border.all(color: state.currentColor.withOpacity(0.9), width: index == _selectedTextIndex ? 1.5 : 1),
+            borderRadius: BorderRadius.circular(3), color: Colors.white.withOpacity(0.06)),
+          child: Stack(clipBehavior: Clip.none, children: [
+            Align(alignment: Alignment.centerLeft, child: Text(displayTrazo.texto ?? '', style: TextStyle(
+              color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold))),
+            if (index == _selectedTextIndex) ...[
+              Positioned(right: -10, top: -11, child: GestureDetector(
+                onTap: () => _deleteSelectedText(index),
+                child: Container(width: 20, height: 20, decoration: BoxDecoration(color: state.currentColor, shape: BoxShape.circle), child: const Icon(Icons.close, size: 14, color: Colors.white)))),
+              Positioned(right: -5, bottom: -5, child: GestureDetector(
+                onPanStart: (_) => _selectText(index),
+                onPanUpdate: (details) => _resizeSelectedText(details.delta.dy),
+                onPanEnd: (_) => _commitSelectedTextEdit(),
+                child: Container(width: 10, height: 10, decoration: BoxDecoration(color: state.currentColor, borderRadius: BorderRadius.circular(2))))),
+            ],
+          ]),
+        ),
+      ),
+    );
   }
 
   void _commitTextAnnotation(PdfEngineState state) {
@@ -149,10 +255,17 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
               width: widget.pageSize.width,
               height: widget.pageSize.height,
               child: CustomPaint(
-                painter: _AnnotationPainter(trazosToDraw),
+                painter: _AnnotationPainter(trazosToDraw,
+                  eraserPreviewPosition: _eraserPreviewPosition,
+                  eraserPreviewSize: state.eraserSize,
+                  showTextInOverlay: state.isDrawingMode && state.currentTool == ToolType.text),
               ),
             ),
           ),
+        if (state.isDrawingMode && state.currentTool == ToolType.text)
+          for (var i = 0; i < savedTrazos.length; i++)
+            if (savedTrazos[i].tool == ToolType.text && savedTrazos[i].texto != null && savedTrazos[i].pos != null)
+              _buildTextSelectionBox(i, savedTrazos[i], state),
         ),
 
         // Widget flotante para texto nativo (Sin modales!)
@@ -195,8 +308,15 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
 
 class _AnnotationPainter extends CustomPainter {
   final List<Trazo> trazos;
+  final Offset? eraserPreviewPosition;
+  final double eraserPreviewSize;
+  final bool showTextInOverlay;
 
-  _AnnotationPainter(this.trazos);
+  _AnnotationPainter(this.trazos, {
+    this.eraserPreviewPosition,
+    this.eraserPreviewSize = 20,
+    this.showTextInOverlay = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -207,6 +327,7 @@ class _AnnotationPainter extends CustomPainter {
       if (trazo.oculto) continue;
 
       if (trazo.tool == ToolType.text && trazo.texto != null && trazo.pos != null) {
+        if (showTextInOverlay) continue;
         final textPainter = TextPainter(
           text: TextSpan(
             text: trazo.texto,
@@ -227,7 +348,14 @@ class _AnnotationPainter extends CustomPainter {
         continue;
       }
 
-      if (trazo.points.length < 2) continue;
+      if (trazo.points.length < 2) {
+        if (trazo.tool == ToolType.eraser && trazo.points.isNotEmpty) {
+          final point = trazo.points.first;
+          canvas.drawCircle(Offset(point.x * size.width, point.y * size.height), trazo.size / 2,
+            Paint()..blendMode = BlendMode.clear);
+        }
+        continue;
+      }
 
       final paint = Paint()
         ..color = trazo.color
@@ -244,6 +372,13 @@ class _AnnotationPainter extends CustomPainter {
       }
       
       canvas.drawPath(path, paint);
+    }
+
+    if (eraserPreviewPosition != null) {
+      final previewPaint = Paint()..color = Colors.black.withOpacity(0.22);
+      final outlinePaint = Paint()..color = Colors.black.withOpacity(0.72)..style = PaintingStyle.stroke..strokeWidth = 1.2;
+      canvas.drawCircle(eraserPreviewPosition!, eraserPreviewSize / 2, previewPaint);
+      canvas.drawCircle(eraserPreviewPosition!, eraserPreviewSize / 2, outlinePaint);
     }
     
     // Restaurar la capa

@@ -38,6 +38,24 @@ class Trazo {
     this.oculto = false,
   });
 
+  Trazo copyWith({
+    ToolType? tool,
+    Color? color,
+    double? size,
+    List<PointNormalized>? points,
+    String? texto,
+    PointNormalized? pos,
+    bool? oculto,
+  }) => Trazo(
+        tool: tool ?? this.tool,
+        color: color ?? this.color,
+        size: size ?? this.size,
+        points: points ?? this.points.map((p) => PointNormalized(p.x, p.y)).toList(),
+        texto: texto ?? this.texto,
+        pos: pos ?? (this.pos == null ? null : PointNormalized(this.pos!.x, this.pos!.y)),
+        oculto: oculto ?? this.oculto,
+      );
+
   Map<String, dynamic> toJson() => {
     'herramienta': tool.name,
     'color': '#${(color.a * 255).toInt().toRadixString(16).padLeft(2, '0')}${(color.r * 255).toInt().toRadixString(16).padLeft(2, '0')}${(color.g * 255).toInt().toRadixString(16).padLeft(2, '0')}${(color.b * 255).toInt().toRadixString(16).padLeft(2, '0')}',

@@ -213,6 +213,22 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     _pushHistory(nuevosTrazos);
   }
 
+  void updateTrazo(int pageNumber, int index, Trazo trazo) {
+    final nuevosTrazos = _deepCopyTrazos(state.trazos);
+    final pageTrazos = nuevosTrazos[pageNumber];
+    if (pageTrazos == null || index < 0 || index >= pageTrazos.length) return;
+    pageTrazos[index] = trazo.copyWith();
+    _pushHistory(nuevosTrazos);
+  }
+
+  void deleteTrazo(int pageNumber, int index) {
+    final nuevosTrazos = _deepCopyTrazos(state.trazos);
+    final pageTrazos = nuevosTrazos[pageNumber];
+    if (pageTrazos == null || index < 0 || index >= pageTrazos.length) return;
+    pageTrazos.removeAt(index);
+    _pushHistory(nuevosTrazos);
+  }
+
   void clearAll(int pageNumber) {
     final Map<int, List<Trazo>> nuevosTrazos = _deepCopyTrazos(state.trazos);
     nuevosTrazos[pageNumber] = [];
@@ -263,7 +279,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
   Map<int, List<Trazo>> _deepCopyTrazos(Map<int, List<Trazo>> source) {
     final copy = <int, List<Trazo>>{};
     source.forEach((key, value) {
-      copy[key] = List.from(value);
+      copy[key] = value.map((trazo) => trazo.copyWith()).toList();
     });
     return copy;
   }

@@ -179,9 +179,8 @@ El workflow `.github/workflows/ios_build.yml` instala dependencias, analiza, eje
 ## Documentación
 
 - [Guía de desarrollo](GUIA_DESARROLLO.md)
-- [Soporte](web/soporte.html)
-- [Política de privacidad](web/privacy.html)
-- [Respuesta para revisión de App Store](APP_STORE_REVIEW_RESPONSE.md)
+- [Soporte](SOPORTE.md)
+- [Política de privacidad](PRIVACIDAD.md)
 
 ## Contribuir
 

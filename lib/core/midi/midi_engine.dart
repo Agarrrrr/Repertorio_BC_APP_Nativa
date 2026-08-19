@@ -23,6 +23,7 @@ class MidiState {
   final bool? beatEsPrimero;
   final int? timeSignatureNumerator;
   final int? timeSignatureDenominator;
+  final List<int> beatGroupStarts;
 
   const MidiState({
     this.isPlaying = false,
@@ -40,6 +41,7 @@ class MidiState {
     this.beatEsPrimero,
     this.timeSignatureNumerator,
     this.timeSignatureDenominator,
+    this.beatGroupStarts = const [],
   });
 
   MidiState copyWith({
@@ -58,6 +60,7 @@ class MidiState {
     bool? beatEsPrimero,
     int? timeSignatureNumerator,
     int? timeSignatureDenominator,
+    List<int>? beatGroupStarts,
   }) =>
       MidiState(
         isPlaying: isPlaying ?? this.isPlaying,
@@ -77,6 +80,7 @@ class MidiState {
             timeSignatureNumerator ?? this.timeSignatureNumerator,
         timeSignatureDenominator:
             timeSignatureDenominator ?? this.timeSignatureDenominator,
+        beatGroupStarts: beatGroupStarts ?? this.beatGroupStarts,
       );
 }
 
@@ -278,6 +282,7 @@ class MidiEngine {
         beatEsPrimero: true,
         timeSignatureNumerator: initialSignature.numerator,
         timeSignatureDenominator: initialSignature.denominator,
+        beatGroupStarts: initialPattern.groupStartIndices,
       ));
       debugPrint(
           '七 [NativeMidiEngine] MIDI cargado: "$nombre", duraciﾃｳn: ${_song!.durationSeconds}s');
@@ -572,6 +577,7 @@ class MidiEngine {
         beatEsPrimero: isFirstBeat,
         timeSignatureNumerator: signature.numerator,
         timeSignatureDenominator: signature.denominator,
+        beatGroupStarts: meterPattern.groupStartIndices,
       ));
 
       if (playClick) {
@@ -660,14 +666,14 @@ class MidiEngine {
   /// saturen el piano.
   static int masteredVelocity(int inputVelocity, int activeNotes) {
     final normalized = inputVelocity.clamp(1, 127) / 127.0;
-    final compressed = 30.0 + math.pow(normalized, 0.68) * 66.0;
+    final compressed = 34.0 + math.pow(normalized, 0.68) * 78.0;
     final polyphonyGain =
         (1 / math.sqrt(1 + activeNotes.clamp(0, 96) / 24.0)).clamp(0.72, 1.0);
-    return (compressed * polyphonyGain).round().clamp(1, 104);
+    return (compressed * polyphonyGain).round().clamp(1, 120);
   }
 
   Future<void> _configureMastering() async {
-    await _midiPro.setMasterGain(0.72);
+    await _midiPro.setMasterGain(0.95);
     await _midiPro.setEqualizer(
       enabled: true,
       bassGain: -1.5,
