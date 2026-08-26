@@ -44,7 +44,10 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
     _activePointers++;
     if (!state.isDrawingMode) return;
     if (_activePointers > 1) {
-      setState(() => _currentTrazo = null);
+      setState(() {
+        _currentTrazo = null;
+        _eraserPreviewPosition = null;
+      });
       return;
     }
 
@@ -77,7 +80,12 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
   }
 
   void _handlePointerMove(PointerMoveEvent event, PdfEngineState state) {
-    if (!state.isDrawingMode || _currentTrazo == null || state.currentTool == ToolType.text) return;
+    if (!state.isDrawingMode || _currentTrazo == null || state.currentTool == ToolType.text) {
+      if (_eraserPreviewPosition != null) {
+        setState(() => _eraserPreviewPosition = null);
+      }
+      return;
+    }
     if (_activePointers > 1) return;
 
     final normalizedPoint = PointNormalized(
@@ -116,7 +124,9 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
   }
 
   void _selectText(int index) {
-    final text = (ref.read(pdfEngineProvider).trazos[widget.pageNumber] ?? [])[index];
+    final texts = ref.read(pdfEngineProvider).trazos[widget.pageNumber] ?? [];
+    if (index < 0 || index >= texts.length) return;
+    final text = texts[index];
     if (text.pos == null) return;
     setState(() {
       _selectedTextIndex = index;
@@ -172,8 +182,8 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
         color: displayTrazo.color, fontSize: displayTrazo.size * 10, fontWeight: FontWeight.bold)),
       textDirection: TextDirection.ltr,
     )..layout();
-    final contentWidth = painter.width + 16;
-    final contentHeight = painter.height + 12;
+    final contentWidth = (painter.width + 16).clamp(32.0, double.infinity).toDouble();
+    final contentHeight = (painter.height + 12).clamp(28.0, double.infinity).toDouble();
     const controlPadding = 18.0;
 
     return Positioned(
@@ -295,7 +305,10 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
       await Future<void>.delayed(const Duration(milliseconds: 80));
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      _textCommitInProgress = false;
+      return;
+    }
     if (_textTapPosition == null || text.isEmpty) {
       setState(() => _textTapPosition = null);
       _textController.clear();
@@ -379,6 +392,9 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
                 child: TextField(
                   controller: _textController,
                   focusNode: _textFocusNode,
+                  minLines: 1,
+                  maxLines: 4,
+                  keyboardType: TextInputType.multiline,
                   style: TextStyle(
                     color: state.currentColor,
                     fontSize: state.currentSize * 10,
@@ -387,7 +403,7 @@ class _AnnotationLayerState extends ConsumerState<AnnotationLayer> {
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
                   onSubmitted: (value) => _commitTextAnnotation(
                     state,
