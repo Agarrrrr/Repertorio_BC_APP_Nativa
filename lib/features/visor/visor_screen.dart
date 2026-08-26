@@ -56,6 +56,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   final PdfViewerController _pdfController = PdfViewerController();
   Orientation? _lastOrientation;
   double _minScaleLimit = 0.1;
+  int _assetLoadGeneration = 0;
 
   @override
   void initState() {
@@ -65,10 +66,35 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     });
   }
 
-  Future<void> _initAssets() async {
+  @override
+  void didUpdateWidget(covariant VisorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cantoId == widget.cantoId) return;
+
+    // GoRouter puede conservar el estado de la ruta /visor/:id y sólo cambiar
+    // el parámetro. Reiniciamos todos los recursos dependientes del canto para
+    // evitar que cambie el título mientras el PDF/MIDI siguen siendo los viejos.
+    _assetLoadGeneration++;
+    _hasMidi = false;
+    _showMidi = false;
+    _showTools = false;
+    _showDrawingPalette = false;
+    ref.read(pdfEngineProvider.notifier).resetForCantoChange();
+    ref.read(pdfEngineProvider.notifier).setDrawingMode(false);
+    _midi.stop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initAssets(_assetLoadGeneration);
+    });
+  }
+
+  Future<void> _initAssets([int? requestedGeneration]) async {
+    final generation = requestedGeneration ?? ++_assetLoadGeneration;
+    final requestedCantoId = widget.cantoId;
     final cantos = await ref.read(cantosBaseProvider.future);
+    if (!mounted || generation != _assetLoadGeneration ||
+        requestedCantoId != widget.cantoId) return;
     final canto = cantos.firstWhere(
-      (c) => c.id == widget.cantoId,
+      (c) => c.id == requestedCantoId,
       orElse: () => Canto(
           id: '',
           nombre: 'Partitura',
@@ -78,15 +104,17 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     );
 
     if (canto.id.isEmpty) {
-      debugPrint('[Visor] El canto ${widget.cantoId} no está disponible.');
+      debugPrint('[Visor] El canto $requestedCantoId no está disponible.');
       return;
     }
 
     await ref.read(pdfEngineProvider.notifier).init(canto);
-    await _initMidi(canto);
+    if (!mounted || generation != _assetLoadGeneration ||
+        requestedCantoId != widget.cantoId) return;
+    await _initMidi(canto, generation);
   }
 
-  Future<void> _initMidi(Canto canto) async {
+  Future<void> _initMidi(Canto canto, int generation) async {
     debugPrint('🎵 [MidiEngine] Inicializando para el canto: ${canto.nombre}');
     debugPrint('🎵 [MidiEngine] midiArchivo del canto: "${canto.midiArchivo}"');
 
@@ -97,13 +125,19 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     try {
       final localMidi = await OfflineFiles.ensureMidi(canto);
-      if (!mounted) return;
+      if (!mounted || generation != _assetLoadGeneration ||
+          canto.id != widget.cantoId) return;
       await _midi.loadMidi(localMidi.path, canto.nombre);
+      if (!mounted || generation != _assetLoadGeneration ||
+          canto.id != widget.cantoId) return;
       ref.read(syncManagerProvider.notifier).markMidiAvailable(canto.id);
       setState(() => _hasMidi = true);
     } catch (error) {
-      ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
-      if (mounted) setState(() => _hasMidi = false);
+      if (mounted && generation == _assetLoadGeneration &&
+          canto.id == widget.cantoId) {
+        ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
+        setState(() => _hasMidi = false);
+      }
       debugPrint(
           '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
     }

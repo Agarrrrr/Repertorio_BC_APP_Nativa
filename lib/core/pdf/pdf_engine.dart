@@ -81,9 +81,17 @@ class PdfEngineState {
 }
 
 class PdfEngineNotifier extends Notifier<PdfEngineState> {
+  int _initGeneration = 0;
   @override
   PdfEngineState build() {
     return PdfEngineState();
+  }
+
+  /// Descarta inmediatamente el documento anterior cuando el visor cambia de canto.
+  /// La carga del nuevo PDF ocurre después, pero nunca se muestra el anterior.
+  void resetForCantoChange() {
+    _initGeneration++;
+    state = PdfEngineState();
   }
 
   Future<void> init(Canto canto) async {
@@ -94,6 +102,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
       return;
     }
 
+    final generation = ++_initGeneration;
     final perfil = ref.read(perfilProvider).value;
     if (perfil != null && canto.corosVinculados.isNotEmpty) {
       final hasAccess = canto.corosVinculados.contains(perfil.coroId) ||
@@ -112,6 +121,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     try {
       state = PdfEngineState(cantoId: canto.id, isLoading: true);
       final asset = await OfflineFiles.ensurePdfForViewing(canto);
+      if (generation != _initGeneration) return;
       ref.read(syncManagerProvider.notifier).markPdfAvailable(canto.id);
 
       state = state.copyWith(
@@ -120,6 +130,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         memoryBytes: asset.bytes,
       );
     } catch (e) {
+      if (generation != _initGeneration) return;
       state = PdfEngineState(
         cantoId: canto.id,
         isLoading: false,
