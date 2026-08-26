@@ -25,14 +25,30 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _syncingPush = false;
   bool _pushRetryScheduled = false;
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// Una búsqueda cambia por completo el contenido de la lista. Mantener la
+  /// posición previa puede dejar los primeros resultados fuera de la vista.
+  void _moveCatalogToTop() {
+    void reset() {
+      if (!_scrollController.hasClients) return;
+      if (_scrollController.offset > 0) {
+        _scrollController.jumpTo(0);
+      }
+    }
+
+    reset();
+    WidgetsBinding.instance.addPostFrameCallback((_) => reset());
   }
 
   @override
@@ -108,8 +124,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, index) => ListTile(
                     dense: true,
-                    leading: const Icon(Icons.cloud_off_rounded,
-                        color: Colors.red),
+                    leading:
+                        const Icon(Icons.cloud_off_rounded, color: Colors.red),
                     title: Text(failed[index]),
                   ),
                 ),
@@ -190,7 +206,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
                 border: Border(
-                    bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                    bottom:
+                        BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
               ),
               child: Row(
                 children: [
@@ -206,15 +223,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       height: 48,
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                            color:
-                                theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.1)),
                       ),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) {
+                          _moveCatalogToTop();
                           ref.read(searchTextProvider.notifier).set(val);
                           setState(
                               () {}); // Forzar rebuild para mostrar/ocultar el botón X
@@ -233,6 +252,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       size: 20, color: Colors.grey),
                                   onPressed: () {
                                     _searchController.clear();
+                                    _moveCatalogToTop();
                                     ref
                                         .read(searchTextProvider.notifier)
                                         .set('');
@@ -298,6 +318,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               await ref.read(cantosBaseProvider.future);
                             },
                             child: ListView(
+                              controller: _scrollController,
                               physics: const AlwaysScrollableScrollPhysics(),
                               children: [
                                 SizedBox(
@@ -309,8 +330,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       children: [
                                         Icon(Icons.library_music_rounded,
                                             size: 64,
-                                            color:
-                                                Colors.grey.withValues(alpha: 0.3)),
+                                            color: Colors.grey
+                                                .withValues(alpha: 0.3)),
                                         const SizedBox(height: 16),
                                         Text(
                                           'Aún no hay partituras asignadas',
@@ -336,6 +357,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           ),
                         )
                       : ListView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.all(16),
                           physics: const BouncingScrollPhysics(),
                           itemCount: cantos.length,

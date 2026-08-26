@@ -1493,11 +1493,21 @@ class _MidiPanelState extends State<_MidiPanel> {
                           widget.midiState.timeSignatureNumerator ?? beats;
                       final denominator =
                           widget.midiState.timeSignatureDenominator ?? 4;
+                      final groups = widget.midiState.beatGroups;
+                      final grouping = groups.any((group) => group > 1)
+                          ? ' · ${groups.join('+')}'
+                          : '';
+                      final groupStarts = <int>[];
+                      var groupOffset = 0;
+                      for (final group in groups) {
+                        groupStarts.add(groupOffset);
+                        groupOffset += group;
+                      }
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '$numerator/$denominator',
+                            '$numerator/$denominator$grouping',
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -1509,9 +1519,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                             final isCurrent =
                                 index == widget.midiState.beatIndex;
                             final isFirst = index == 0;
+                            final isGroupStart = groupStarts.contains(index);
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 90),
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              margin: EdgeInsets.only(
+                                left: isGroupStart && index > 0 ? 5 : 2,
+                                right: 2,
+                              ),
                               width: isCurrent ? dotSize + 2 : dotSize,
                               height: isCurrent ? dotSize + 2 : dotSize,
                               decoration: BoxDecoration(

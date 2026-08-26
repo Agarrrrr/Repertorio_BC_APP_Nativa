@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter/foundation.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
@@ -168,6 +169,16 @@ Future<bool> registrarFcmTokenUsuarioActual({String? token}) async {
 
 // Controller para login/logout
 class AuthController {
+  // Este es el cliente OAuth web configurado en el proveedor Google de
+  // Supabase. No es un secreto. Se pasa de forma explicita porque el proyecto
+  // Firebase usado por FCM es distinto y su google-services.json no contiene
+  // clientes OAuth.
+  static const _googleServerClientId =
+      '882216089330-shvij662ok8e0h1kd6o7k86id49fdf10.apps.googleusercontent.com';
+  static const _googleScopes = <String>['openid', 'email', 'profile'];
+  static final _googleSignIn = GoogleSignIn.instance;
+  static Future<void>? _googleInitialization;
+
   static Future<void> login(String email, String password) async {
     await SupabaseService.client.auth.signInWithPassword(
       email: email,
@@ -176,10 +187,58 @@ class AuthController {
   }
 
   static Future<void> loginWithGoogle() async {
-    await SupabaseService.client.auth.signInWithOAuth(
-      supabase.OAuthProvider.google,
-      redirectTo: 'repertorioestatal://login-callback/',
-    );
+    // En web el SDK nativo no permite authenticate() desde un boton propio.
+    // Conservamos ahi el flujo OAuth del navegador.
+    if (kIsWeb || !Platform.isAndroid) {
+      await SupabaseService.client.auth.signInWithOAuth(
+        supabase.OAuthProvider.google,
+        redirectTo: 'repertorioestatal://login-callback/',
+      );
+      return;
+    }
+
+    try {
+      _googleInitialization ??= _googleSignIn.initialize(
+        serverClientId: _googleServerClientId,
+      );
+      await _googleInitialization;
+
+      final googleUser = await _googleSignIn.authenticate(
+        scopeHint: _googleScopes,
+      );
+      final idToken = googleUser.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const GoogleLoginException(
+          'Google no entrego un token de identidad. Intenta de nuevo.',
+        );
+      }
+
+      // Supabase requiere tambien el access token de Google. En la API 7.x
+      // se obtiene por separado del token de identidad.
+      final authorization = await googleUser.authorizationClient
+              .authorizationForScopes(_googleScopes) ??
+          await googleUser.authorizationClient.authorizeScopes(_googleScopes);
+
+      await SupabaseService.client.auth.signInWithIdToken(
+        provider: supabase.OAuthProvider.google,
+        idToken: idToken,
+        accessToken: authorization.accessToken,
+      );
+    } on GoogleSignInException catch (error) {
+      throw GoogleLoginException.fromGoogle(error);
+    }
+  }
+
+  static String googleLoginErrorMessage(Object error) {
+    if (error is GoogleLoginException) return error.message;
+    if (error is supabase.AuthException) {
+      return 'Google valido la cuenta, pero no se pudo crear la sesion. '
+          'Comprueba tu conexion e intenta de nuevo.';
+    }
+    if (error is SocketException) {
+      return 'No hay conexion a Internet. Revisa tu red e intenta de nuevo.';
+    }
+    return 'No se pudo iniciar sesion con Google. Intenta de nuevo.';
   }
 
   static Future<void> logout() async {
@@ -206,6 +265,15 @@ class AuthController {
       await AppCache.delete('eventos_permanentes');
     }
     await SupabaseService.client.auth.signOut();
+    if (!kIsWeb && Platform.isAndroid && _googleInitialization != null) {
+      try {
+        await _googleInitialization;
+        await _googleSignIn.signOut();
+      } catch (error) {
+        debugPrint(
+            '[Auth] No se pudo cerrar la sesion local de Google: $error');
+      }
+    }
   }
 
   /// Elimina permanentemente al usuario autenticado y todos los datos que
@@ -240,4 +308,47 @@ class AuthController {
     await AppCache.delete('avisos_json');
     await AppCache.delete('eventos_permanentes');
   }
+}
+
+class GoogleLoginException implements Exception {
+  const GoogleLoginException(this.message);
+
+  factory GoogleLoginException.fromGoogle(GoogleSignInException error) {
+    switch (error.code) {
+      case GoogleSignInExceptionCode.canceled:
+        return const GoogleLoginException(
+          'Se cancelo el acceso con Google. Si aparece despues de elegir una '
+          'cuenta, falta autorizar la firma de esta version de la app.',
+        );
+      case GoogleSignInExceptionCode.interrupted:
+        return const GoogleLoginException(
+          'El acceso con Google fue interrumpido. Intenta de nuevo.',
+        );
+      case GoogleSignInExceptionCode.clientConfigurationError:
+      case GoogleSignInExceptionCode.providerConfigurationError:
+        return const GoogleLoginException(
+          'Google no reconoce esta version de la app. Debe registrarse su '
+          'paquete y certificado SHA en Google Cloud.',
+        );
+      case GoogleSignInExceptionCode.uiUnavailable:
+        return const GoogleLoginException(
+          'Google no pudo mostrar el selector de cuentas. Vuelve a abrir la '
+          'app e intenta de nuevo.',
+        );
+      case GoogleSignInExceptionCode.userMismatch:
+        return const GoogleLoginException(
+          'La cuenta seleccionada no coincide con la sesion de Google activa.',
+        );
+      case GoogleSignInExceptionCode.unknownError:
+        return const GoogleLoginException(
+          'Google no pudo completar el acceso. Comprueba Google Play Services '
+          'y tu conexion, luego intenta de nuevo.',
+        );
+    }
+  }
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

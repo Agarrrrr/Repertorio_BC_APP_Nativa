@@ -87,18 +87,12 @@ class MidiMeterPattern {
     required this.isCompound,
   });
 
+  /// Cada unidad escrita es un pulso del metrónomo. Las agrupaciones se
+  /// preservan para mostrar el fraseo (p. ej. 6/8 como 3+3), sin omitir
+  /// ninguno de sus seis pulsos.
   int get beatsPerMeasure =>
       groups.fold<int>(0, (total, group) => total + group);
 
-  List<int> get groupStartIndices {
-    final starts = <int>[];
-    var index = 0;
-    for (final group in groups) {
-      starts.add(index);
-      index += group;
-    }
-    return starts;
-  }
   double get measureLengthInQuarters =>
       groups.fold<int>(0, (sum, group) => sum + group) * writtenUnitInQuarters;
 
@@ -645,8 +639,7 @@ class NativeMidiParser {
       caseSensitive: false,
     );
 
-    final normalizedNames =
-        tracks.map((track) => track.name.trim()).toList();
+    final normalizedNames = tracks.map((track) => track.name.trim()).toList();
 
     // Verificamos si TODAS las pistas tienen nombres corales válidos y NO tienen nombres de instrumentos
     final allChoralNamed = normalizedNames.every(
@@ -688,7 +681,14 @@ class NativeMidiParser {
     } else if (count == 5) {
       labels = const ['Solo', 'Soprano', 'Alto', 'Tenor', 'Bajo'];
     } else if (count == 6) {
-      labels = const ['Solo', 'Soprano 1', 'Soprano 2', 'Alto', 'Tenor', 'Bajo'];
+      labels = const [
+        'Solo',
+        'Soprano 1',
+        'Soprano 2',
+        'Alto',
+        'Tenor',
+        'Bajo'
+      ];
     } else if (count == 8) {
       labels = const [
         'Soprano 1',

@@ -29,6 +29,12 @@ void main() {
     expect(sixEight.isCompound, isTrue);
     expect(sixEight.beatsPerMeasure, 6);
     expect(sixEight.groups, [3, 3]);
+    expect(sixEight.beatIndexAt(0), 0);
+    expect(sixEight.beatIndexAt(2.9), 2);
+    expect(sixEight.beatIndexAt(3.0), 3);
+    expect(sixEight.pulseSerialAt(0.0), 0);
+    expect(sixEight.pulseSerialAt(1.49), 2);
+    expect(sixEight.pulseSerialAt(1.5), 3);
 
     final threeEight = MidiMeterPattern.from(
       numerator: 3,
@@ -44,6 +50,22 @@ void main() {
       bpm: 100,
     );
     expect(sevenEight.groups, [3, 2, 2]);
+    expect(sevenEight.beatsPerMeasure, 7);
+
+    final twelveEight = MidiMeterPattern.from(
+      numerator: 12,
+      denominator: 8,
+      bpm: 100,
+    );
+    expect(twelveEight.groups, [3, 3, 3, 3]);
+    expect(twelveEight.beatsPerMeasure, 12);
+
+    final twelveSixteen = MidiMeterPattern.from(
+      numerator: 12,
+      denominator: 16,
+      bpm: 100,
+    );
+    expect(twelveSixteen.beatsPerMeasure, 12);
 
     final sixteenEight = MidiMeterPattern.from(
       numerator: 16,
@@ -117,7 +139,8 @@ void main() {
   });
 
   test('setTrackVolume y resetTrackVolumes ajustan el volumen de voces', () {
-    final voz = MidiVoz(trackIndex: 0, nombre: 'Soprano', activa: true, volumen: 1.0);
+    final voz =
+        MidiVoz(trackIndex: 0, nombre: 'Soprano', activa: true, volumen: 1.0);
     expect(voz.volumen, 1.0);
 
     voz.volumen = 0.5;

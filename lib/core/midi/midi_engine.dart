@@ -21,9 +21,11 @@ class MidiState {
   final int? beatNumerator;
   final int beatSerial;
   final bool? beatEsPrimero;
+
+  /// Unidades escritas que forman cada grupo, p. ej. [3, 3] para 6/8.
+  final List<int> beatGroups;
   final int? timeSignatureNumerator;
   final int? timeSignatureDenominator;
-  final List<int> beatGroupStarts;
 
   const MidiState({
     this.isPlaying = false,
@@ -39,9 +41,9 @@ class MidiState {
     this.beatNumerator,
     this.beatSerial = 0,
     this.beatEsPrimero,
+    this.beatGroups = const [],
     this.timeSignatureNumerator,
     this.timeSignatureDenominator,
-    this.beatGroupStarts = const [],
   });
 
   MidiState copyWith({
@@ -58,9 +60,9 @@ class MidiState {
     int? beatNumerator,
     int? beatSerial,
     bool? beatEsPrimero,
+    List<int>? beatGroups,
     int? timeSignatureNumerator,
     int? timeSignatureDenominator,
-    List<int>? beatGroupStarts,
   }) =>
       MidiState(
         isPlaying: isPlaying ?? this.isPlaying,
@@ -76,11 +78,11 @@ class MidiState {
         beatNumerator: beatNumerator ?? this.beatNumerator,
         beatSerial: beatSerial ?? this.beatSerial,
         beatEsPrimero: beatEsPrimero ?? this.beatEsPrimero,
+        beatGroups: beatGroups ?? this.beatGroups,
         timeSignatureNumerator:
             timeSignatureNumerator ?? this.timeSignatureNumerator,
         timeSignatureDenominator:
             timeSignatureDenominator ?? this.timeSignatureDenominator,
-        beatGroupStarts: beatGroupStarts ?? this.beatGroupStarts,
       );
 }
 
@@ -280,9 +282,9 @@ class MidiEngine {
         beatNumerator: initialPattern.beatsPerMeasure,
         beatSerial: 0,
         beatEsPrimero: true,
+        beatGroups: initialPattern.groups,
         timeSignatureNumerator: initialSignature.numerator,
         timeSignatureDenominator: initialSignature.denominator,
-        beatGroupStarts: initialPattern.groupStartIndices,
       ));
       debugPrint(
           '七 [NativeMidiEngine] MIDI cargado: "$nombre", duraciﾃｳn: ${_song!.durationSeconds}s');
@@ -575,9 +577,9 @@ class MidiEngine {
         beatNumerator: meterPattern.beatsPerMeasure,
         beatSerial: playClick ? _state.beatSerial + 1 : _state.beatSerial,
         beatEsPrimero: isFirstBeat,
+        beatGroups: meterPattern.groups,
         timeSignatureNumerator: signature.numerator,
         timeSignatureDenominator: signature.denominator,
-        beatGroupStarts: meterPattern.groupStartIndices,
       ));
 
       if (playClick) {
@@ -618,7 +620,8 @@ class MidiEngine {
   ///
   /// El conteo por altura evita cortar una nota sostenida por otra voz.
   /// El "epoch" invalida stops pendientes tras pause/stop/seek.
-  void _playNativeNote(MidiNoteEvent note, int channel, {required int trackIndex}) {
+  void _playNativeNote(MidiNoteEvent note, int channel,
+      {required int trackIndex}) {
     if (!_midiPro.isInitialized || _sfId == null) return;
     try {
       final trackVol = _trackVolumes[trackIndex] ?? 1.0;
