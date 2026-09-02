@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repertorio_bc/core/midi/midi_engine.dart';
 import 'package:repertorio_bc/core/midi/native_midi_parser.dart';
@@ -150,5 +152,16 @@ void main() {
     expect(engine.state.voces, isEmpty);
     engine.setTrackVolume(0, 0.5);
     engine.resetTrackVolumes();
+  });
+
+  test('una carga fallida informa el error en vez de esperar indefinidamente',
+      () async {
+    final missingPath =
+        '${Directory.systemTemp.path}/midi-inexistente-${DateTime.now().microsecondsSinceEpoch}.mid';
+
+    await expectLater(
+      MidiEngine().loadMidi(missingPath, 'No existe'),
+      throwsA(isA<FileSystemException>()),
+    );
   });
 }

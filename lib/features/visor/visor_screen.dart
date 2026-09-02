@@ -155,9 +155,16 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
           canto.id == widget.cantoId) {
         ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
         setState(() => _hasMidi = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo cargar el reproductor. Intenta abrir la partitura de nuevo.',
+            ),
+          ),
+        );
       }
       debugPrint(
-          '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
+          '[MidiEngine] No se pudo cargar el MIDI de ${canto.nombre}: $error');
     }
   }
 
