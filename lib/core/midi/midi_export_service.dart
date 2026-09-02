@@ -163,9 +163,34 @@ class MidiExportService {
         '${_safeDisplayName(suffix)}.mp3';
   }
 
+  /// Crea una copia efímera con nombre humano. WhatsApp usa el nombre físico
+  /// del URI compartido para decidir cómo presentar el audio.
+  static Future<File> prepareShareFile(
+    File source,
+    Canto canto, {
+    MidiExportVoice? voice,
+  }) async {
+    final temp = await getTemporaryDirectory();
+    final directory = Directory('${temp.path}/repertorio_bc_share_audio');
+    await directory.create(recursive: true);
+    final output =
+        File('${directory.path}/${displayFileName(canto, voice: voice)}');
+    if (await output.exists()) await output.delete();
+    return source.copy(output.path);
+  }
+
   static String _safeDisplayName(String value) {
+    final withoutIds = value
+        .replaceAll(
+          RegExp(
+            r'\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll(RegExp(r'\s{2,}'), ' ');
     final cleaned =
-        value.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '').trim();
+        withoutIds.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '').trim();
     return cleaned.isEmpty ? 'Canto' : cleaned;
   }
 
@@ -304,11 +329,15 @@ class MidiExportService {
         final right = wavInfo.channels == 2 ? Int16List(count) : null;
         for (var i = 0; i < count; i++) {
           final sampleOffset = i * wavInfo.channels * Int16List.bytesPerElement;
-          left[i] = pcmData.getInt16(sampleOffset, Endian.little);
+          left[i] = _masterPcmSample(
+            pcmData.getInt16(sampleOffset, Endian.little),
+          );
           if (right != null) {
-            right[i] = pcmData.getInt16(
-              sampleOffset + Int16List.bytesPerElement,
-              Endian.little,
+            right[i] = _masterPcmSample(
+              pcmData.getInt16(
+                sampleOffset + Int16List.bytesPerElement,
+                Endian.little,
+              ),
             );
           }
         }
@@ -325,6 +354,22 @@ class MidiExportService {
       await sink.flush();
       await sink.close();
     }
+  }
+
+  /// +10 dB seguido de un limitador de rodilla suave con techo a -1 dBFS.
+  /// Se aplica una sola vez, justo antes de codificar el MP3.
+  static int _masterPcmSample(int sample) {
+    const gain = 3.16227766;
+    const ceiling = 29204.0; // 32767 * 10^(-1/20)
+    const knee = ceiling * 0.72;
+    final amplified = sample * gain;
+    final magnitude = amplified.abs();
+    if (magnitude <= knee) return amplified.round();
+    final compressed = knee +
+        (ceiling - knee) * (1 - exp(-(magnitude - knee) / (ceiling - knee)));
+    return (amplified.isNegative ? -compressed : compressed)
+        .round()
+        .clamp(-29204, 29204);
   }
 
   static Future<_WavInfo> _readWav(RandomAccessFile file) async {

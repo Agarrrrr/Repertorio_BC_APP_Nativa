@@ -351,7 +351,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     final userId = SupabaseService.client.auth.currentUser?.id;
     if (cantoId == null || userId == null) return;
     final mutation = _annotationMutation;
-    _annotationSyncTimer = Timer(const Duration(milliseconds: 700), () {
+    _annotationSyncTimer = Timer(const Duration(seconds: 2), () {
       unawaited(_syncAnnotations(userId, cantoId, mutation));
     });
   }

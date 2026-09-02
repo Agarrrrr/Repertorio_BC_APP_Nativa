@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
@@ -235,7 +236,7 @@ class MidiEngine {
       await initAudio();
 
       final bytes = await file.readAsBytes();
-      _song = NativeMidiParser.parse(bytes);
+      _song = await Isolate.run(() => NativeMidiParser.parse(bytes));
       _scheduledNotes = [
         for (final track in _song!.tracks)
           for (final note in track.notes)
@@ -669,14 +670,19 @@ class MidiEngine {
   /// saturen el piano.
   static int masteredVelocity(int inputVelocity, int activeNotes) {
     final normalized = inputVelocity.clamp(1, 127) / 127.0;
-    final compressed = 34.0 + math.pow(normalized, 0.68) * 78.0;
+    // Compresor previo al máster: reserva el techo equivalente a -1 dB antes
+    // de aplicar +10 dB, sin apagar las notas suaves.
+    const masterGain = 3.16227766;
+    const outputCeiling = 113.0;
+    const inputCeiling = outputCeiling / masterGain;
+    final compressed = 8.0 + math.pow(normalized, 0.68) * (inputCeiling - 8.0);
     final polyphonyGain =
-        (1 / math.sqrt(1 + activeNotes.clamp(0, 96) / 24.0)).clamp(0.72, 1.0);
-    return (compressed * polyphonyGain).round().clamp(1, 120);
+        (1 / math.sqrt(1 + activeNotes.clamp(0, 96) / 12.0)).clamp(0.42, 1.0);
+    return (compressed * polyphonyGain).round().clamp(1, inputCeiling.round());
   }
 
   Future<void> _configureMastering() async {
-    await _midiPro.setMasterGain(0.95);
+    await _midiPro.setMasterGain(3.16227766);
     await _midiPro.setEqualizer(
       enabled: true,
       bassGain: -1.5,
@@ -691,6 +697,32 @@ class MidiEngine {
       level: 0.12,
     );
     await _midiPro.setChorus(enabled: false);
+  }
+
+  /// Recupera la sesión y la ruta tras volver del bloqueo o cambiar Bluetooth.
+  /// No recarga el SoundFont ni cambia instrumentos/canales.
+  Future<void> restoreAudioRoute() async {
+    if (!_midiPro.isInitialized) return;
+    try {
+      if (Platform.isIOS) {
+        await _midiPro.configureAudioSession(
+          category: AudioSessionCategory.playback,
+          mixWithOthers: false,
+        );
+        await AudioPlayer.global.setAudioContext(
+          AudioContext(
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+          ),
+        );
+      }
+      await _configureMastering();
+      if (_metronomeInitialized) {
+        await _metronomeHighPlayer.setPlayerMode(PlayerMode.lowLatency);
+        await _metronomeLowPlayer.setPlayerMode(PlayerMode.lowLatency);
+      }
+    } catch (error) {
+      debugPrint('[NativeMidiEngine] No se pudo restaurar la ruta: $error');
+    }
   }
 
   Future<void> _configureVoiceChannels(List<MidiTrackInfo> tracks) async {
