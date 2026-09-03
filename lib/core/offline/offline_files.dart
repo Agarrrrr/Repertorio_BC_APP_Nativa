@@ -65,7 +65,10 @@ class OfflineFiles {
         _isUnifiedObjectKey(canto.archivo)) {
       return [primary];
     }
-    return [primary, '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf'];
+    return [
+      primary,
+      '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, canto.archivo)}/pdf'
+    ];
   }
 
   static List<String> _midiUrls(Canto canto) {
@@ -76,14 +79,18 @@ class OfflineFiles {
         _isUnifiedObjectKey(midi)) {
       return [primary];
     }
-    return [primary, '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi'];
+    return [
+      primary,
+      '${SupabaseService.storageUrl}/v1/files/${_assetOwnerId(canto, midi)}/midi'
+    ];
   }
 
   static String _assetOwnerId(Canto canto, String objectKey) {
     // Una importación local puede conservar un asset global. En ese caso el
     // Worker debe resolverlo con el ID global; los assets local/* usan el ID
     // de la fila local y por tanto permanecen independientes al editarse.
-    if (objectKey.startsWith('global/') && canto.derivadoDe?.isNotEmpty == true) {
+    if (objectKey.startsWith('global/') &&
+        canto.derivadoDe?.isNotEmpty == true) {
       return canto.derivadoDe!;
     }
     return canto.id;
@@ -144,6 +151,7 @@ class OfflineFiles {
 
   static Future<OfflinePdfAsset> _ensurePdfAsset(Canto canto) async {
     final file = await pdfFile(canto.id);
+    final hadUsableCache = await _validateCached(file, FileCrypto.isPdf);
     if (await _cachedVersionIsCurrent(
       file,
       '${canto.id}_pdf_version',
@@ -153,13 +161,16 @@ class OfflineFiles {
       return OfflinePdfAsset.file(file);
     }
 
-    final encrypted = await _downloadBytesFromCandidates(_pdfUrls(canto));
-    final clearBytes = await _decryptResilient(encrypted);
-    if (!FileCrypto.isPdf(clearBytes)) {
-      throw const FormatException('El archivo descifrado no es un PDF válido');
-    }
-
+    Uint8List? downloadedClearBytes;
     try {
+      final encrypted = await _downloadBytesFromCandidates(_pdfUrls(canto));
+      final clearBytes = await _decryptResilient(encrypted);
+      downloadedClearBytes = clearBytes;
+      if (!FileCrypto.isPdf(clearBytes)) {
+        throw const FormatException(
+            'El archivo descifrado no es un PDF válido');
+      }
+
       await _writeClearBytes(clearBytes, file);
       try {
         await AppCache.put('${canto.id}_pdf_version', canto.version);
@@ -169,9 +180,23 @@ class OfflineFiles {
       return OfflinePdfAsset.file(file);
     } on FileSystemException catch (error) {
       debugPrint(
-        '[OfflineFiles] Sin espacio para guardar ${canto.nombre}; se usará RAM: $error',
+        '[OfflineFiles] Sin espacio para guardar ${canto.nombre}; se conservará la copia local: $error',
       );
-      return OfflinePdfAsset.memory(clearBytes);
+      if (hadUsableCache) return OfflinePdfAsset.file(file);
+      if (downloadedClearBytes != null) {
+        return OfflinePdfAsset.memory(downloadedClearBytes);
+      }
+      rethrow;
+    } catch (error) {
+      // Una versión remota nueva no debe inutilizar una copia local válida
+      // cuando el dispositivo está sin conexión o el servidor no responde.
+      if (hadUsableCache) {
+        debugPrint(
+          '[OfflineFiles] Usando PDF local anterior de ${canto.nombre}: $error',
+        );
+        return OfflinePdfAsset.file(file);
+      }
+      rethrow;
     }
   }
 
@@ -185,6 +210,7 @@ class OfflineFiles {
   static Future<File> _ensureMidi(Canto canto) async {
     final file = await midiFile(canto.id);
     final metadataKey = '${canto.id}_midi_version';
+    final hadUsableCache = await _validateCached(file, FileCrypto.isMidi);
     if (await _cachedVersionIsCurrent(
       file,
       metadataKey,
@@ -194,9 +220,19 @@ class OfflineFiles {
       return file;
     }
 
-    await _downloadFromCandidates(_midiUrls(canto), file, FileCrypto.isMidi);
-    await _saveVersionBestEffort(metadataKey, canto.version);
-    return file;
+    try {
+      await _downloadFromCandidates(_midiUrls(canto), file, FileCrypto.isMidi);
+      await _saveVersionBestEffort(metadataKey, canto.version);
+      return file;
+    } catch (error) {
+      if (hadUsableCache) {
+        debugPrint(
+          '[OfflineFiles] Usando MIDI local anterior de ${canto.nombre}: $error',
+        );
+        return file;
+      }
+      rethrow;
+    }
   }
 
   static Future<Uint8List> _decryptResilient(Uint8List encrypted) async {
