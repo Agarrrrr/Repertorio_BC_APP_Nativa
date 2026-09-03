@@ -338,7 +338,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
               subtitle: const Text('Términos estándar de Apple'),
               trailing: const Icon(Icons.open_in_new_rounded, size: 18),
               onTap: () {
-                _launchURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+                _launchURL(
+                    'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
               },
             ),
             const Divider(),
@@ -406,7 +407,9 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final currentTheme = ref.watch(themeProvider);
-    final accentColor = ref.watch(accentColorProvider);
+    final useOledDarkMode = ref.watch(oledDarkModeProvider);
+    final selectedAccentColor = ref.watch(accentColorProvider);
+    final accentColor = Theme.of(context).colorScheme.primary;
     final isCarousel = ref.watch(pdfNavModeProvider);
     final syncState = ref.watch(syncManagerProvider);
 
@@ -416,7 +419,7 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400),
         padding: const EdgeInsets.all(24),
@@ -789,24 +792,28 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
+                  _buildColorDot(AccentColorNotifier.defaultAccent,
+                      selectedAccentColor), // Dorado
                   _buildColorDot(
-                      const Color(0xFFD4AF37), accentColor), // Dorado
-                  _buildColorDot(const Color(0xFF3B82F6), accentColor), // Azul
-                  _buildColorDot(const Color(0xFF10B981), accentColor), // Verde
+                      const Color(0xFF3B82F6), selectedAccentColor), // Azul
                   _buildColorDot(
-                      const Color(0xFFEF4444), accentColor), // Carmesí
+                      const Color(0xFF10B981), selectedAccentColor), // Verde
                   _buildColorDot(
-                      const Color(0xFF8B5CF6), accentColor), // Púrpura
+                      const Color(0xFFEF4444), selectedAccentColor), // Carmesí
                   _buildColorDot(
-                      const Color(0xFFF97316), accentColor), // Naranja
+                      const Color(0xFF8B5CF6), selectedAccentColor), // Púrpura
                   _buildColorDot(
-                      const Color(0xFF06B6D4), accentColor), // Cian (Teal)
+                      const Color(0xFFF97316), selectedAccentColor), // Naranja
                   _buildColorDot(
-                      const Color(0xFFEC4899), accentColor), // Rosa (Magenta)
+                      const Color(0xFF06B6D4), selectedAccentColor), // Cian
                   _buildColorDot(
-                      const Color(0xFF6366F1), accentColor), // Índigo
+                      const Color(0xFFEC4899), selectedAccentColor), // Rosa
                   _buildColorDot(
-                      const Color(0xFF64748B), accentColor), // Plata (Slate)
+                      const Color(0xFF6366F1), selectedAccentColor), // Índigo
+                  _buildColorDot(
+                      const Color(0xFF64748B), selectedAccentColor), // Plata
+                  _buildColorDot(
+                      const Color(0xFF8B5A2B), selectedAccentColor), // Café
                 ],
               ),
               const SizedBox(height: 24),
@@ -847,7 +854,8 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                 title: 'Normal (Día/Noche)',
                 icon: Icons.light_mode_rounded,
                 isSelected: currentTheme == AppThemeMode.claro ||
-                    currentTheme == AppThemeMode.oscuro,
+                    currentTheme == AppThemeMode.oscuro ||
+                    currentTheme == AppThemeMode.oscuroNormal,
                 onTap: () =>
                     ref.read(themeProvider.notifier).setProfileNormal(),
                 accentColor: accentColor,
@@ -862,9 +870,56 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
                     ref.read(themeProvider.notifier).setProfileLectura(),
                 accentColor: accentColor,
               ),
+              _buildOledSwitch(
+                enabled: useOledDarkMode,
+                accentColor: accentColor,
+                onChanged: (enabled) =>
+                    ref.read(oledDarkModeProvider.notifier).set(enabled),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOledSwitch({
+    required bool enabled,
+    required Color accentColor,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        color: enabled
+            ? accentColor.withValues(alpha: 0.08)
+            : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: enabled
+              ? accentColor.withValues(alpha: 0.65)
+              : theme.colorScheme.outline.withValues(alpha: 0.45),
+        ),
+      ),
+      child: SwitchListTile.adaptive(
+        value: enabled,
+        onChanged: onChanged,
+        activeColor: accentColor,
+        secondary: Icon(
+          enabled ? Icons.contrast_rounded : Icons.dark_mode_rounded,
+          color: enabled ? accentColor : theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text(
+          'Oscuro OLED',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          enabled
+              ? 'Negro puro para pantallas OLED'
+              : 'Oscuro normal azul grisáceo',
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
       ),
     );
   }
@@ -901,7 +956,9 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                  color: color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2)
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  spreadRadius: 2)
           ],
         ),
         child: isSelected
@@ -926,10 +983,13 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected
+              ? accentColor.withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
+            color:
+                isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -978,10 +1038,13 @@ class _SettingsDialogState extends ConsumerState<SettingsDialog> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? accentColor : Colors.grey.withValues(alpha: 0.2),
+            color:
+                isSelected ? accentColor : Colors.grey.withValues(alpha: 0.2),
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? accentColor.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected
+              ? accentColor.withValues(alpha: 0.1)
+              : Colors.transparent,
         ),
         child: Row(
           children: [

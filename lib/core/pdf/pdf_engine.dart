@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:repertorio_bc/core/pdf/annotation_sync_service.dart';
 import 'package:repertorio_bc/core/offline/offline_files.dart';
 import 'package:repertorio_bc/core/offline/sync_manager.dart';
 import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/models/canto.dart';
 import 'package:repertorio_bc/models/trazo.dart';
+import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -81,9 +84,23 @@ class PdfEngineState {
 }
 
 class PdfEngineNotifier extends Notifier<PdfEngineState> {
+  int _initGeneration = 0;
+  int _annotationMutation = 0;
+  Timer? _annotationSyncTimer;
+  Future<void> _localAnnotationWrites = Future<void>.value();
+
   @override
   PdfEngineState build() {
+    ref.onDispose(() => _annotationSyncTimer?.cancel());
     return PdfEngineState();
+  }
+
+  /// Descarta inmediatamente el documento anterior cuando el visor cambia de canto.
+  /// La carga del nuevo PDF ocurre después, pero nunca se muestra el anterior.
+  void resetForCantoChange() {
+    _initGeneration++;
+    _annotationSyncTimer?.cancel();
+    state = PdfEngineState();
   }
 
   Future<void> init(Canto canto) async {
@@ -94,6 +111,7 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
       return;
     }
 
+    final generation = ++_initGeneration;
     final perfil = ref.read(perfilProvider).value;
     if (perfil != null && canto.corosVinculados.isNotEmpty) {
       final hasAccess = canto.corosVinculados.contains(perfil.coroId) ||
@@ -112,14 +130,29 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     try {
       state = PdfEngineState(cantoId: canto.id, isLoading: true);
       final asset = await OfflineFiles.ensurePdfForViewing(canto);
+      if (generation != _initGeneration) return;
+      final userId = SupabaseService.client.auth.currentUser?.id;
+      var annotations = const AnnotationDocument();
+      if (userId != null) {
+        annotations = await AnnotationSyncService.loadAndMerge(
+          userId: userId,
+          cantoId: canto.id,
+        );
+      }
+      if (generation != _initGeneration) return;
       ref.read(syncManagerProvider.notifier).markPdfAvailable(canto.id);
 
+      final initialTrazos = _deepCopyTrazos(annotations.pages);
       state = state.copyWith(
         isLoading: false,
         localPath: asset.file?.path,
         memoryBytes: asset.bytes,
+        trazos: initialTrazos,
+        history: [initialTrazos],
+        historyIndex: 0,
       );
     } catch (e) {
+      if (generation != _initGeneration) return;
       state = PdfEngineState(
         cantoId: canto.id,
         isLoading: false,
@@ -201,6 +234,9 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
       history: newHistory,
       historyIndex: newHistory.length - 1,
     );
+    _annotationMutation++;
+    _cacheAnnotationsLocally();
+    _scheduleCloudSync();
   }
 
   void addTrazo(int pageNumber, Trazo trazo) {
@@ -210,6 +246,24 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
     }
     nuevosTrazos[pageNumber]!.add(trazo);
 
+    _pushHistory(nuevosTrazos);
+  }
+
+  void updateTrazo(int pageNumber, int index, Trazo trazo) {
+    final nuevosTrazos = _deepCopyTrazos(state.trazos);
+    final pageTrazos = nuevosTrazos[pageNumber];
+    if (pageTrazos == null || index < 0 || index >= pageTrazos.length) return;
+    pageTrazos[index] = trazo.copyWith(
+      modifiedAtMs: DateTime.now().toUtc().millisecondsSinceEpoch,
+    );
+    _pushHistory(nuevosTrazos);
+  }
+
+  void deleteTrazo(int pageNumber, int index) {
+    final nuevosTrazos = _deepCopyTrazos(state.trazos);
+    final pageTrazos = nuevosTrazos[pageNumber];
+    if (pageTrazos == null || index < 0 || index >= pageTrazos.length) return;
+    pageTrazos.removeAt(index);
     _pushHistory(nuevosTrazos);
   }
 
@@ -230,6 +284,9 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         trazos: state.history[newIndex],
         historyIndex: newIndex,
       );
+      _annotationMutation++;
+      _cacheAnnotationsLocally();
+      _scheduleCloudSync();
     }
   }
 
@@ -240,6 +297,9 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
         trazos: state.history[newIndex],
         historyIndex: newIndex,
       );
+      _annotationMutation++;
+      _cacheAnnotationsLocally();
+      _scheduleCloudSync();
     }
   }
 
@@ -263,9 +323,51 @@ class PdfEngineNotifier extends Notifier<PdfEngineState> {
   Map<int, List<Trazo>> _deepCopyTrazos(Map<int, List<Trazo>> source) {
     final copy = <int, List<Trazo>>{};
     source.forEach((key, value) {
-      copy[key] = List.from(value);
+      copy[key] = value.map((trazo) => trazo.copyWith()).toList();
     });
     return copy;
+  }
+
+  void _cacheAnnotationsLocally() {
+    final cantoId = state.cantoId;
+    final userId = SupabaseService.client.auth.currentUser?.id;
+    if (cantoId == null || userId == null) return;
+    final snapshot = _deepCopyTrazos(state.trazos);
+    _localAnnotationWrites = _localAnnotationWrites.then((_) async {
+      await AnnotationSyncService.cacheLocal(
+        userId: userId,
+        cantoId: cantoId,
+        pages: snapshot,
+      );
+    }).catchError((Object error) {
+      debugPrint(
+          '[AnnotationSync] No se pudo actualizar la caché local: $error');
+    });
+  }
+
+  void _scheduleCloudSync() {
+    _annotationSyncTimer?.cancel();
+    final cantoId = state.cantoId;
+    final userId = SupabaseService.client.auth.currentUser?.id;
+    if (cantoId == null || userId == null) return;
+    final mutation = _annotationMutation;
+    _annotationSyncTimer = Timer(const Duration(seconds: 2), () {
+      unawaited(_syncAnnotations(userId, cantoId, mutation));
+    });
+  }
+
+  Future<void> _syncAnnotations(
+    String userId,
+    String cantoId,
+    int mutation,
+  ) async {
+    await _localAnnotationWrites;
+    final merged = await AnnotationSyncService.syncCached(
+      userId: userId,
+      cantoId: cantoId,
+    );
+    if (state.cantoId != cantoId || mutation != _annotationMutation) return;
+    state = state.copyWith(trazos: _deepCopyTrazos(merged.pages));
   }
 }
 

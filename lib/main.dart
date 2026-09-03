@@ -9,6 +9,7 @@ import 'package:repertorio_bc/app/router.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:repertorio_bc/core/storage/app_cache.dart';
+import 'package:repertorio_bc/core/providers/theme_provider.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,7 @@ void main() async {
 
   // 2. Inicializar la caché. Si el disco está lleno, continúa en RAM.
   await AppCache.init();
+  await initUserSettings();
 
   // 3. Inicializar Notificaciones Push
   PushService.onTokenRefresh = (token) async {

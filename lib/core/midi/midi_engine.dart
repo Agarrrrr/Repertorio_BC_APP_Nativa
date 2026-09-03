@@ -21,6 +21,9 @@ class MidiState {
   final int? beatNumerator;
   final int beatSerial;
   final bool? beatEsPrimero;
+
+  /// Unidades escritas que forman cada grupo, p. ej. [3, 3] para 6/8.
+  final List<int> beatGroups;
   final int? timeSignatureNumerator;
   final int? timeSignatureDenominator;
 
@@ -38,6 +41,7 @@ class MidiState {
     this.beatNumerator,
     this.beatSerial = 0,
     this.beatEsPrimero,
+    this.beatGroups = const [],
     this.timeSignatureNumerator,
     this.timeSignatureDenominator,
   });
@@ -56,6 +60,7 @@ class MidiState {
     int? beatNumerator,
     int? beatSerial,
     bool? beatEsPrimero,
+    List<int>? beatGroups,
     int? timeSignatureNumerator,
     int? timeSignatureDenominator,
   }) =>
@@ -73,6 +78,7 @@ class MidiState {
         beatNumerator: beatNumerator ?? this.beatNumerator,
         beatSerial: beatSerial ?? this.beatSerial,
         beatEsPrimero: beatEsPrimero ?? this.beatEsPrimero,
+        beatGroups: beatGroups ?? this.beatGroups,
         timeSignatureNumerator:
             timeSignatureNumerator ?? this.timeSignatureNumerator,
         timeSignatureDenominator:
@@ -113,6 +119,7 @@ class MidiEngine {
 
   final _midiPro = MidiPro();
   int? _sfId; // SoundfontSamplerId devuelto por loadSoundfontAsset en v4
+  Future<void>? _audioInitialization;
   final _metronomeHighPlayer = AudioPlayer();
   final _metronomeLowPlayer = AudioPlayer();
 
@@ -162,30 +169,65 @@ class MidiEngine {
 
   /// Inicializa el motor de audio nativo cargando el SoundFont desde los assets
   /// de Flutter. Debe llamarse una sola vez antes de reproducir.
-  Future<void> initAudio() async {
-    if (!_midiPro.isInitialized) {
-      try {
-        debugPrint('七 [NativeMidiEngine] Inicializando sintetizador...');
-        await _midiPro.init(sampleRate: 48000, bufferSize: 256, polyphony: 96);
-        debugPrint('七 [NativeMidiEngine] Cargando SoundFont desde assets...');
+  Future<void> initAudio() {
+    final inFlight = _audioInitialization;
+    if (inFlight != null) return inFlight;
+    final initialization = _initAudioInternal();
+    _audioInitialization = initialization;
+    return initialization.whenComplete(() {
+      if (identical(_audioInitialization, initialization)) {
+        _audioInitialization = null;
+      }
+    });
+  }
+
+  Future<void> _initAudioInternal() async {
+    try {
+      if (!_midiPro.isInitialized) {
+        debugPrint('[NativeMidiEngine] Inicializando sintetizador...');
+        await _midiPro.init(
+          sampleRate: 48000,
+          bufferSize: 256,
+          polyphony: 96,
+        );
+      }
+      // Si una carga anterior falló después de inicializar el plugin, se
+      // vuelve a intentar el SoundFont en lugar de quedar inválido para siempre.
+      if (_sfId == null) {
+        debugPrint('[NativeMidiEngine] Cargando SoundFont desde assets...');
         _sfId = await _midiPro.loadSoundfontAsset(
           assetPath: 'assets/Piano.sf2',
           bank: 0,
           program: 0,
         );
-        await _configureMastering();
-        // En iOS: reproducir aunque el switch fﾃｭsico estﾃｩ en silencio
-        if (Platform.isIOS) {
-          await _midiPro.configureAudioSession(
-            category: AudioSessionCategory.playback,
-            mixWithOthers: false,
+        try {
+          await _configureMastering();
+        } catch (masteringError) {
+          // El ecualizador/ganancia no debe impedir reproducir el MIDI.
+          debugPrint(
+            '[NativeMidiEngine] Mastering no disponible; usando nivel seguro: '
+            '$masteringError',
           );
+          await _midiPro.setMasterGain(0.95);
         }
-        debugPrint(
-            '七 [NativeMidiEngine] SoundFont cargado 笨・(sfId=$_sfId) 窶・Piano Acﾃｺstico activo');
-      } catch (e, st) {
-        debugPrint('笶・[NativeMidiEngine] Error cargando SoundFont: $e\n$st');
       }
+      if (_sfId == null) {
+        throw StateError('No se pudo cargar el instrumento de piano.');
+      }
+      if (Platform.isIOS) {
+        await _midiPro.configureAudioSession(
+          category: AudioSessionCategory.playback,
+          mixWithOthers: false,
+        );
+      }
+      debugPrint(
+        '[NativeMidiEngine] SoundFont listo (sfId=$_sfId)',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[NativeMidiEngine] Error inicializando audio: $error\n$stackTrace',
+      );
+      Error.throwWithStackTrace(error, stackTrace);
     }
 
     // Inicializar metrﾃｳnomo
@@ -218,17 +260,24 @@ class MidiEngine {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        debugPrint(
-            '笶・[NativeMidiEngine] Archivo MIDI no encontrado: $filePath');
-        return;
+        throw FileSystemException('Archivo MIDI no encontrado', filePath);
       }
 
       stop();
+      _emit(_state.copyWith(
+        isLoaded: false,
+        isReady: false,
+        isPlaying: false,
+        voces: const [],
+      ));
 
       // Aseguramos que el motor de audio estﾃｩ listo antes de cargar
       await initAudio();
 
       final bytes = await file.readAsBytes();
+      // El parser es suficientemente pequeño para la apertura interactiva. El
+      // render/exportación pesada continúa usando isolates. Esto evita fallos
+      // de transferencia entre isolates que antes dejaban el panel esperando.
       _song = NativeMidiParser.parse(bytes);
       _scheduledNotes = [
         for (final track in _song!.tracks)
@@ -276,13 +325,25 @@ class MidiEngine {
         beatNumerator: initialPattern.beatsPerMeasure,
         beatSerial: 0,
         beatEsPrimero: true,
+        beatGroups: initialPattern.groups,
         timeSignatureNumerator: initialSignature.numerator,
         timeSignatureDenominator: initialSignature.denominator,
       ));
       debugPrint(
           '七 [NativeMidiEngine] MIDI cargado: "$nombre", duraciﾃｳn: ${_song!.durationSeconds}s');
-    } catch (e) {
-      debugPrint('笶・[NativeMidiEngine] Error cargando MIDI: $e');
+    } catch (error, stackTrace) {
+      _song = null;
+      _scheduledNotes = const [];
+      _emit(_state.copyWith(
+        isLoaded: false,
+        isReady: true,
+        isPlaying: false,
+        voces: const [],
+      ));
+      debugPrint(
+        '[NativeMidiEngine] Error cargando MIDI: $error\n$stackTrace',
+      );
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -570,6 +631,7 @@ class MidiEngine {
         beatNumerator: meterPattern.beatsPerMeasure,
         beatSerial: playClick ? _state.beatSerial + 1 : _state.beatSerial,
         beatEsPrimero: isFirstBeat,
+        beatGroups: meterPattern.groups,
         timeSignatureNumerator: signature.numerator,
         timeSignatureDenominator: signature.denominator,
       ));
@@ -612,7 +674,8 @@ class MidiEngine {
   ///
   /// El conteo por altura evita cortar una nota sostenida por otra voz.
   /// El "epoch" invalida stops pendientes tras pause/stop/seek.
-  void _playNativeNote(MidiNoteEvent note, int channel, {required int trackIndex}) {
+  void _playNativeNote(MidiNoteEvent note, int channel,
+      {required int trackIndex}) {
     if (!_midiPro.isInitialized || _sfId == null) return;
     try {
       final trackVol = _trackVolumes[trackIndex] ?? 1.0;
@@ -660,14 +723,19 @@ class MidiEngine {
   /// saturen el piano.
   static int masteredVelocity(int inputVelocity, int activeNotes) {
     final normalized = inputVelocity.clamp(1, 127) / 127.0;
-    final compressed = 30.0 + math.pow(normalized, 0.68) * 66.0;
+    // Compresor previo al máster: reserva el techo equivalente a -1 dB antes
+    // de aplicar +10 dB, sin apagar las notas suaves.
+    const masterGain = 3.16227766;
+    const outputCeiling = 113.0;
+    const inputCeiling = outputCeiling / masterGain;
+    final compressed = 8.0 + math.pow(normalized, 0.68) * (inputCeiling - 8.0);
     final polyphonyGain =
-        (1 / math.sqrt(1 + activeNotes.clamp(0, 96) / 24.0)).clamp(0.72, 1.0);
-    return (compressed * polyphonyGain).round().clamp(1, 104);
+        (1 / math.sqrt(1 + activeNotes.clamp(0, 96) / 12.0)).clamp(0.42, 1.0);
+    return (compressed * polyphonyGain).round().clamp(1, inputCeiling.round());
   }
 
   Future<void> _configureMastering() async {
-    await _midiPro.setMasterGain(0.72);
+    await _midiPro.setMasterGain(3.16227766);
     await _midiPro.setEqualizer(
       enabled: true,
       bassGain: -1.5,
@@ -682,6 +750,40 @@ class MidiEngine {
       level: 0.12,
     );
     await _midiPro.setChorus(enabled: false);
+  }
+
+  /// Recupera la sesión y la ruta tras volver del bloqueo o cambiar Bluetooth.
+  /// No recarga el SoundFont ni cambia instrumentos/canales.
+  Future<void> restoreAudioRoute() async {
+    final initialization = _audioInitialization;
+    if (initialization != null) {
+      try {
+        await initialization;
+      } catch (_) {
+        return;
+      }
+    }
+    if (!_midiPro.isInitialized || _sfId == null) return;
+    try {
+      if (Platform.isIOS) {
+        await _midiPro.configureAudioSession(
+          category: AudioSessionCategory.playback,
+          mixWithOthers: false,
+        );
+        await AudioPlayer.global.setAudioContext(
+          AudioContext(
+            iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
+          ),
+        );
+      }
+      await _configureMastering();
+      if (_metronomeInitialized) {
+        await _metronomeHighPlayer.setPlayerMode(PlayerMode.lowLatency);
+        await _metronomeLowPlayer.setPlayerMode(PlayerMode.lowLatency);
+      }
+    } catch (error) {
+      debugPrint('[NativeMidiEngine] No se pudo restaurar la ruta: $error');
+    }
   }
 
   Future<void> _configureVoiceChannels(List<MidiTrackInfo> tracks) async {

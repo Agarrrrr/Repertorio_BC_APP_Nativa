@@ -24,6 +24,7 @@ import 'package:repertorio_bc/core/providers/auth_provider.dart';
 import 'package:repertorio_bc/core/supabase/supabase_service.dart';
 
 const List<double> _kSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+const double _kScaleEpsilon = 0.001;
 
 enum _MidiExportKind { ensemble, allVoices, voice }
 
@@ -56,6 +57,11 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
   final PdfViewerController _pdfController = PdfViewerController();
   Orientation? _lastOrientation;
   double _minScaleLimit = 0.1;
+  int _assetLoadGeneration = 0;
+  Timer? _carouselSnapTimer;
+  Timer? _carouselHintTimer;
+  bool _showCarouselNavigationHint = false;
+  int _carouselNavigationEpoch = 0;
 
   @override
   void initState() {
@@ -65,10 +71,38 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     });
   }
 
-  Future<void> _initAssets() async {
+  @override
+  void didUpdateWidget(covariant VisorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cantoId == widget.cantoId) return;
+
+    // GoRouter puede conservar el estado de la ruta /visor/:id y sólo cambiar
+    // el parámetro. Reiniciamos todos los recursos dependientes del canto para
+    // evitar que cambie el título mientras el PDF/MIDI siguen siendo los viejos.
+    _assetLoadGeneration++;
+    _hasMidi = false;
+    _showMidi = false;
+    _showTools = false;
+    _showDrawingPalette = false;
+    ref.read(pdfEngineProvider.notifier).resetForCantoChange();
+    ref.read(pdfEngineProvider.notifier).setDrawingMode(false);
+    _midi.stop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initAssets(_assetLoadGeneration);
+    });
+  }
+
+  Future<void> _initAssets([int? requestedGeneration]) async {
+    final generation = requestedGeneration ?? ++_assetLoadGeneration;
+    final requestedCantoId = widget.cantoId;
     final cantos = await ref.read(cantosBaseProvider.future);
+    if (!mounted ||
+        generation != _assetLoadGeneration ||
+        requestedCantoId != widget.cantoId) {
+      return;
+    }
     final canto = cantos.firstWhere(
-      (c) => c.id == widget.cantoId,
+      (c) => c.id == requestedCantoId,
       orElse: () => Canto(
           id: '',
           nombre: 'Partitura',
@@ -78,15 +112,20 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     );
 
     if (canto.id.isEmpty) {
-      debugPrint('[Visor] El canto ${widget.cantoId} no está disponible.');
+      debugPrint('[Visor] El canto $requestedCantoId no está disponible.');
       return;
     }
 
     await ref.read(pdfEngineProvider.notifier).init(canto);
-    await _initMidi(canto);
+    if (!mounted ||
+        generation != _assetLoadGeneration ||
+        requestedCantoId != widget.cantoId) {
+      return;
+    }
+    await _initMidi(canto, generation);
   }
 
-  Future<void> _initMidi(Canto canto) async {
+  Future<void> _initMidi(Canto canto, int generation) async {
     debugPrint('🎵 [MidiEngine] Inicializando para el canto: ${canto.nombre}');
     debugPrint('🎵 [MidiEngine] midiArchivo del canto: "${canto.midiArchivo}"');
 
@@ -97,20 +136,43 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
 
     try {
       final localMidi = await OfflineFiles.ensureMidi(canto);
-      if (!mounted) return;
+      if (!mounted ||
+          generation != _assetLoadGeneration ||
+          canto.id != widget.cantoId) {
+        return;
+      }
       await _midi.loadMidi(localMidi.path, canto.nombre);
+      if (!mounted ||
+          generation != _assetLoadGeneration ||
+          canto.id != widget.cantoId) {
+        return;
+      }
       ref.read(syncManagerProvider.notifier).markMidiAvailable(canto.id);
       setState(() => _hasMidi = true);
     } catch (error) {
-      ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
-      if (mounted) setState(() => _hasMidi = false);
+      if (mounted &&
+          generation == _assetLoadGeneration &&
+          canto.id == widget.cantoId) {
+        ref.read(syncManagerProvider.notifier).markMidiUnavailable(canto.id);
+        setState(() => _hasMidi = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo cargar el reproductor. Intenta abrir la partitura de nuevo.',
+            ),
+          ),
+        );
+      }
       debugPrint(
-          '[MidiEngine] No se pudo descargar el MIDI de ${canto.nombre}: $error');
+          '[MidiEngine] No se pudo cargar el MIDI de ${canto.nombre}: $error');
     }
   }
 
   @override
   void dispose() {
+    _carouselSnapTimer?.cancel();
+    _carouselHintTimer?.cancel();
+    _carouselNavigationEpoch++;
     _midi.dispose();
     ref.read(pdfEngineProvider.notifier).releaseTransientBytes();
     super.dispose();
@@ -397,8 +459,19 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
         }
       } else {
         await Future.delayed(const Duration(milliseconds: 250));
+        final shareFile = await MidiExportService.prepareShareFile(
+          mp3,
+          canto,
+          voice: voice,
+        );
         await Share.shareXFiles(
-          [XFile(mp3.path, mimeType: 'audio/mpeg')],
+          [
+            XFile(
+              shareFile.path,
+              mimeType: 'audio/mpeg',
+              name: MidiExportService.displayFileName(canto, voice: voice),
+            ),
+          ],
           sharePositionOrigin: _sharePositionOrigin(),
         );
       }
@@ -492,9 +565,22 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
         }
       } else {
         await Future.delayed(const Duration(milliseconds: 250));
+        final shareFiles = <File>[];
+        for (var index = 0; index < files.length; index++) {
+          shareFiles.add(await MidiExportService.prepareShareFile(
+            files[index],
+            canto,
+            voice: index == 0 ? null : voices[index - 1],
+          ));
+        }
         await Share.shareXFiles(
           [
-            for (final file in files) XFile(file.path, mimeType: 'audio/mpeg'),
+            for (var index = 0; index < shareFiles.length; index++)
+              XFile(
+                shareFiles[index].path,
+                mimeType: 'audio/mpeg',
+                name: names[index],
+              ),
           ],
           sharePositionOrigin: _sharePositionOrigin(),
         );
@@ -520,6 +606,80 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
         _pdfController.value = matrix;
       }
     }
+  }
+
+  Future<void> _irAPaginaCarrusel(
+    int pageNumber, {
+    Duration duration = const Duration(milliseconds: 220),
+  }) async {
+    if (!_pdfController.isReady || _pdfController.pageCount == 0) return;
+    final requestEpoch = ++_carouselNavigationEpoch;
+    final targetPage = pageNumber.clamp(1, _pdfController.pageCount);
+    var matrix = _pdfController.calcMatrixForFit(pageNumber: targetPage);
+    if (matrix == null) return;
+    final targetScale = matrix.getMaxScaleOnAxis();
+    if ((_minScaleLimit - targetScale).abs() > _kScaleEpsilon && mounted) {
+      setState(() => _minScaleLimit = targetScale);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted ||
+          requestEpoch != _carouselNavigationEpoch ||
+          !_pdfController.isReady) {
+        return;
+      }
+      final updatedMatrix =
+          _pdfController.calcMatrixForFit(pageNumber: targetPage);
+      if (updatedMatrix == null) return;
+      matrix = updatedMatrix;
+    }
+    _carouselSnapTimer?.cancel();
+    await _pdfController.goTo(matrix, duration: duration);
+  }
+
+  void _manejarToqueEnVisor(
+    TapUpDetails details, {
+    required double viewerWidth,
+    required bool isCarousel,
+    required bool isDrawingMode,
+  }) {
+    if (isDrawingMode) return;
+    if (!isCarousel || !_pdfController.isReady || viewerWidth <= 0) {
+      _toggleTopBar();
+      return;
+    }
+    final x = details.localPosition.dx;
+    final currentPage = _pdfController.pageNumber ?? 1;
+    if (x <= viewerWidth * 0.30) {
+      unawaited(_irAPaginaCarrusel(currentPage - 1));
+    } else if (x >= viewerWidth * 0.70) {
+      unawaited(_irAPaginaCarrusel(currentPage + 1));
+    } else {
+      _toggleTopBar();
+    }
+  }
+
+  void _mostrarPistaDeNavegacionCarrusel({required int pageCount}) {
+    _carouselHintTimer?.cancel();
+    if (pageCount < 2 || !mounted) return;
+    setState(() => _showCarouselNavigationHint = true);
+    _carouselHintTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) setState(() => _showCarouselNavigationHint = false);
+    });
+  }
+
+  void _programarAjusteDeCarrusel() {
+    _carouselSnapTimer?.cancel();
+    _carouselSnapTimer = Timer(const Duration(milliseconds: 380), () {
+      if (!mounted || !_pdfController.isReady) return;
+      final scale = _pdfController.value.getMaxScaleOnAxis();
+      if (scale > _minScaleLimit + 0.02) return;
+      final page = _pdfController.pageNumber;
+      if (page != null) {
+        unawaited(_irAPaginaCarrusel(
+          page,
+          duration: const Duration(milliseconds: 180),
+        ));
+      }
+    });
   }
 
   void _calcularLimiteEscala(PdfDocument document) {
@@ -569,15 +729,24 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final orientation = MediaQuery.of(context).orientation;
     if (_lastOrientation != null && _lastOrientation != orientation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // ignore: deprecated_member_use
-        if (_pdfController.isReady && _pdfController.pages.isNotEmpty) {
-          // ignore: deprecated_member_use
-          final firstPageWidth = _pdfController.pages.first.width;
-          final viewWidth = MediaQuery.of(context).size.width;
-          setState(() {
-            _minScaleLimit = (viewWidth / firstPageWidth);
-          });
-          _ajustarZoomAlAncho();
+        if (!mounted ||
+            !_pdfController.isReady ||
+            _pdfController.pageCount == 0) {
+          return;
+        }
+        if (isCarousel) {
+          unawaited(_irAPaginaCarrusel(
+            _pdfController.pageNumber ?? 1,
+            duration: Duration.zero,
+          ));
+        } else {
+          final matrix = _pdfController.calcMatrixFitWidthForPage(
+            pageNumber: _pdfController.pageNumber ?? 1,
+          );
+          if (matrix != null) {
+            setState(() => _minScaleLimit = matrix.getMaxScaleOnAxis());
+            _pdfController.value = matrix;
+          }
         }
       });
     }
@@ -587,6 +756,7 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSepiaProfile =
         themeMode == AppThemeMode.sepia || themeMode == AppThemeMode.quiet;
+    final isNormalDark = themeMode == AppThemeMode.oscuroNormal;
 
     // Filtro para modo oscuro (Quiet) que mapea el fondo blanco a gris oscuro y notas a claro
     const quietFilter = ColorFilter.matrix([
@@ -629,6 +799,30 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
       -1.0,
       0.0,
       255.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+    ]);
+
+    // Blanco del PDF -> #1B2430; negro -> #F1F5F9.
+    const normalDarkFilter = ColorFilter.matrix([
+      -0.83922,
+      0.0,
+      0.0,
+      0.0,
+      241.0,
+      0.0,
+      -0.81961,
+      0.0,
+      0.0,
+      245.0,
+      0.0,
+      0.0,
+      -0.78824,
+      0.0,
+      249.0,
       0.0,
       0.0,
       0.0,
@@ -684,10 +878,11 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                     curve: Curves.easeInOut,
                     height: _showTopBar ? 60 : 0,
                     decoration: BoxDecoration(
-                      color: theme.scaffoldBackgroundColor,
+                      color: theme.appBarTheme.backgroundColor ??
+                          theme.scaffoldBackgroundColor,
                       border: Border(
-                          bottom:
-                              BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                          bottom: BorderSide(
+                              color: Colors.grey.withValues(alpha: 0.2))),
                     ),
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
@@ -756,89 +951,200 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                   Expanded(
                     child: Stack(
                       children: [
-                        GestureDetector(
-                          onTap: _toggleTopBar,
-                          child: state.isLoading
-                              ? _LoadingPlaceholder()
-                              : state.error != null
-                                  ? Center(child: Text(state.error!))
-                                  : ColorFiltered(
-                                      colorFilter: isDark
-                                          ? (isSepiaProfile
-                                              ? quietFilter
-                                              : invertFilter)
-                                          : (isSepiaProfile
-                                              ? sepiaFilter
-                                              : const ColorFilter.mode(
-                                                  Colors.transparent,
-                                                  BlendMode.multiply)),
-                                      child: PdfViewer(
-                                        state.memoryBytes != null
-                                            ? PdfDocumentRefData(
-                                                state.memoryBytes!,
-                                                sourceName:
-                                                    'ram_${widget.cantoId}',
+                        LayoutBuilder(
+                          builder: (context, viewerConstraints) =>
+                              GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTapUp: (details) => _manejarToqueEnVisor(
+                              details,
+                              viewerWidth: viewerConstraints.maxWidth,
+                              isCarousel: isCarousel,
+                              isDrawingMode: state.isDrawingMode,
+                            ),
+                            child: state.isLoading
+                                ? _LoadingPlaceholder()
+                                : state.error != null
+                                    ? Center(child: Text(state.error!))
+                                    : ColorFiltered(
+                                        colorFilter: isDark
+                                            ? (isSepiaProfile
+                                                ? quietFilter
+                                                : isNormalDark
+                                                    ? normalDarkFilter
+                                                    : invertFilter)
+                                            : (isSepiaProfile
+                                                ? sepiaFilter
+                                                : const ColorFilter.mode(
+                                                    Colors.transparent,
+                                                    BlendMode.multiply)),
+                                        child: PdfViewer(
+                                          state.memoryBytes != null
+                                              ? PdfDocumentRefData(
+                                                  state.memoryBytes!,
+                                                  sourceName:
+                                                      'ram_${widget.cantoId}',
+                                                )
+                                              : PdfDocumentRefFile(
+                                                  state.localPath!,
+                                                ),
+                                          key: ValueKey(state.memoryBytes !=
+                                                  null
+                                              ? 'ram_${widget.cantoId}_${state.memoryBytes!.length}'
+                                              : '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
+                                          controller: _pdfController,
+                                          params: PdfViewerParams(
+                                            enableTextSelection: false,
+                                            margin: isCarousel ? 0 : 8,
+                                            minScale: _minScaleLimit,
+                                            maxScale: 6,
+                                            pageAnchor: isCarousel
+                                                ? PdfPageAnchor.all
+                                                : PdfPageAnchor.top,
+                                            pageAnchorEnd: isCarousel
+                                                ? PdfPageAnchor.all
+                                                : PdfPageAnchor.bottom,
+                                            limitRenderingCache: true,
+                                            maxImageBytesCachedOnMemory:
+                                                32 * 1024 * 1024,
+                                            horizontalCacheExtent: 0.35,
+                                            verticalCacheExtent: 0.75,
+                                            getPageRenderingScale: (
+                                              context,
+                                              page,
+                                              controller,
+                                              estimatedScale,
+                                            ) {
+                                              const maxRasterDimension = 1800.0;
+                                              final longest =
+                                                  max(page.width, page.height);
+                                              if (!longest.isFinite ||
+                                                  longest <= 0) {
+                                                return estimatedScale;
+                                              }
+                                              return min(
+                                                estimatedScale,
+                                                maxRasterDimension / longest,
                                               )
-                                            : PdfDocumentRefFile(
-                                                state.localPath!,
-                                              ),
-                                        key: ValueKey(state.memoryBytes != null
-                                            ? 'ram_${widget.cantoId}_${state.memoryBytes!.length}'
-                                            : '${state.localPath}_${File(state.localPath!).existsSync() ? File(state.localPath!).lastModifiedSync().millisecondsSinceEpoch : 0}'),
-                                        controller: _pdfController,
-                                        params: PdfViewerParams(
-                                          enableTextSelection: false,
-                                          minScale: _minScaleLimit,
-                                          boundaryMargin: EdgeInsets.zero,
-                                          onViewerReady:
-                                              (document, controller) {
-                                            _calcularLimiteEscala(document);
-                                            _ajustarZoomAlAncho();
-                                          },
-                                          panEnabled: !state.isDrawingMode,
-                                          scaleEnabled: true,
-                                          layoutPages: isCarousel
-                                              ? (pages, params) {
-                                                  final height = pages.fold(
-                                                          0.0,
-                                                          (prev, page) => max(
-                                                              prev,
-                                                              page.height)) +
-                                                      params.margin * 2;
-                                                  final pageLayouts = <Rect>[];
-                                                  double x = params.margin;
-                                                  for (final page in pages) {
-                                                    pageLayouts.add(Rect.fromLTWH(
-                                                        x,
-                                                        (height - page.height) /
-                                                            2,
-                                                        page.width,
-                                                        page.height));
-                                                    x += page.width +
-                                                        params.margin;
+                                                  .clamp(0.15, estimatedScale)
+                                                  .toDouble();
+                                            },
+                                            boundaryMargin: EdgeInsets.zero,
+                                            onViewerReady:
+                                                (document, controller) {
+                                              if (isCarousel) {
+                                                unawaited(_irAPaginaCarrusel(
+                                                  controller.pageNumber ?? 1,
+                                                  duration: Duration.zero,
+                                                ));
+                                                _mostrarPistaDeNavegacionCarrusel(
+                                                  pageCount:
+                                                      document.pages.length,
+                                                );
+                                              } else {
+                                                _calcularLimiteEscala(document);
+                                                _ajustarZoomAlAncho();
+                                              }
+                                            },
+                                            onInteractionStart: (_) {
+                                              _carouselSnapTimer?.cancel();
+                                            },
+                                            onInteractionEnd: (_) {
+                                              if (isCarousel &&
+                                                  !state.isDrawingMode) {
+                                                _programarAjusteDeCarrusel();
+                                              }
+                                            },
+                                            panEnabled: !state.isDrawingMode,
+                                            scaleEnabled: true,
+                                            layoutPages: isCarousel
+                                                ? (pages, params) {
+                                                    final height = pages.fold(
+                                                            0.0,
+                                                            (prev, page) => max(
+                                                                prev,
+                                                                page.height)) +
+                                                        params.margin * 2;
+                                                    final pageLayouts =
+                                                        <Rect>[];
+                                                    double x = params.margin;
+                                                    for (final page in pages) {
+                                                      pageLayouts.add(Rect.fromLTWH(
+                                                          x,
+                                                          (height -
+                                                                  page.height) /
+                                                              2,
+                                                          page.width,
+                                                          page.height));
+                                                      x += page.width +
+                                                          params.margin;
+                                                    }
+                                                    return PdfPageLayout(
+                                                        pageLayouts:
+                                                            pageLayouts,
+                                                        documentSize:
+                                                            Size(x, height));
                                                   }
-                                                  return PdfPageLayout(
-                                                      pageLayouts: pageLayouts,
-                                                      documentSize:
-                                                          Size(x, height));
-                                                }
-                                              : null,
-                                          backgroundColor: Colors.white,
-                                          pageDropShadow: null,
-                                          pageOverlaysBuilder:
-                                              (context, pageRect, page) => [
-                                            Positioned.fill(
-                                              child: AnnotationLayer(
-                                                cantoId: widget.cantoId,
-                                                pageNumber: page.pageNumber,
-                                                pageSize: Size(pageRect.width,
-                                                    pageRect.height),
+                                                : null,
+                                            backgroundColor: Colors.white,
+                                            pageDropShadow: null,
+                                            pageOverlaysBuilder:
+                                                (context, pageRect, page) => [
+                                              Positioned.fill(
+                                                child: AnnotationLayer(
+                                                  cantoId: widget.cantoId,
+                                                  pageNumber: page.pageNumber,
+                                                  pageSize: Size(pageRect.width,
+                                                      pageRect.height),
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
+                          ),
+                        ),
+
+                        Positioned(
+                          right: 12,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: IgnorePointer(
+                              child: AnimatedOpacity(
+                                opacity:
+                                    isCarousel && _showCarouselNavigationHint
+                                        ? 1
+                                        : 0,
+                                duration: const Duration(milliseconds: 380),
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: theme.colorScheme.surface
+                                        .withValues(alpha: 0.90),
+                                    border: Border.all(
+                                      color: theme.colorScheme.outline
+                                          .withValues(alpha: 0.42),
                                     ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.22),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 24,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
 
                         // ── Panel MIDI Flotante ──────────────────────────────
@@ -909,7 +1215,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
+                                        color:
+                                            Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -925,7 +1232,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                     Container(
                                         width: 1,
                                         height: 20,
-                                        color: Colors.grey.withValues(alpha: 0.3),
+                                        color:
+                                            Colors.grey.withValues(alpha: 0.3),
                                         margin: const EdgeInsets.symmetric(
                                             horizontal: 5)),
                                     _ToolBtn(
@@ -986,7 +1294,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withValues(alpha: 0.3),
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 5)),
                                       _ToolBtn(
@@ -1037,7 +1346,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
+                                        color:
+                                            Colors.black.withValues(alpha: 0.1),
                                         blurRadius: 10)
                                   ],
                                 ),
@@ -1057,8 +1367,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                                   overlayRadius: 12),
                                           trackHeight: 2,
                                           activeTrackColor: accentColor,
-                                          inactiveTrackColor:
-                                              Colors.grey.withValues(alpha: 0.3),
+                                          inactiveTrackColor: Colors.grey
+                                              .withValues(alpha: 0.3),
                                           thumbColor: accentColor,
                                         ),
                                         child: Slider(
@@ -1084,7 +1394,8 @@ class _VisorScreenState extends ConsumerState<VisorScreen> {
                                       Container(
                                           width: 1,
                                           height: 20,
-                                          color: Colors.grey.withValues(alpha: 0.3),
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.3),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 10)),
                                       _ColorBtn(
@@ -1197,219 +1508,223 @@ class _MidiPanelState extends State<_MidiPanel> {
         };
         return StatefulBuilder(
           builder: (context, setModalState) => SafeArea(
-          child: Container(
-            margin: const EdgeInsets.all(12),
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(modalContext).size.height * 0.45,
-            ),
-            decoration: BoxDecoration(
-              color: theme.scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: widget.accentColor.withValues(alpha: 0.4)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── Encabezado ───────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded, size: 20),
-                        tooltip: 'Regresar',
-                        onPressed: () => Navigator.pop(modalContext),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Mezclador de Voces',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+            child: Container(
+              margin: const EdgeInsets.all(12),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(modalContext).size.height * 0.45,
+              ),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                    color: widget.accentColor.withValues(alpha: 0.4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Encabezado ───────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                          tooltip: 'Regresar',
+                          onPressed: () => Navigator.pop(modalContext),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Mezclador de Voces',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          widget.onVocesReset();
-                          setModalState(() {
-                            for (final voz in widget.midiState.voces) {
-                              localVolumes[voz.trackIndex] = 1.0;
-                            }
-                          });
-                        },
-                        icon: Icon(
-                          Icons.rotate_left_rounded,
-                          size: 16,
-                          color: widget.accentColor,
-                        ),
-                        label: Text(
-                          'Restablecer',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        TextButton.icon(
+                          onPressed: () {
+                            widget.onVocesReset();
+                            setModalState(() {
+                              for (final voz in widget.midiState.voces) {
+                                localVolumes[voz.trackIndex] = 1.0;
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            Icons.rotate_left_rounded,
+                            size: 16,
                             color: widget.accentColor,
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
-                // ── Lista de Voces Deslizable ─────────────────────────────────
-                Expanded(
-                  child: widget.midiState.voces.isEmpty
-                      ? Center(
-                          child: Text(
-                            'Sin voces disponibles para este canto',
+                          label: Text(
+                            'Restablecer',
                             style: GoogleFonts.inter(
-                              color: Colors.grey,
-                              fontSize: 13,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: widget.accentColor,
                             ),
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          itemCount: widget.midiState.voces.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final voz = widget.midiState.voces[index];
-                            final volume = localVolumes[voz.trackIndex] ??
-                                voz.volumen.clamp(0.0, 1.0);
-                            final volPct = (volume * 100).round();
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+                  // ── Lista de Voces Deslizable ─────────────────────────────────
+                  Expanded(
+                    child: widget.midiState.voces.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Sin voces disponibles para este canto',
+                              style: GoogleFonts.inter(
+                                color: Colors.grey,
+                                fontSize: 13,
                               ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: voz.activa && voz.volumen > 0
-                                      ? widget.accentColor.withValues(alpha: 0.25)
-                                      : Colors.grey.withValues(alpha: 0.15),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            itemCount: widget.midiState.voces.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final voz = widget.midiState.voces[index];
+                              final volume = localVolumes[voz.trackIndex] ??
+                                  voz.volumen.clamp(0.0, 1.0);
+                              final volPct = (volume * 100).round();
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      voz.activa && volume > 0
-                                          ? (volume > 0.5
-                                              ? Icons.volume_up_rounded
-                                              : Icons.volume_down_rounded)
-                                          : Icons.volume_off_rounded,
-                                      size: 20,
-                                      color: voz.activa && volume > 0
-                                          ? widget.accentColor
-                                          : Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      widget.onVozToggle(
-                                        voz.trackIndex,
-                                        voz.activa,
-                                      );
-                                    },
-                                    tooltip: voz.activa
-                                        ? 'Silenciar ${voz.nombre}'
-                                        : 'Activar ${voz.nombre}',
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: voz.activa && voz.volumen > 0
+                                        ? widget.accentColor
+                                            .withValues(alpha: 0.25)
+                                        : Colors.grey.withValues(alpha: 0.15),
                                   ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            GestureDetector(
-                                              onLongPress: () =>
-                                                  widget.onVozSolo(voz.trackIndex),
-                                              child: Text(
-                                                voz.nombre,
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: voz.activa &&
-                                                          volume > 0
-                                                      ? theme.colorScheme
-                                                          .onSurface
-                                                      : Colors.grey,
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        voz.activa && volume > 0
+                                            ? (volume > 0.5
+                                                ? Icons.volume_up_rounded
+                                                : Icons.volume_down_rounded)
+                                            : Icons.volume_off_rounded,
+                                        size: 20,
+                                        color: voz.activa && volume > 0
+                                            ? widget.accentColor
+                                            : Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        widget.onVozToggle(
+                                          voz.trackIndex,
+                                          voz.activa,
+                                        );
+                                      },
+                                      tooltip: voz.activa
+                                          ? 'Silenciar ${voz.nombre}'
+                                          : 'Activar ${voz.nombre}',
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              GestureDetector(
+                                                onLongPress: () => widget
+                                                    .onVozSolo(voz.trackIndex),
+                                                child: Text(
+                                                  voz.nombre,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        voz.activa && volume > 0
+                                                            ? theme.colorScheme
+                                                                .onSurface
+                                                            : Colors.grey,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Text(
-                                              '$volPct%',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: voz.activa &&
-                                                        volume > 0
-                                                    ? widget.accentColor
-                                                    : Colors.grey,
+                                              Text(
+                                                '$volPct%',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      voz.activa && volume > 0
+                                                          ? widget.accentColor
+                                                          : Colors.grey,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SliderTheme(
+                                            data: SliderThemeData(
+                                              trackHeight: 3,
+                                              thumbShape:
+                                                  const RoundSliderThumbShape(
+                                                enabledThumbRadius: 6,
+                                              ),
+                                              activeTrackColor:
+                                                  widget.accentColor,
+                                              inactiveTrackColor: widget
+                                                  .accentColor
+                                                  .withValues(alpha: 0.2),
+                                              thumbColor: widget.accentColor,
+                                              overlayShape:
+                                                  const RoundSliderOverlayShape(
+                                                overlayRadius: 12,
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                        SliderTheme(
-                                          data: SliderThemeData(
-                                            trackHeight: 3,
-                                            thumbShape:
-                                                const RoundSliderThumbShape(
-                                              enabledThumbRadius: 6,
-                                            ),
-                                            activeTrackColor: widget.accentColor,
-                                            inactiveTrackColor: widget
-                                                .accentColor
-                                                .withValues(alpha: 0.2),
-                                            thumbColor: widget.accentColor,
-                                            overlayShape:
-                                                const RoundSliderOverlayShape(
-                                              overlayRadius: 12,
+                                            child: Slider(
+                                              value: volume,
+                                              onChanged: (val) {
+                                                setModalState(() {
+                                                  localVolumes[voz.trackIndex] =
+                                                      val;
+                                                });
+                                                widget.onVozVolumeChange(
+                                                  voz.trackIndex,
+                                                  val,
+                                                );
+                                              },
                                             ),
                                           ),
-                                          child: Slider(
-                                            value: volume,
-                                            onChanged: (val) {
-                                              setModalState(() {
-                                                localVolumes[voz.trackIndex] = val;
-                                              });
-                                              widget.onVozVolumeChange(
-                                                voz.trackIndex,
-                                                val,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ),
           ),
         );
       },
@@ -1459,11 +1774,21 @@ class _MidiPanelState extends State<_MidiPanel> {
                           widget.midiState.timeSignatureNumerator ?? beats;
                       final denominator =
                           widget.midiState.timeSignatureDenominator ?? 4;
+                      final groups = widget.midiState.beatGroups;
+                      final grouping = groups.any((group) => group > 1)
+                          ? ' · ${groups.join('+')}'
+                          : '';
+                      final groupStarts = <int>[];
+                      var groupOffset = 0;
+                      for (final group in groups) {
+                        groupStarts.add(groupOffset);
+                        groupOffset += group;
+                      }
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '$numerator/$denominator',
+                            '$numerator/$denominator$grouping',
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -1475,9 +1800,13 @@ class _MidiPanelState extends State<_MidiPanel> {
                             final isCurrent =
                                 index == widget.midiState.beatIndex;
                             final isFirst = index == 0;
+                            final isGroupStart = groupStarts.contains(index);
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 90),
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              margin: EdgeInsets.only(
+                                left: isGroupStart && index > 0 ? 5 : 2,
+                                right: 2,
+                              ),
                               width: isCurrent ? dotSize + 2 : dotSize,
                               height: isCurrent ? dotSize + 2 : dotSize,
                               decoration: BoxDecoration(
@@ -1546,7 +1875,8 @@ class _MidiPanelState extends State<_MidiPanel> {
                     thumbShape:
                         const RoundSliderThumbShape(enabledThumbRadius: 6),
                     activeTrackColor: widget.accentColor,
-                    inactiveTrackColor: widget.accentColor.withValues(alpha: 0.2),
+                    inactiveTrackColor:
+                        widget.accentColor.withValues(alpha: 0.2),
                     thumbColor: widget.accentColor,
                     overlayShape:
                         const RoundSliderOverlayShape(overlayRadius: 14),
@@ -1604,103 +1934,108 @@ class _MidiPanelState extends State<_MidiPanel> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                // Metrónomo toggle
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _GoldIconBtn(
-                  isActive: widget.midiState.metronomoActivo,
-                  activeColor: widget.accentColor,
-                  onTap: loading ? null : widget.onMetronomo,
-                  tooltip: 'Metrónomo',
-                  size: 22,
-                  child: TweenAnimationBuilder<double>(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeInOutCubic,
-                    tween: Tween<double>(
-                      begin: 0.0,
-                      end: widget.midiState.metronomoActivo &&
-                              widget.midiState.isPlaying
-                          ? (widget.midiState.beatSerial.isEven ? -0.42 : 0.42)
-                          : 0.0,
+                  // Metrónomo toggle
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _GoldIconBtn(
+                      isActive: widget.midiState.metronomoActivo,
+                      activeColor: widget.accentColor,
+                      onTap: loading ? null : widget.onMetronomo,
+                      tooltip: 'Metrónomo',
+                      size: 22,
+                      child: TweenAnimationBuilder<double>(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeInOutCubic,
+                        tween: Tween<double>(
+                          begin: 0.0,
+                          end: widget.midiState.metronomoActivo &&
+                                  widget.midiState.isPlaying
+                              ? (widget.midiState.beatSerial.isEven
+                                  ? -0.42
+                                  : 0.42)
+                              : 0.0,
+                        ),
+                        builder: (context, angle, child) {
+                          return MetronomeIcon(
+                            color: widget.midiState.metronomoActivo
+                                ? widget.accentColor
+                                : Colors.grey.withValues(alpha: 0.6),
+                            size: 20,
+                            rotationAngle: angle,
+                          );
+                        },
+                      ),
                     ),
-                    builder: (context, angle, child) {
-                      return MetronomeIcon(
-                        color: widget.midiState.metronomoActivo
-                            ? widget.accentColor
-                            : Colors.grey.withValues(alpha: 0.6),
-                        size: 20,
-                        rotationAngle: angle,
-                      );
-                    },
                   ),
-                  ),
-                ),
-                // Play / Pause
-                Align(
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                  onTap: loading ? null : widget.onPlay,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: loading
-                          ? Colors.grey.withValues(alpha: 0.2)
-                          : widget.accentColor,
-                      boxShadow: loading
-                          ? []
-                          : [
-                              BoxShadow(
-                                  color: widget.accentColor.withValues(alpha: 0.4),
-                                  blurRadius: 12)
-                            ],
+                  // Play / Pause
+                  Align(
+                    alignment: Alignment.center,
+                    child: GestureDetector(
+                      onTap: loading ? null : widget.onPlay,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: loading
+                              ? Colors.grey.withValues(alpha: 0.2)
+                              : widget.accentColor,
+                          boxShadow: loading
+                              ? []
+                              : [
+                                  BoxShadow(
+                                      color: widget.accentColor
+                                          .withValues(alpha: 0.4),
+                                      blurRadius: 12)
+                                ],
+                        ),
+                        child: loading
+                            ? const Padding(
+                                padding: EdgeInsets.all(14),
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5))
+                            : Icon(
+                                widget.midiState.isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                      ),
                     ),
-                    child: loading
-                        ? const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5))
-                        : Icon(
-                            widget.midiState.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
                   ),
+                  // Stop
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _GoldIconBtn(
+                          icon: Icons.stop_rounded,
+                          isActive: false,
+                          activeColor: widget.accentColor,
+                          onTap: loading ? null : widget.onStop,
+                          tooltip: 'Detener',
+                          size: 22,
+                        ),
+                        const SizedBox(width: 8),
+                        // Mezclador de voces
+                        _GoldIconBtn(
+                          icon: Icons.tune_rounded,
+                          isActive: false,
+                          activeColor: widget.accentColor,
+                          onTap: loading
+                              ? null
+                              : () => _abrirMezcladorModal(context),
+                          tooltip: 'Mezclador de voces',
+                          size: 22,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                // Stop
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                _GoldIconBtn(
-                  icon: Icons.stop_rounded,
-                  isActive: false,
-                  activeColor: widget.accentColor,
-                  onTap: loading ? null : widget.onStop,
-                  tooltip: 'Detener',
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                // Mezclador de voces
-                _GoldIconBtn(
-                  icon: Icons.tune_rounded,
-                  isActive: false,
-                  activeColor: widget.accentColor,
-                  onTap: loading ? null : () => _abrirMezcladorModal(context),
-                  tooltip: 'Mezclador de voces',
-                  size: 22,
-                ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
 
             // Sección Expandible de Ajustes
@@ -1715,7 +2050,8 @@ class _MidiPanelState extends State<_MidiPanel> {
                         Row(
                           children: [
                             Icon(Icons.speed_rounded,
-                                size: 16, color: Colors.grey.withValues(alpha: 0.8)),
+                                size: 16,
+                                color: Colors.grey.withValues(alpha: 0.8)),
                             const SizedBox(width: 8),
                             Expanded(
                               child: SingleChildScrollView(
@@ -1984,8 +2320,9 @@ class _GoldIconBtn extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color:
-                isActive ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+            color: isActive
+                ? activeColor.withValues(alpha: 0.15)
+                : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: child ??

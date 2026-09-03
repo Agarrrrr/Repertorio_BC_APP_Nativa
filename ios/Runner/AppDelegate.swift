@@ -33,7 +33,7 @@ import FirebaseMessaging
     GeneratedPluginRegistrant.register(with: self)
     let flutterViewController = window!.rootViewController as! FlutterViewController
     let midiExportChannel = FlutterMethodChannel(
-      name: "repertorio_bc/midi_export",
+      name: "com.lldm.coro/midi_render",
       binaryMessenger: flutterViewController.binaryMessenger
     )
     midiExportChannel.setMethodCallHandler { call, result in
